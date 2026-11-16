@@ -37,7 +37,9 @@ A recorded check from 2026-11-16 is in `fixtures/dry_run/gcp-preflight.json`. Ea
 - Refusal rules that run before a record is stored. A 10 km (or any gridded) value cannot be stored as a measurement of a farm boundary. A join does not rewrite native resolution.
 - Synthetic identity. Unknown tenure stays `unknown`. The operator is not copied into the right-holder.
 - `factsAt` and `associatedAt`. A fact is returned only when its availability time is at or before the query time, no visible revision supersedes it, and, for a forecast, its issue time is at or before the query time.
-- Fail-closed adapters for Earth Engine history, Open-Meteo (`jma_msm`, `ecmwf_ifs`), and CWA F-D0047 / WRF. Issue time and native support stay on the forecast. Live calls are not made. Contract fixtures are marked `captured_live: false`.
+- Fail-closed adapters for Earth Engine history, Open-Meteo (`jma_msm`, `ecmwf_ifs`), and CWA F-D0047 / WRF. Issue time and native support stay on the forecast. Contract fixtures under `fixtures/dry_run/` are marked `captured_live: false`.
+
+One live Open-Meteo sample is recorded in `fixtures/live/open_meteo_jma_msm_2026-11-16.json`. The point is 23.5°N, 121.0°E. The model is `jma_msm`. The stored spatial support is the published JMA MSM grid, **0.05° (about 5 km)**, not the 0.4 ha parcel. The stored hour is precipitation `0.0 mm` for 2026-11-16T04:00Z–05:00Z, issued at 2026-11-16T03:00Z and received at 2026-11-16T10:23:44Z. The plain forecast endpoint was called and does not return a model-run time, so its body is not the stored observation. No API key is in the repository. The test suite does not call the network. Class C stays closed.
 
 Upstream ontology files are not in git. Pins and the local-module SHA-256 are in `vocabulary-manifest.json`. QUDT unit IRIs are references; the release file was not downloaded and no hash is claimed for it. Crop Ontology concept URIs for maize and the other Q4 crops are not invented. The precipitation observed-property IRI is a local id marked unresolved against CF standard-name collection P07 version 95.
 
