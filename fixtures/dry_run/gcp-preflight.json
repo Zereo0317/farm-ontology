@@ -1,0 +1,33 @@
+{
+  "checked_on": "2026-11-16",
+  "gcloud": {
+    "requested_configuration": "segescloud",
+    "configuration_existed_before_this_check": false,
+    "action": "Created a local gcloud configuration named segescloud and activated it. Set core/account and core/project on that configuration only. Did not create a key, did not enable an API, and did not change the default configuration.",
+    "active_configuration": "segescloud",
+    "account": "segescloud@gmail.com",
+    "project_id": "seges-ai",
+    "project_name": "Seges",
+    "lifecycle_state": "ACTIVE",
+    "billing_quota_project_property": "CURRENT_PROJECT",
+    "adc_file_present": true,
+    "adc_note": "gcloud warned that the active project does not match the quota project in the local Application Default Credentials file. ADC was not modified.",
+    "earthengine_cli_on_path": false,
+    "earthengine_credentials_file_present": false,
+    "python_ee_installed": false
+  },
+  "earth_engine": {
+    "service": "earthengine.googleapis.com",
+    "service_state": "ENABLED",
+    "algorithms_url": "https://earthengine.googleapis.com/v1alpha/projects/seges-ai/algorithms",
+    "algorithms_http_status": 200,
+    "assets_url": "https://earthengine.googleapis.com/v1/projects/seges-ai/assets",
+    "assets_http_status": 404,
+    "assets_message": "Asset 'projects/seges-ai/assets' does not exist or doesn't allow this operation.",
+    "not_registered_error_seen": false,
+    "registration_type": "unknown",
+    "registration_note": "HTTP 200 on the algorithms catalog means the Earth Engine API accepted the segescloud user credential with quota project seges-ai. The response does not say whether registration is commercial or noncommercial. Unknown registration forces financial use false and caps the use class at Screening.",
+    "live_export": false,
+    "reason": "No Export.image task was started. The Python earthengine client and the earthengine CLI are not installed, no destination bucket was named, and the registration type is unknown."
+  }
+}

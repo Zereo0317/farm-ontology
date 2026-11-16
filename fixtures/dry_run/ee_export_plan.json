@@ -1,0 +1,16 @@
+{
+  "series": "CHIRPS",
+  "asset": "UCSB-CHG/CHIRPS/DAILY",
+  "destination": "ee.batch.Export.image.toCloudStorage",
+  "gcloud_configuration": "segescloud",
+  "gcp_project": "seges-ai",
+  "crs": "EPSG:4326",
+  "crs_transform": [0.05, 0.0, 120.0, 0.0, -0.05, 23.0],
+  "scale": null,
+  "best_effort": false,
+  "executed": false,
+  "gcs_uri": null,
+  "task_id": null,
+  "ee_registration": "unknown",
+  "note": "Recorded plan only. No Earth Engine task was started."
+}

@@ -1,0 +1,132 @@
+{
+  "iri_base": "https://github.com/Zereo0317/farm-ontology/ns/",
+  "iri_base_status": "provisional-not-a-final-domain",
+  "q1": "unanswered",
+  "reasoner": "none",
+  "store": "in-memory-development",
+  "q6": "unanswered-production-store-not-chosen",
+  "class_c_policy": "closed",
+  "imports": [],
+  "local_module": {
+    "path": "ontology/fd-decision.ttl",
+    "version_iri": "https://github.com/Zereo0317/farm-ontology/ns/releases/2026-11-16/",
+    "sha256": "e51663046140a05b6b68f53996bd6b054dcdba1894c6d460c335d5b08f066983",
+    "hash_computed_here": true,
+    "vendored_upstream": false
+  },
+  "envo": {
+    "status": "blocked-until-q2",
+    "imported": false
+  },
+  "open_questions": [
+    "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10",
+    "Q11", "Q12", "Q13", "Q14", "Q15", "Q16", "Q17", "Q18", "Q19", "Q20", "Q21"
+  ],
+  "pins": [
+    {
+      "id": "sosa-ssn",
+      "namespace": "http://www.w3.org/ns/sosa/",
+      "also": "http://www.w3.org/ns/ssn/",
+      "document": "https://www.w3.org/TR/vocab-ssn/",
+      "version": "W3C Recommendation 2017-10-19",
+      "vendored": false,
+      "sha256": null,
+      "note": "Published namespace only. The 2023 editor draft is not used."
+    },
+    {
+      "id": "geosparql",
+      "namespace": "http://www.opengis.net/ont/geosparql#",
+      "document": "OGC 22-047",
+      "version": "1.1 ontology file note 1.1.1 (2026-02)",
+      "repository_file": "opengeospatial/geosemantics-semantic-resources resources/geosparql-swg/geosparql-1.1/ontologies/geo.ttl",
+      "vendored": false,
+      "sha256": null,
+      "note": "Referenced, not cloned. GeoSPARQL Next is not used."
+    },
+    {
+      "id": "owl-time",
+      "namespace": "http://www.w3.org/2006/time#",
+      "document": "https://www.w3.org/TR/owl-time/",
+      "vendored": false,
+      "sha256": null
+    },
+    {
+      "id": "qudt",
+      "namespace": "http://qudt.org/schema/qudt/",
+      "unit_namespace": "http://qudt.org/vocab/unit/",
+      "quantitykind_namespace": "http://qudt.org/vocab/quantitykind/",
+      "repository": "https://github.com/qudt/qudt-public-repo",
+      "vendored": false,
+      "sha256": null,
+      "note": "Unit IRIs are references into the QUDT unit namespace. The release TTL was not downloaded and no hash is claimed. Licence note in the spec: CC-BY-4.0."
+    },
+    {
+      "id": "prov-o",
+      "namespace": "http://www.w3.org/ns/prov#",
+      "document": "https://www.w3.org/TR/prov-o/",
+      "version": "W3C Recommendation 2013-04-30",
+      "vendored": false,
+      "sha256": null
+    },
+    {
+      "id": "skos",
+      "namespace": "http://www.w3.org/2004/02/skos/core#",
+      "document": "https://www.w3.org/TR/skos-reference/",
+      "version": "W3C Recommendation 2009-08-18",
+      "vendored": false,
+      "sha256": null
+    },
+    {
+      "id": "agrovoc",
+      "namespace": "http://aims.fao.org/aos/agrovoc/",
+      "example": "http://aims.fao.org/aos/agrovoc/c_12332",
+      "vendored": false,
+      "sha256": null,
+      "note": "Labels only, via skos:exactMatch. No dump is shipped. FAO languages only: en, fr, es, ar, ru, zh."
+    },
+    {
+      "id": "cf-p07",
+      "collection": "http://vocab.nerc.ac.uk/collection/P07/95/",
+      "version": "95",
+      "modified_note": "2026-09-16 in the spec notes",
+      "vendored": false,
+      "sha256": null,
+      "note": "Concept URIs are unresolved. Fixtures use a local observed-property IRI marked unresolved."
+    },
+    {
+      "id": "CO_320",
+      "repository": "https://github.com/Planteome/CO_320-rice-traits",
+      "vendored": false,
+      "sha256": null
+    },
+    {
+      "id": "CO_321",
+      "repository": "https://github.com/Planteome/CO_321-wheat-traits",
+      "vendored": false,
+      "sha256": null
+    },
+    {
+      "id": "CO_334",
+      "repository": "https://github.com/Planteome/CO_334-cassava-traits",
+      "vendored": false,
+      "sha256": null
+    }
+  ],
+  "not_imported": [
+    "glosis-ld/glosis",
+    "SDG-InterfaceOntology/sdgio",
+    "AgriculturalSemantics/SEOnt",
+    "bioversity/Crop-Ontology",
+    "xriss/agrovoc-json",
+    "FAO-SID/GloSIS",
+    "YaoXinZhi/Rice-Trait-Ontology",
+    "global-soil-intelligence/gsip",
+    "sweetAll",
+    "plant-stress-ontology",
+    "ATOL",
+    "EOL",
+    "GeoSPARQL Next",
+    "SOSA 2023 editor draft",
+    "*-edit.owl"
+  ]
+}

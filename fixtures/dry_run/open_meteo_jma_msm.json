@@ -1,0 +1,16 @@
+{
+  "captured_live": false,
+  "model": "jma_msm",
+  "issue_time": "2026-11-16T00:00:00+00:00",
+  "valid_time": "2026-11-16T06:00:00+00:00",
+  "valid_end": "2026-11-16T07:00:00+00:00",
+  "latitude": 23.5,
+  "longitude": 121.0,
+  "value_mm": 1.2,
+  "grid_deg": 0.05,
+  "permits_financial_use": false,
+  "legal_meteorological_authority": false,
+  "local": "jma-msm-step",
+  "feature_local": "jma-msm-0-05deg",
+  "note": "Contract fixture. Not a live Open-Meteo response."
+}

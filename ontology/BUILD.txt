@@ -1,0 +1,4 @@
+reasoner: none
+elk: not-invoked
+owl-dl: not-invoked
+upstream-ontologies-vendored: 0
