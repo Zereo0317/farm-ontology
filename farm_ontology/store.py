@@ -102,7 +102,9 @@ class Store:
                     "a reprocess cites a previous version that is still in the store",
                     at,
                 )
-        violations = observation_violations(obs, set(self.boundaries), previous)
+        violations = observation_violations(
+            obs, set(self.boundaries), previous, set(self.survey_points)
+        )
         if violations:
             return self._refuse_all(violations, obs.iri, at)
         self.observations[obs.iri] = obs
