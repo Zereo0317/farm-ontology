@@ -45,6 +45,10 @@ class FieldHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
+            return
         if path == "/":
             self._send(200, PAGE, "text/html; charset=utf-8")
             return

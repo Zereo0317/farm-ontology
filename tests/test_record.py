@@ -128,6 +128,10 @@ class RecordTests(unittest.TestCase):
             with urllib.request.urlopen(base + "/", timeout=5) as page:
                 html = page.read().decode("utf-8")
             self.assertIn("Soybean field record", html)
+            self.assertIn('id="feedback-form"', html)
+            self.assertIn('id="field-note"', html)
+            self.assertNotIn('id="note"', html)
+            self.assertEqual(html.count("button.primary"), 1)
             self.assertNotIn("cdn", html.lower())
             payload = json.dumps(
                 {"latitude": 1, "longitude": 2, "sample_id": "ui-row", "dry_run": False}
