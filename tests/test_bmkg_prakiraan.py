@@ -9,7 +9,6 @@ from farm_ontology.bmkg_prakiraan import BMKG_PRAKIRAAN_URL, record_series_heade
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = BMKG_PRAKIRAAN_URL
-NOT_OPENED = "the field was not opened"
 
 
 class BmkgPrakiraanTests(unittest.TestCase):
@@ -28,8 +27,8 @@ class BmkgPrakiraanTests(unittest.TestCase):
             "Badan Meteorologi, Klimatologi, dan Geofisika",
         )
         self.assertEqual(header["product"], "Prakiraan Cuaca")
-        self.assertEqual(header["period"], NOT_OPENED)
-        self.assertEqual(header["unit"], NOT_OPENED)
+        self.assertNotIn("period", header)
+        self.assertNotIn("unit", header)
         self.assertEqual(header["administrative_area"], "di seluruh wilayah Indonesia")
         self.assertEqual(header["citation_url"], URL)
         self.assertEqual(header["kind"], "Prakiraan Cuaca")
@@ -42,8 +41,6 @@ class BmkgPrakiraanTests(unittest.TestCase):
             {
                 "publisher",
                 "product",
-                "period",
-                "unit",
                 "administrative_area",
                 "citation_url",
                 "kind",
@@ -82,6 +79,9 @@ class BmkgPrakiraanTests(unittest.TestCase):
             "data.bmkg.go.id",
             "licence",
             "license",
+            "the field was not opened",
+            "period",
+            "unit",
         ):
             self.assertNotIn(word, text)
         source = (ROOT / "farm_ontology" / "bmkg_prakiraan.py").read_text(encoding="utf-8")
@@ -101,8 +101,8 @@ class BmkgPrakiraanTests(unittest.TestCase):
         self.assertIn("Prakiraan Cuaca Kelurahan/Desa is menu text, not the product.", flat)
         self.assertIn("Ikhtisar Cuaca Harian was not opened.", flat)
         self.assertIn("Potensi Hujan Sepekan ke Depan was not opened.", flat)
-        self.assertIn("Period was not opened.", flat)
-        self.assertIn("Unit was not opened.", flat)
+        self.assertIn("Period was not opened and is omitted.", flat)
+        self.assertIn("Unit was not opened and is omitted.", flat)
         self.assertIn("The stored administrative area is di seluruh wilayah Indonesia.", flat)
         self.assertIn(
             "Peringatan dini di wilayah Indonesia. is not the administrative area.",
@@ -177,8 +177,8 @@ class BmkgPrakiraanTests(unittest.TestCase):
 
     def test_filled_fields_and_figures_write_nothing(self):
         attempts = (
-            {"period": NOT_OPENED},
-            {"unit": NOT_OPENED},
+            {"period": "the field was not opened"},
+            {"unit": "the field was not opened"},
             {"administrative_area": "di seluruh wilayah Indonesia"},
             {"period": "Ikhtisar Cuaca Harian"},
             {"period": "Potensi Hujan Sepekan ke Depan"},

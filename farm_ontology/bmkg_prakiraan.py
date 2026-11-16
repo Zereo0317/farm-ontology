@@ -14,8 +14,8 @@ The forecast page title is Prakiraan Cuaca | BMKG - Badan Meteorologi, Klimatolo
 Prakiraan Cuaca Kelurahan/Desa is menu text, not the product.
 Ikhtisar Cuaca Harian was not opened.
 Potensi Hujan Sepekan ke Depan was not opened.
-Period was not opened.
-Unit was not opened.
+Period was not opened and is omitted.
+Unit was not opened and is omitted.
 The stored administrative area is di seluruh wilayah Indonesia.
 Peringatan dini di wilayah Indonesia. is not the administrative area.
 Provinsi Lainnya is not the administrative area.
@@ -40,7 +40,6 @@ BMKG_PRAKIRAAN_URL = "https://www.bmkg.go.id/cuaca/prakiraan-cuaca"
 
 PUBLISHER = "Badan Meteorologi, Klimatologi, dan Geofisika"
 PRODUCT = "Prakiraan Cuaca"
-NOT_OPENED = "the field was not opened"
 ADMINISTRATIVE_AREA = "di seluruh wilayah Indonesia"
 KIND = "Prakiraan Cuaca"
 FORBIDDEN_LABELS = frozenset({
@@ -96,8 +95,6 @@ def record_series_header(
     header = {
         "publisher": PUBLISHER,
         "product": PRODUCT,
-        "period": NOT_OPENED,
-        "unit": NOT_OPENED,
         "administrative_area": ADMINISTRATIVE_AREA,
         "citation_url": citation,
         "kind": KIND,
