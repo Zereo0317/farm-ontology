@@ -29,6 +29,11 @@ type Copy = {
   photo: string;
   unit: string;
   dry: string;
+  eyebrow: string;
+  locate: string;
+  locating: string;
+  locateRefused: string;
+  locateMissing: string;
   save: string;
   saving: string;
   saved: (file: string) => string;
@@ -80,6 +85,11 @@ export const copy: Record<Locale, Copy> = {
     photo: "照片路徑",
     unit: "收穫單位",
     dry: "乾跑，不是這塊田",
+    eyebrow: "現場紀錄",
+    locate: "使用這個位置",
+    locating: "正在讀取裝置位置…",
+    locateRefused: "瀏覽器沒有提供位置。欄位保持空白。",
+    locateMissing: "這台裝置沒有定位。欄位保持空白。",
     save: "儲存這一列",
     saving: "儲存中…",
     saved: (file) => `已儲存 ${file}`,
@@ -129,6 +139,11 @@ export const copy: Record<Locale, Copy> = {
     photo: "照片路径",
     unit: "收获单位",
     dry: "试跑，不是这块田",
+    eyebrow: "现场记录",
+    locate: "使用这个位置",
+    locating: "正在读取设备位置…",
+    locateRefused: "浏览器没有提供位置。栏位保持空白。",
+    locateMissing: "这台设备没有定位。栏位保持空白。",
     save: "保存这一行",
     saving: "保存中…",
     saved: (file) => `已保存 ${file}`,
@@ -178,6 +193,11 @@ export const copy: Record<Locale, Copy> = {
     photo: "Photo path",
     unit: "Harvest unit",
     dry: "Dry run, not this farm",
+    eyebrow: "Field record",
+    locate: "Use this position",
+    locating: "Reading the device position…",
+    locateRefused: "The browser did not provide a position. The fields stay empty.",
+    locateMissing: "This device has no location. The fields stay empty.",
     save: "Save this row",
     saving: "Saving…",
     saved: (file) => `Saved ${file}`,
@@ -227,6 +247,11 @@ export const copy: Record<Locale, Copy> = {
     photo: "写真のパス",
     unit: "収穫単位",
     dry: "ドライラン。この畑ではない",
+    eyebrow: "ほ場の記録",
+    locate: "この位置を使う",
+    locating: "端末の位置を読んでいます…",
+    locateRefused: "ブラウザは位置を返しませんでした。欄は空のままです。",
+    locateMissing: "この端末には位置機能がありません。欄は空のままです。",
     save: "この列を保存",
     saving: "保存しています…",
     saved: (file) => `保存しました ${file}`,

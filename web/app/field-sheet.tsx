@@ -28,6 +28,9 @@ export function FieldSheet() {
   const [locale, setLocale] = useState<Locale>("zh-TW");
   const [status, setStatus] = useState<Status | null>(null);
   const [listed, setListed] = useState<Listed>({ observations: [], notes: [] });
+  const [lat, setLat] = useState("");
+  const [lon, setLon] = useState("");
+  const [locateMsg, setLocateMsg] = useState("");
   const [obsMsg, setObsMsg] = useState("");
   const [obsBad, setObsBad] = useState(false);
   const [noteMsg, setNoteMsg] = useState("");
@@ -58,6 +61,27 @@ export function FieldSheet() {
   useEffect(() => {
     void load();
   }, []);
+
+  function locate() {
+    if (!navigator.geolocation) {
+      setLocateMsg(text.locateMissing);
+      return;
+    }
+    setLocateMsg(text.locating);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLat(String(position.coords.latitude));
+        setLon(String(position.coords.longitude));
+        setLocateMsg("");
+      },
+      () => {
+        setLat("");
+        setLon("");
+        setLocateMsg(text.locateRefused);
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 },
+    );
+  }
 
   async function saveObservation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -145,6 +169,7 @@ export function FieldSheet() {
             </button>
           ))}
         </div>
+        <p className="eyebrow">{text.eyebrow}</p>
         <h1>
           {text.cropName}
           <span>{text.cropMark}</span>
@@ -169,10 +194,14 @@ export function FieldSheet() {
         </ol>
       </section>
       <form onSubmit={(event) => void saveObservation(event)}>
+        <button className="locate" type="button" onClick={locate}>
+          {text.locate}
+        </button>
+        <p className="msg">{locateMsg}</p>
         <label htmlFor="lat">{text.lat}</label>
-        <input id="lat" name="lat" inputMode="decimal" autoComplete="off" />
+        <input id="lat" name="lat" inputMode="decimal" autoComplete="off" value={lat} onChange={(event) => setLat(event.target.value)} />
         <label htmlFor="lon">{text.lon}</label>
-        <input id="lon" name="lon" inputMode="decimal" autoComplete="off" />
+        <input id="lon" name="lon" inputMode="decimal" autoComplete="off" value={lon} onChange={(event) => setLon(event.target.value)} />
         <label htmlFor="sample">{text.sample}</label>
         <input id="sample" name="sample" autoComplete="off" />
         <label htmlFor="field-note">{text.fieldNote}</label>
