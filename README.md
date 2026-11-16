@@ -19,6 +19,22 @@ python -m unittest discover -s tests -t . -v
 
 The tests set those variables themselves when an adapter plan needs them. Unset variables make a cloud plan fail closed.
 
+## Field kit
+
+One soybean observation, written on the laptop. No network.
+
+```powershell
+python -m farm_ontology.fieldkit --lat LAT --lon LON --sample-id SAMPLE --out field-notes\SAMPLE.json
+```
+
+GPS accuracy stays unknown unless you pass `--metres`. The weather slot stays the 0.05° JMA MSM grid. Class C stays closed. A shape check that is not a farm:
+
+```powershell
+python -m farm_ontology.fieldkit --dry-run --out fixtures\field\dry-run-not-a-farm.json
+```
+
+Soybean is Crop Ontology CO_336, resolved on cropontology.org on 2026-11-16. Later travel dates are in `docs/later-routes.md`.
+
 ## GCP
 
 The adapters read the gcloud configuration name and the project id from the environment. They do not embed credentials, tokens, or service-account keys.
