@@ -401,9 +401,9 @@ def cropping_violations(cropping: Cropping, known_boundaries: set[str]) -> list[
 def class_b_blockers(
     obs: Observation, region: str, crop: str
 ) -> list[Violation]:
-    """What would still block a class B reading if a reviewer were named.
+    """What still blocks a class B reading.
 
-    The public gate does not call this while Q13 is unanswered.
+    The public gate calls this only after a named reviewer is set.
     """
     found: list[Violation] = []
     if obs.error is None:

@@ -85,9 +85,8 @@ def _measurement_row(obs: Observation) -> dict:
 def facts_at(store: Store, t: datetime) -> list[dict]:
     """Return measurements knowable at t, plus refusals already recorded by t.
 
-    The use class is the class stored on the entity. Accepted gates are not
-    produced while class C is closed and Q13 is unanswered, so a later
-    promotion cannot leak backward.
+    The stored use class stays class A. A class B gate at or before t is the
+    reading. Class C gates are not accepted.
     """
     t = ensure_utc(t, "t")
     rows: list[dict] = []

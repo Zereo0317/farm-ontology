@@ -102,7 +102,7 @@ class DecisionTests(unittest.TestCase):
             FarmBrain("farm-2", "Europe")
         self.assertFalse((ROOT / "LICENSE").exists())
 
-    def test_reviewer_name_does_not_promote_and_extra_labels_need_a_source(self):
+    def test_named_reviewer_promotes_uncalibrated_and_extra_labels_need_a_source(self):
         os.environ["FARM_NAMED_REVIEWER"] = "later"
         try:
             self.assertEqual(named_reviewer(), "later")
@@ -127,7 +127,7 @@ class DecisionTests(unittest.TestCase):
             obs = Observation(**{**obs.__dict__, "iri": obs.iri.replace("sample-cell", "named-cell")})
             stored = store.add_observation(obs, at=NOW)
             self.assertTrue(stored.ok, stored.refusal.attempted_change if stored.refusal else "")
-            refused = store.promote(
+            promoted = store.promote(
                 obs.iri,
                 to_class="Portfolio",
                 reviewer="later",
@@ -136,8 +136,11 @@ class DecisionTests(unittest.TestCase):
                 crop="maize",
                 at=NOW,
             )
-            self.assertFalse(refused.ok)
-            self.assertIn("promotions stay off", refused.refusal.attempted_change)
+            self.assertTrue(promoted.ok)
+            self.assertEqual(store.observations[obs.iri].use_class, "Screening")
+            self.assertFalse(store.observations[obs.iri].licence.permits_financial_use)
+            self.assertEqual(store.accepted_gates[0]["to_class"], "Portfolio")
+            self.assertEqual(store.accepted_gates[0]["observation"], obs.iri)
             label = store.add_label(
                 local_iri="https://github.com/Zereo0317/farm-ontology/ns/crop/local-name",
                 concept_iri="http://aims.fao.org/aos/agrovoc/c_12332",

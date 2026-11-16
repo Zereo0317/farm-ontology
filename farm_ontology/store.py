@@ -460,6 +460,20 @@ class Store:
                 "Q13 placeholder FARM_NAMED_REVIEWER is empty; promotions do not run",
                 at,
             )
+        if to_class != "Portfolio":
+            return self._refuse(
+                "R-gate",
+                observation_iri,
+                "the only open promotion is class B, Portfolio",
+                at,
+            )
+        if reviewer != named_reviewer():
+            return self._refuse(
+                "R-gate",
+                observation_iri,
+                "the reviewer is not the named reviewer",
+                at,
+            )
         obs = self.observations.get(observation_iri)
         if obs is None:
             return self._refuse("R-gate", observation_iri, "missing observation", at)
@@ -468,12 +482,20 @@ class Store:
             return self._refuse_all(blockers, observation_iri, at)
         if not checklist:
             return self._refuse("R-gate", observation_iri, "the checklist is missing", at)
-        return self._refuse(
-            "R-gate",
-            observation_iri,
-            "promotions stay off; naming a reviewer does not open a gate in this build",
-            at,
+        at = ensure_utc(at, "gate time")
+        gate = self._next("gate")
+        self.accepted_gates.append(
+            {
+                "iri": gate,
+                "observation": observation_iri,
+                "from_class": obs.use_class,
+                "to_class": to_class,
+                "reviewer": reviewer,
+                "time": at,
+                "checklist": {str(key): value for key, value in checklist.items()},
+            }
         )
+        return CommitResult(ok=True, iri=gate, refusal=None)
 
 
 def _eudr_syntax(
