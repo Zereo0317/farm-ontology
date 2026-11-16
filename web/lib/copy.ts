@@ -29,6 +29,7 @@ type Copy = {
   photo: string;
   unit: string;
   dry: string;
+  more: string;
   eyebrow: string;
   locate: string;
   locating: string;
@@ -85,6 +86,7 @@ export const copy: Record<Locale, Copy> = {
     photo: "照片路徑",
     unit: "收穫單位",
     dry: "乾跑，不是這塊田",
+    more: "其他欄位",
     eyebrow: "現場紀錄",
     locate: "使用這個位置",
     locating: "正在讀取裝置位置…",
@@ -139,6 +141,7 @@ export const copy: Record<Locale, Copy> = {
     photo: "照片路径",
     unit: "收获单位",
     dry: "试跑，不是这块田",
+    more: "其他栏",
     eyebrow: "现场记录",
     locate: "使用这个位置",
     locating: "正在读取设备位置…",
@@ -193,6 +196,7 @@ export const copy: Record<Locale, Copy> = {
     photo: "Photo path",
     unit: "Harvest unit",
     dry: "Dry run, not this farm",
+    more: "More",
     eyebrow: "Field record",
     locate: "Use this position",
     locating: "Reading the device position…",
@@ -247,6 +251,7 @@ export const copy: Record<Locale, Copy> = {
     photo: "写真のパス",
     unit: "収穫単位",
     dry: "ドライラン。この畑ではない",
+    more: "その他",
     eyebrow: "ほ場の記録",
     locate: "この位置を使う",
     locating: "端末の位置を読んでいます…",
