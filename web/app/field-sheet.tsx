@@ -129,35 +129,37 @@ export function FieldSheet() {
   }
 
   const policy = status?.class_c_policy === "closed" ? text.closed : status?.class_c_policy ?? "…";
-  const statusLine = status
-    ? text.status({
-        policy,
-        grid: String(status.native_resolution_deg),
-        observations: status.observation_count,
-        notes: status.note_count,
-      })
-    : "…";
 
   return (
     <main className="sheet">
-      <div className="langs" role="group" aria-label="language">
-        {locales.map((item) => (
-          <button
-            key={item}
-            type="button"
-            aria-pressed={item === locale}
-            onClick={() => setLocale(item)}
-          >
-            {localeLabels[item]}
-          </button>
-        ))}
-      </div>
-      <h1>{text.title}</h1>
-      <p className="status">
-        {statusLine}
-        {status?.permits_financial_use ? " permits_financial_use true" : ""}
-      </p>
-      <p className="place">{text.place}</p>
+      <header className="mast">
+        <div className="langs" role="group" aria-label="language">
+          {locales.map((item) => (
+            <button
+              key={item}
+              type="button"
+              aria-pressed={item === locale}
+              onClick={() => setLocale(item)}
+            >
+              {localeLabels[item]}
+            </button>
+          ))}
+        </div>
+        <h1>
+          {text.cropName}
+          <span>{text.cropMark}</span>
+        </h1>
+      </header>
+      <section className="band" aria-live="polite">
+        <p>{text.classLine(policy)}</p>
+        <p>{text.moneyLine}</p>
+        <p>{status ? text.gridLine(String(status.native_resolution_deg)) : "…"}</p>
+        <p className="counts">
+          {status ? text.countLine(status.observation_count, status.note_count) : ""}
+          {status?.permits_financial_use ? " permits_financial_use true" : ""}
+        </p>
+      </section>
+      <div className="writing">
       <section className="steps">
         <h2>{text.stepsTitle}</h2>
         <ol>
@@ -191,6 +193,7 @@ export function FieldSheet() {
           {text.save}
         </button>
         <p className={obsBad ? "msg bad" : "msg"}>{obsMsg}</p>
+        <p className="place">{text.place}</p>
       </form>
       <section className="later">
         <h2>{text.listTitle}</h2>
@@ -239,6 +242,7 @@ export function FieldSheet() {
           <p className="msg">{noteMsg}</p>
         </form>
       </section>
+      </div>
     </main>
   );
 }
