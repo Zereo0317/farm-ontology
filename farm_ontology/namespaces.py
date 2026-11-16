@@ -37,6 +37,17 @@ CF_P07_VERSION = "95"
 
 MAIZE_AGROVOC = AGROVOC + "c_12332"
 FAO_LABEL_LANGUAGES = frozenset({"en", "fr", "es", "ar", "ru", "zh"})
+# Requested in Q17. No AGROVOC labels were fetched for these tags.
+REQUESTED_LABEL_LANGUAGES = frozenset({"ja", "zh-TW", "zh-CN", "id", "th", "vi"})
+CROP_ONTOLOGY = {
+    "maize": "CO_322",
+    "sorghum": "CO_324",
+    "chickpea": "CO_338",
+    "groundnut": "CO_337",
+    "common bean": "CO_335",
+    "potato": "CO_330",
+    "banana": "CO_325",
+}
 
 EUDR_COMMODITIES = frozenset(
     {"cattle", "cocoa", "coffee", "oil palm", "rubber", "soya", "wood"}

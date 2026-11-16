@@ -1,22 +1,61 @@
 {
   "iri_base": "https://github.com/Zereo0317/farm-ontology/ns/",
   "iri_base_status": "provisional-not-a-final-domain",
-  "q1": "unanswered",
+  "intended_domain": "seges.ai",
+  "domain_attached": false,
+  "q1": "seges.ai-named-not-attached",
   "reasoner": "none",
   "store": "in-memory-development",
-  "q6": "unanswered-production-store-not-chosen",
+  "store_choice": "apache-jena",
+  "store_deployed": false,
+  "q6": "apache-jena-not-deployed",
   "class_c_policy": "closed",
+  "class_c_delegated_to": "ontolaw src/ontolaw/human_gate.py",
+  "permits_financial_use": false,
+  "permits_financial_redistribution": false,
   "imports": [],
   "local_module": {
     "path": "ontology/fd-decision.ttl",
     "version_iri": "https://github.com/Zereo0317/farm-ontology/ns/releases/2026-11-16/",
-    "sha256": "2c15f14df5c5502d57a5bc5a5954445fc8d5d90e18929c415a339a2312f71bf1",
+    "sha256": "655726a278276fdcc4d8bef5bc2c6de664ed5ffe2216a9a4b24a3ca060c22367",
     "hash_computed_here": true,
     "vendored_upstream": false
   },
   "envo": {
-    "status": "blocked-until-q2",
-    "imported": false
+    "status": "pinned-not-imported",
+    "release": "v2026-10-23",
+    "purl": "http://purl.obolibrary.org/obo/envo/releases/2026-10-23/envo.owl",
+    "imported": false,
+    "in_git": false,
+    "envo_basic": "not-in-release",
+    "bytes": 9955495,
+    "sha256": "cc070bc1ceca4bf7b6f745c1f0c09398536f46603ff0db53d22f7454fb182f88",
+    "hash_computed_here": true
+  },
+  "crop_ontology": {
+    "maize": "CO_322",
+    "sorghum": "CO_324",
+    "chickpea": "CO_338",
+    "groundnut": "CO_337",
+    "common bean": "CO_335",
+    "potato": "CO_330",
+    "banana": "CO_325",
+    "musa_title": null
+  },
+  "plant_stress": {
+    "license": "http://creativecommons.org/licenses/by/4.0/",
+    "vendored": false
+  },
+  "livestock_in_scope": true,
+  "atol": {
+    "version": "6.0",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "vendored": false
+  },
+  "eol": {
+    "version": "1.2",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "vendored": false
   },
   "open_questions": [
     "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10",

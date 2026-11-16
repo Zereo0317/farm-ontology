@@ -27,6 +27,7 @@ class ManifestTests(unittest.TestCase):
         )
         self.assertEqual(document["iri_base_status"], "provisional-not-a-final-domain")
         turtle = (ROOT / "ontology" / "fd-decision.ttl").read_bytes()
+        turtle = turtle.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
         digest = hashlib.sha256(turtle).hexdigest()
         self.assertEqual(document["local_module"]["sha256"], digest)
         self.assertFalse(document["local_module"]["vendored_upstream"])
