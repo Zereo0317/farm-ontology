@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from farm_ontology.namespaces import IRI_BASE
-
 
 @dataclass(frozen=True)
 class Quantity:
@@ -215,14 +213,3 @@ class CommitResult:
     ok: bool
     iri: str | None
     refusal: Refusal | None
-
-
-def is_boundary_feature(kind: str) -> bool:
-    return kind in {"boundary", "boundary-polygon"}
-
-
-def local_name(iri: str) -> str:
-    prefix = IRI_BASE
-    if iri.startswith(prefix):
-        return iri[len(prefix) :]
-    return iri

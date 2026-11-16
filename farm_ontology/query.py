@@ -5,8 +5,8 @@ associatedAt returns joins and the cell's own support. It does not copy
 the result onto the boundary.
 
 Public terms are local classes plus SOSA, GeoSPARQL, OWL Time, QUDT, PROV,
-and SKOS. There is no SPARQL server in this build (the production store is
-still a human decision).
+and SKOS. There is no SPARQL server in this build. The recorded store choice
+is Apache Jena and it is not deployed. Development reads the in-memory store.
 """
 
 from __future__ import annotations

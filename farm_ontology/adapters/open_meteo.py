@@ -1,7 +1,7 @@
 """Open-Meteo forecast adapter.
 
-The free tier is non-commercial (Q9 unanswered). These records are not the
-legal meteorological authority. A missing issue time or a grid finer than
+The free tier stays non-commercial. Financial use stays false (Q9). These
+records are not the legal meteorological authority. A missing issue time or a grid finer than
 the model's native support fails closed.
 
 The free forecast endpoint does not return a model-run time. A live sample
