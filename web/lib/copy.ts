@@ -11,7 +11,12 @@ export const localeLabels: Record<Locale, string> = {
 
 type Copy = {
   title: string;
-  status: (input: { policy: string; grid: string; observations: number; notes: number }) => string;
+  cropName: string;
+  cropMark: string;
+  classLine: (policy: string) => string;
+  moneyLine: string;
+  gridLine: (grid: string) => string;
+  countLine: (observations: number, notes: number) => string;
   place: string;
   stepsTitle: string;
   steps: string[];
@@ -49,8 +54,12 @@ type Copy = {
 export const copy: Record<Locale, Copy> = {
   "zh-TW": {
     title: "大豆田紀錄",
-    status: ({ policy, grid, observations, notes }) =>
-      `大豆 CO_336。類別 C ${policy}。金融用途為否。格網 ${grid}°，沒有縮到植株。${observations} 筆觀測，${notes} 則筆記。`,
+    cropName: "大豆",
+    cropMark: "CO_336",
+    classLine: (policy) => `類別 C ${policy}`,
+    moneyLine: "金融用途 否",
+    gridLine: (grid) => `格網 ${grid}°，沒有縮到植株`,
+    countLine: (observations, notes) => `${observations} 筆觀測，${notes} 則筆記`,
     place:
       "這次走的是北海道 Hiroki Tomiyasu 的大豆田，正值收穫。座標在現場打，這一頁沒有座標。沒量到的欄位留白。不要打產量、期貨價格，或沒有讀到的座標。這份檔案不是買、賣、避險、觸發，也不是產量預測。",
     stepsTitle: "現場步驟",
@@ -94,8 +103,12 @@ export const copy: Record<Locale, Copy> = {
   },
   "zh-CN": {
     title: "大豆田记录",
-    status: ({ policy, grid, observations, notes }) =>
-      `大豆 CO_336。类别 C ${policy}。金融用途为否。格网 ${grid}°，没有缩到植株。${observations} 条观测，${notes} 则笔记。`,
+    cropName: "大豆",
+    cropMark: "CO_336",
+    classLine: (policy) => `类别 C ${policy}`,
+    moneyLine: "金融用途 否",
+    gridLine: (grid) => `格网 ${grid}°，没有缩到植株`,
+    countLine: (observations, notes) => `${observations} 条观测，${notes} 则笔记`,
     place:
       "这次走的是北海道 Hiroki Tomiyasu 的大豆田，正在收获。坐标在现场填写，这一页没有坐标。没测到的栏留空。不要填产量、期货价格，或没有读到的坐标。这份文件不是买、卖、对冲、触发，也不是产量预测。",
     stepsTitle: "现场步骤",
@@ -139,8 +152,12 @@ export const copy: Record<Locale, Copy> = {
   },
   en: {
     title: "Soybean field record",
-    status: ({ policy, grid, observations, notes }) =>
-      `Soybean CO_336. Class C ${policy}. Financial use false. Grid ${grid}°, not shrunk to the plant. ${observations} observations, ${notes} notes.`,
+    cropName: "Soybean",
+    cropMark: "CO_336",
+    classLine: (policy) => `Class C ${policy}`,
+    moneyLine: "Financial use false",
+    gridLine: (grid) => `Grid ${grid}°, not shrunk to the plant`,
+    countLine: (observations, notes) => `${observations} observations, ${notes} notes`,
     place:
       "This walk is Hiroki Tomiyasu’s soybean field in Hokkaido, during harvest. Type the coordinates on site. This page does not contain them. Leave a field blank when you did not measure it. Do not type a yield, a futures price, or a coordinate you did not read. The file is not a buy, a sell, a hedge, a trigger, or a yield forecast.",
     stepsTitle: "In the field",
@@ -184,8 +201,12 @@ export const copy: Record<Locale, Copy> = {
   },
   ja: {
     title: "大豆ほ場の記録",
-    status: ({ policy, grid, observations, notes }) =>
-      `大豆 CO_336。クラス C は${policy}。金融利用はしない。格子 ${grid}°。株には縮めていない。観測 ${observations} 件、メモ ${notes} 件。`,
+    cropName: "大豆",
+    cropMark: "CO_336",
+    classLine: (policy) => `クラス C は${policy}`,
+    moneyLine: "金融利用はしない",
+    gridLine: (grid) => `格子 ${grid}°。株には縮めていない`,
+    countLine: (observations, notes) => `観測 ${observations} 件、メモ ${notes} 件`,
     place:
       "今回歩くのは北海道の Hiroki Tomiyasu さんの大豆ほ場で、収穫の時期です。座標はその場で入れる。この画面に座標はない。測っていない欄は空欄にする。収量、先物価格、読んでいない座標は入れない。このファイルは買いでも売りでもヘッジでもトリガーでも収量予測でもない。",
     stepsTitle: "ほ場での手順",
