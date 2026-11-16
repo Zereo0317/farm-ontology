@@ -9,6 +9,11 @@ from __future__ import annotations
 import json
 import sys
 
+from farm_ontology.header_schema import (
+    STORED_HEADER_SCHEMA,
+    STORED_KIND_SCHEMA,
+    read_stored_header,
+)
 from farm_ontology.record import (
     add_note,
     list_notes,
@@ -77,6 +82,17 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "read_stored_header",
+        "description": (
+            "Read one stored header and return its stored kind. "
+            "A forecast is not a completed harvest. "
+            "An index is not a quantity of goods. "
+            "permits_financial_use stays false."
+        ),
+        "inputSchema": STORED_HEADER_SCHEMA,
+        "outputSchema": STORED_KIND_SCHEMA,
+    },
 ]
 
 
@@ -120,6 +136,8 @@ def call_tool(name: str, arguments: dict | None) -> dict:
                 observation_file=args.get("observation_file"),
             )
             return _text(saved)
+        if name == "read_stored_header":
+            return _text(read_stored_header(args))
     except (OSError, ValueError, KeyError, TypeError) as error:
         return _fail(str(error))
     return _fail(f"unknown tool {name}")
