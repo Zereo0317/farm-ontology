@@ -1,8 +1,8 @@
 """Decision from stored supply headers.
 
 The statement uses header records this package already stores. It reads
-publisher, product, administrative_area, citation_url, kind, and
-permits_financial_use. Period and unit are copied when the stored
+publisher, product, citation_url, kind, and permits_financial_use.
+Period, unit, and administrative_area are copied when the stored
 header has them and are not invented when it does not. It does not
 fetch the network and it does not invent a number. A forecast is not a completed harvest. An
 index is not a quantity of goods. A licence, terms, disclaimer, or
@@ -25,7 +25,7 @@ HEADER_FIELDS = (
     "kind",
     "permits_financial_use",
 )
-_OPTIONAL_FIELDS = frozenset({"period", "unit"})
+_OPTIONAL_FIELDS = frozenset({"period", "unit", "administrative_area"})
 SUBJECTS = (
     "food supply",
     "oil supply",
@@ -80,7 +80,7 @@ def decision_text(records) -> str:
             f"{subject}: {header['publisher']}; {header['product']}; "
             f"kind {header['kind']}."
         )
-        if subject == "farmer":
+        if subject == "farmer" and "administrative_area" in header:
             line += f" administrative_area {header['administrative_area']}."
         rule = _rule(header["kind"])
         if rule:

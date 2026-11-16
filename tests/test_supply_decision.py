@@ -7,6 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.bmkg_ikhtisar import BMKG_IKHTISAR_URL
 from farm_ontology.bmkg_ikhtisar import record_series_header as record_ikhtisar
+from farm_ontology.bmkg_potensi import BMKG_POTENSI_URL
+from farm_ontology.bmkg_potensi import record_series_header as record_potensi
 from farm_ontology.bmkg_prakiraan import BMKG_PRAKIRAAN_URL
 from farm_ontology.bmkg_prakiraan import record_series_header as record_bmkg
 from farm_ontology.csd_industrial import CSD_INDUSTRIAL_URL
@@ -34,6 +36,7 @@ food supply: Food and Agriculture Organization of the United Nations; Food Price
 food supply: World Agricultural Outlook Board, U.S. Department of Agriculture; World Agricultural Supply and Demand Estimates; kind forecast. A forecast is not a completed harvest. permits_financial_use is false.
 food supply: Badan Meteorologi, Klimatologi, dan Geofisika; Prakiraan Cuaca; kind Prakiraan Cuaca. permits_financial_use is false.
 food supply: BMKG / Badan Meteorologi, Klimatologi, dan Geofisika; Ikhtisar Cuaca Harian; kind Ikhtisar Cuaca Harian. permits_financial_use is false.
+food supply: BMKG / Badan Meteorologi, Klimatologi, dan Geofisika; Potensi Hujan Sepekan ke Depan; kind Potensi Hujan Sepekan ke Depan. permits_financial_use is false.
 food supply: Japan Meteorological Agency; Local Information; kind Local Information. permits_financial_use is false.
 food supply: Japan Meteorological Agency; Daily Forecasts; kind Daily Forecasts. permits_financial_use is false.
 oil supply: U.S. Energy Information Administration; Short-Term Energy Outlook; kind forecast. A forecast is not a completed harvest. permits_financial_use is false.
@@ -61,6 +64,7 @@ class SupplyDecisionTests(unittest.TestCase):
         wasde = record_wasde(self.headers, citation_url=USDA_WASDE_URL)["header"]
         bmkg = record_bmkg(self.headers, citation_url=BMKG_PRAKIRAAN_URL)["header"]
         ikhtisar = record_ikhtisar(self.headers, citation_url=BMKG_IKHTISAR_URL)["header"]
+        potensi = record_potensi(self.headers, citation_url=BMKG_POTENSI_URL)["header"]
         jma = record_jma(self.headers, citation_url=JMA_LOCAL_URL)["header"]
         daily = record_jma_daily(self.headers, citation_url=JMA_DAILY_URL)["header"]
         steo = record_steo(self.headers, citation_url=EIA_STEO_URL)["header"]
@@ -72,6 +76,7 @@ class SupplyDecisionTests(unittest.TestCase):
             {"subject": "food supply", "header": wasde},
             {"subject": "food supply", "header": bmkg},
             {"subject": "food supply", "header": ikhtisar},
+            {"subject": "food supply", "header": potensi},
             {"subject": "food supply", "header": jma},
             {"subject": "food supply", "header": daily},
             {"subject": "oil supply", "header": steo},
@@ -91,6 +96,7 @@ class SupplyDecisionTests(unittest.TestCase):
         self.assertIn("kind forecast.", parsed_decision)
         self.assertIn("kind Prakiraan Cuaca.", parsed_decision)
         self.assertIn("kind Ikhtisar Cuaca Harian.", parsed_decision)
+        self.assertIn("kind Potensi Hujan Sepekan ke Depan.", parsed_decision)
         self.assertIn("kind Local Information.", parsed_decision)
         self.assertIn("kind Daily Forecasts.", parsed_decision)
         self.assertIn("kind Terms.", parsed_decision)
@@ -128,6 +134,19 @@ class SupplyDecisionTests(unittest.TestCase):
             }:
                 self.assertEqual(keys, stored_fields - {"period", "unit"})
                 self.assertNotIn("the field was not opened", parsed_decision)
+            elif record["header"]["kind"] == "Potensi Hujan Sepekan ke Depan":
+                self.assertEqual(keys, stored_fields - {"unit", "administrative_area"})
+                self.assertIn("untuk sepekan ke depan", record["header"]["period"])
+                self.assertIn(
+                    "Periode 17 \u2013 23 November 2026",
+                    record["header"]["period"],
+                )
+                self.assertIn(
+                    "Periode 27 Oktober\u20132 November 2026",
+                    record["header"]["period"],
+                )
+                self.assertNotIn("unit", record["header"])
+                self.assertNotIn("administrative_area", record["header"])
             elif record["header"]["kind"] == "Daily Forecasts":
                 self.assertEqual(keys, stored_fields - {"unit"})
                 self.assertIn(
@@ -149,6 +168,7 @@ class SupplyDecisionTests(unittest.TestCase):
         kinds = [record["header"]["kind"] for record in records]
         self.assertIn("Prakiraan Cuaca", kinds)
         self.assertIn("Ikhtisar Cuaca Harian", kinds)
+        self.assertIn("Potensi Hujan Sepekan ke Depan", kinds)
         self.assertIn("Local Information", kinds)
         self.assertIn("Daily Forecasts", kinds)
         out = self.folder / "out"
