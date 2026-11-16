@@ -56,7 +56,10 @@ def _check_clock(obs: Observation, found: list[Violation]) -> None:
 
 
 def observation_violations(
-    obs: Observation, boundary_iris: set[str], previous: Observation | None
+    obs: Observation,
+    boundary_iris: set[str],
+    previous: Observation | None,
+    survey_point_iris: set[str] | None = None,
 ) -> list[Violation]:
     found: list[Violation] = []
     _check_clock(obs, found)
@@ -185,6 +188,13 @@ def observation_violations(
                 "farmer recall is not stored under the crop-cut procedure",
             )
         )
+    if tail == PROC_CROP_CUT and obs.feature_of_interest in (survey_point_iris or set()):
+        found.append(
+            Violation(
+                "R-foi",
+                "a 0-5 km privacy-displaced survey point is not a crop-cut location",
+            )
+        )
 
     if obs.result is None:
         if obs.gap_reason is None and obs.unsupported_reason is None:
@@ -262,6 +272,13 @@ def observation_violations(
                     "hectare weather is about the instrument, not an uninstrumented boundary",
                 )
             )
+    if feature_is_boundary and (obs.sensor_iri or tail == PROC_SENSOR):
+        found.append(
+            Violation(
+                "R-sensor",
+                "a sensor value is not written onto a boundary that has no sensor",
+            )
+        )
 
     if obs.personal_data and not obs.licence.lawful_basis:
         found.append(
