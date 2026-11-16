@@ -16,7 +16,7 @@ Recorded 2026-11-16 from the implementation spec, section 8.1. This page does no
 | Q10 | 2026-11-16 | not named | No instrument is chosen. Hedge and trigger annotations do not load. |
 | Q11 | 2026-11-16 | not named | Financial redistribution stays false. Earth Engine registration stays unknown. |
 | Q12 | 2026-11-16 | not named | Class C stays closed. |
-| Q13 | 2026-11-16 | not named | The reviewer name defaults to empty. Naming one does not complete a promotion. |
+| Q13 | 2026-11-16 | not named | The reviewer name defaults to empty. A non-empty name can promote an uncalibrated or same-region fixture to class B. The class A entity stays. Class C stays closed. |
 | Q14 | 2026-11-16 | not named | No real personal data is ingested. |
 | Q15 | 2026-11-16 | not named | No livelihood-zone file is loaded. |
 | Q16 | 2026-11-16 | not named | No AgriStack extract is ingested. |

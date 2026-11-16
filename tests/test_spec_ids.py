@@ -12,11 +12,11 @@ from farm_ontology import REASONER
 from farm_ontology.adapters.cwa import load_township, load_wrf
 from farm_ontology.adapters.earth_engine import TAIWAN_FORBIDDEN, load_sidecar, plan_export
 from farm_ontology.adapters.open_meteo import parse_forecast, store_series
-from farm_ontology.build import mint
+from farm_ontology.build import millimetres, mint
 from farm_ontology.identity import load_synthetic_pilot
 from farm_ontology.layers import SOIL_MISSING, SoilProfile
 from farm_ontology.manifest import load_manifest, manifest_ok, manifest_violations
-from farm_ontology.model import Interval, Observation
+from farm_ontology.model import ErrorStatement, Interval, Observation
 from farm_ontology.namespaces import MAIZE_AGROVOC
 from farm_ontology.policy import CLASS_C_POLICY, INSTRUMENT, class_c_policy
 from farm_ontology.publish import check_publication, render_memo
@@ -673,6 +673,35 @@ class SpecIdTests(unittest.TestCase):
             self.assertFalse(named.ok)
             self.assertEqual(store.observations[cell.iri].use_class, "Screening")
             self.assertEqual(store.accepted_gates, [])
+            self.assertEqual(named.refusal.rule_id, "R-error")
+            for local, error in (
+                ("gate-qy4-uncalibrated", self._uncalibrated()),
+                ("gate-qy4-cited", self._same_region_error()),
+            ):
+                obs = sample_grid(iri=mint("observation", local), error=error)
+                self.assertTrue(store.add_observation(obs, at=NOW).ok)
+                promoted = store.promote(
+                    obs.iri,
+                    to_class="Portfolio",
+                    reviewer="later",
+                    checklist={"1": "pass"},
+                    region="Taiwan",
+                    crop="maize",
+                    at=NOW,
+                )
+                self.assertTrue(promoted.ok, promoted.refusal.attempted_change if promoted.refusal else "")
+                kept = store.observations[obs.iri]
+                self.assertEqual(kept.use_class, "Screening")
+                self.assertFalse(kept.licence.permits_financial_use)
+                self.assertEqual(kept.iri, obs.iri)
+                reading = [
+                    row
+                    for row in facts_at(store, NOW)
+                    if row["iri"] == obs.iri and row["is_measurement"]
+                ]
+                self.assertEqual(reading[0]["use_class"], "Portfolio")
+            self.assertEqual(class_c_policy(), "closed")
+            self.assertEqual(len(store.accepted_gates), 2)
         finally:
             os.environ.pop("FARM_NAMED_REVIEWER", None)
             if saved is not None:
@@ -763,6 +792,29 @@ class SpecIdTests(unittest.TestCase):
         self.assertIn('"--lat"', fieldkit)
         self.assertIn('"--lon"', fieldkit)
         self.assertNotIn("open-meteo.com", fieldkit)
+
+    def _uncalibrated(self):
+        return ErrorStatement(
+            metric="uncalibrated",
+            sample_region="other",
+            sample_crop="other",
+            sample_season="synthetic",
+            citation="none",
+            held_out=False,
+            independent_of_product=None,
+        )
+
+    def _same_region_error(self):
+        return ErrorStatement(
+            metric="rmse",
+            sample_region="Taiwan",
+            sample_crop="maize",
+            sample_season="synthetic",
+            citation="synthetic-same-region",
+            held_out=True,
+            independent_of_product=True,
+            value=millimetres(1.0),
+        )
 
     def _admin(self, local, start, end, available, revision):
         base = sample_grid()
