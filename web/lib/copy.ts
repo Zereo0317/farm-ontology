@@ -10,7 +10,6 @@ export const localeLabels: Record<Locale, string> = {
 };
 
 type Copy = {
-  title: string;
   cropName: string;
   cropMark: string;
   classLine: (policy: string) => string;
@@ -54,12 +53,10 @@ type Copy = {
   needCoords: string;
   notANumber: string;
   closed: string;
-  financialFalse: string;
 };
 
 export const copy: Record<Locale, Copy> = {
   "zh-TW": {
-    title: "大豆田紀錄",
     cropName: "大豆",
     cropMark: "CO_336",
     classLine: (policy) => `類別 C ${policy}`,
@@ -111,10 +108,8 @@ export const copy: Record<Locale, Copy> = {
     needCoords: "請填緯度和經度，或勾選乾跑。",
     notANumber: "數字欄不是數字。",
     closed: "關閉",
-    financialFalse: "否",
   },
   "zh-CN": {
-    title: "大豆田记录",
     cropName: "大豆",
     cropMark: "CO_336",
     classLine: (policy) => `类别 C ${policy}`,
@@ -166,10 +161,8 @@ export const copy: Record<Locale, Copy> = {
     needCoords: "请填写纬度和经度，或勾选试跑。",
     notANumber: "数字栏不是数字。",
     closed: "关闭",
-    financialFalse: "否",
   },
   en: {
-    title: "Soybean field record",
     cropName: "Soybean",
     cropMark: "CO_336",
     classLine: (policy) => `Class C ${policy}`,
@@ -221,10 +214,8 @@ export const copy: Record<Locale, Copy> = {
     needCoords: "Type latitude and longitude, or mark a dry run.",
     notANumber: "A number field is not a number.",
     closed: "closed",
-    financialFalse: "false",
   },
   ja: {
-    title: "大豆ほ場の記録",
     cropName: "大豆",
     cropMark: "CO_336",
     classLine: (policy) => `クラス C は${policy}`,
@@ -276,6 +267,5 @@ export const copy: Record<Locale, Copy> = {
     needCoords: "緯度と経度を入れるか、ドライランに印を付ける。",
     notANumber: "数字の欄が数字ではない。",
     closed: "閉じている",
-    financialFalse: "しない",
   },
 };
