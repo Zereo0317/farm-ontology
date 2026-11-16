@@ -153,10 +153,18 @@ export function FieldSheet() {
   }
 
   const policy = status?.class_c_policy === "closed" ? text.closed : status?.class_c_policy ?? "…";
+  const statusLine = [
+    text.classLine(policy),
+    text.moneyLine,
+    status ? text.gridLine(String(status.native_resolution_deg)) : "",
+    status?.permits_financial_use ? "permits_financial_use true" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <main className="sheet">
-      <header className="mast">
+    <main>
+      <header>
         <div className="langs" role="group" aria-label="language">
           {locales.map((item) => (
             <button
@@ -169,35 +177,20 @@ export function FieldSheet() {
             </button>
           ))}
         </div>
-        <p className="eyebrow">{text.eyebrow}</p>
+        <p className="kicker">{text.eyebrow}</p>
         <h1>
           {text.cropName}
           <span>{text.cropMark}</span>
         </h1>
-      </header>
-      <section className="band" aria-live="polite">
-        <p>{text.classLine(policy)}</p>
-        <p>{text.moneyLine}</p>
-        <p>{status ? text.gridLine(String(status.native_resolution_deg)) : "…"}</p>
-        <p className="counts">
-          {status ? text.countLine(status.observation_count, status.note_count) : ""}
-          {status?.permits_financial_use ? " permits_financial_use true" : ""}
+        <p className="status" aria-live="polite">
+          {statusLine}
         </p>
-      </section>
-      <div className="writing">
-      <section className="steps">
-        <h2>{text.stepsTitle}</h2>
-        <ol>
-          {text.steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-      </section>
-      <form onSubmit={(event) => void saveObservation(event)}>
         <button className="locate" type="button" onClick={locate}>
           {text.locate}
         </button>
         <p className="msg">{locateMsg}</p>
+      </header>
+      <form onSubmit={(event) => void saveObservation(event)}>
         <label htmlFor="lat">{text.lat}</label>
         <input id="lat" name="lat" inputMode="decimal" autoComplete="off" value={lat} onChange={(event) => setLat(event.target.value)} />
         <label htmlFor="lon">{text.lon}</label>
@@ -206,31 +199,45 @@ export function FieldSheet() {
         <input id="sample" name="sample" autoComplete="off" />
         <label htmlFor="field-note">{text.fieldNote}</label>
         <input id="field-note" name="field-note" autoComplete="off" />
-        <label htmlFor="metres">{text.metres}</label>
-        <input id="metres" name="metres" inputMode="decimal" autoComplete="off" />
-        <label htmlFor="moisture">{text.moisture}</label>
-        <input id="moisture" name="moisture" inputMode="decimal" autoComplete="off" />
-        <label htmlFor="photo">{text.photo}</label>
-        <input id="photo" name="photo" autoComplete="off" />
-        <label htmlFor="unit">{text.unit}</label>
-        <input id="unit" name="unit" autoComplete="off" />
-        <label className="check">
-          <input type="checkbox" name="dry" />
-          {text.dry}
-        </label>
+        <details>
+          <summary>{text.more}</summary>
+          <label htmlFor="metres">{text.metres}</label>
+          <input id="metres" name="metres" inputMode="decimal" autoComplete="off" />
+          <label htmlFor="moisture">{text.moisture}</label>
+          <input id="moisture" name="moisture" inputMode="decimal" autoComplete="off" />
+          <label htmlFor="photo">{text.photo}</label>
+          <input id="photo" name="photo" autoComplete="off" />
+          <label htmlFor="unit">{text.unit}</label>
+          <input id="unit" name="unit" autoComplete="off" />
+          <label className="check">
+            <input type="checkbox" name="dry" />
+            {text.dry}
+          </label>
+        </details>
         <button className="primary" type="submit" disabled={busy}>
           {text.save}
         </button>
         <p className={obsBad ? "msg bad" : "msg"}>{obsMsg}</p>
-        <p className="place">{text.place}</p>
       </form>
-      <section className="later">
-        <h2>{text.listTitle}</h2>
+      <details>
+        <summary>{text.stepsTitle}</summary>
+        <ol>
+          {text.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <p className="place">{text.place}</p>
+      </details>
+      <details>
+        <summary>
+          {text.listTitle}
+          {status ? ` · ${text.countLine(status.observation_count, status.note_count)}` : ""}
+        </summary>
         {listed.observations.length === 0 && listed.notes.length === 0 ? (
           <p>{text.none}</p>
         ) : (
           <>
-            <h2>{text.observations}</h2>
+            <p className="group">{text.observations}</p>
             <ul className="files">
               {listed.observations.map((item) => (
                 <li key={item.file}>
@@ -239,7 +246,7 @@ export function FieldSheet() {
                 </li>
               ))}
             </ul>
-            <h2>{text.notes}</h2>
+            <p className="group">{text.notes}</p>
             <ul className="files">
               {listed.notes.map((item) => (
                 <li key={item.file}>
@@ -251,11 +258,11 @@ export function FieldSheet() {
             </ul>
           </>
         )}
-        <button className="quiet" type="button" onClick={() => void load()}>
+        <button className="text" type="button" onClick={() => void load()}>
           {text.refresh}
         </button>
-        <h2>{text.feedbackTitle}</h2>
         <form onSubmit={(event) => void saveNote(event)}>
+          <p className="group">{text.feedbackTitle}</p>
           <label htmlFor="kind">{text.kind}</label>
           <select id="kind" name="kind" defaultValue="verification">
             <option value="verification">{text.verification}</option>
@@ -265,13 +272,12 @@ export function FieldSheet() {
           <input id="file" name="file" autoComplete="off" />
           <label htmlFor="text">{text.text}</label>
           <textarea id="text" name="text" required />
-          <button className="quiet" type="submit">
+          <button className="text" type="submit">
             {text.saveNote}
           </button>
           <p className="msg">{noteMsg}</p>
         </form>
-      </section>
-      </div>
+      </details>
     </main>
   );
 }
