@@ -9,8 +9,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.adapters.cwa import live_status, load_township, load_wrf
 from farm_ontology.adapters.earth_engine import load_sidecar, plan_export
-from farm_ontology.adapters.open_meteo import parse_forecast, store_series
+from farm_ontology.adapters.open_meteo import build_live_document, parse_forecast, store_series
+from farm_ontology.build import mint
 from farm_ontology.identity import load_synthetic_pilot
+from farm_ontology.model import Observation
+from farm_ontology.policy import class_c_policy
 from farm_ontology.query import associated_at, facts_at, observations_of
 from farm_ontology.store import Store
 from tests.support import FIXTURES, NOW, load_json
@@ -222,6 +225,89 @@ class AdapterTests(unittest.TestCase):
         self.assertFalse(preflight["earth_engine"]["live_export"])
         self.assertEqual(preflight["earth_engine"]["registration_type"], "unknown")
         self.assertTrue(FIXTURES.joinpath("gcp-preflight.json").is_file())
+
+    def test_live_sample_keeps_the_model_grid_not_the_parcel(self):
+        capture = json.loads(
+            (FIXTURES.parent / "live" / "open_meteo_jma_msm_2026-11-16.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(class_c_policy(), "closed")
+        self.assertNotIn("apikey", json.dumps(capture).lower())
+        self.assertEqual(capture["requested_latitude"], 23.5)
+        self.assertEqual(capture["requested_longitude"], 121.0)
+        self.assertEqual(capture["model"], "jma_msm")
+        self.assertEqual(capture["grid_deg"], 0.05)
+        self.assertNotIn("grid_deg", capture["response"])
+        doc = build_live_document(capture)
+        self.assertEqual(doc["value_mm"], 0.0)
+        self.assertTrue(doc["valid_time"].startswith("2026-11-16T04:00:00"))
+        store = Store()
+        pilot = load_synthetic_pilot(store)
+        loaded = parse_forecast(store, doc, at=NOW)
+        self.assertTrue(loaded.ok, loaded.refusal.attempted_change if loaded.refusal else "")
+        obs = store.observations[loaded.iri]
+        self.assertEqual(obs.native_resolution.value, 0.05)
+        self.assertIn("DEG", obs.native_resolution.unit_iri)
+        self.assertNotIn("HA", obs.native_resolution.unit_iri)
+        self.assertEqual(obs.result.value, 0.0)
+        self.assertIn("MilliM", obs.result.unit_iri)
+        self.assertFalse(obs.nodata)
+        self.assertFalse(obs.dry_run)
+        self.assertEqual(obs.use_class, "Screening")
+        self.assertEqual(obs.feature_kind, "grid-cell")
+        self.assertNotEqual(obs.feature_of_interest, pilot.parcel)
+        self.assertEqual(obs.issue_time, datetime(2026, 11, 16, 3, tzinfo=timezone.utc))
+        self.assertEqual(
+            obs.availability_time, datetime(2026, 11, 16, 10, 23, 44, tzinfo=timezone.utc)
+        )
+        self.assertEqual(obs.phenomenon.start, datetime(2026, 11, 16, 4, tzinfo=timezone.utc))
+        self.assertEqual(store.boundaries[pilot.parcel].area_ha, 0.4)
+
+        before_issue = datetime(2026, 11, 16, 2, 59, tzinfo=timezone.utc)
+        during_phenomenon = datetime(2026, 11, 16, 4, 30, tzinfo=timezone.utc)
+        after_receipt = datetime(2026, 11, 16, 10, 23, 44, tzinfo=timezone.utc)
+        self.assertFalse(any(row["iri"] == obs.iri for row in facts_at(store, before_issue)))
+        self.assertFalse(
+            any(row["iri"] == obs.iri for row in facts_at(store, during_phenomenon))
+        )
+        joined = store.add_join(
+            observation=obs.iri,
+            boundary=pilot.parcel,
+            relation="geo:sfIntersects",
+            crs="EPSG:4326",
+            generated_at=after_receipt,
+            at=after_receipt,
+        )
+        self.assertTrue(joined.ok, joined.refusal.attempted_change if joined.refusal else "")
+        self.assertEqual(store.observations[obs.iri].native_resolution.value, 0.05)
+        rows = associated_at(store, after_receipt, pilot.parcel)
+        self.assertEqual(rows[0]["native_resolution"]["value"], 0.05)
+        self.assertIn("DEG", rows[0]["native_resolution"]["unit_iri"])
+        self.assertNotIn("boundary_result", rows[0])
+        self.assertNotEqual(rows[0]["cell_feature"], pilot.parcel)
+        self.assertEqual(observations_of(store, pilot.parcel, after_receipt), [])
+        visible = [row for row in facts_at(store, after_receipt) if row["iri"] == obs.iri]
+        self.assertEqual(visible[0]["native_resolution"]["value"], 0.05)
+
+        finer = dict(doc)
+        finer["local"] = "jma-msm-live-finer"
+        finer["grid_deg"] = 0.0001
+        self.assertEqual(
+            parse_forecast(store, finer, at=after_receipt).refusal.rule_id, "R-support"
+        )
+        laundered = Observation(
+            **{
+                **obs.__dict__,
+                "iri": mint("observation", "jma-msm-as-parcel"),
+                "feature_of_interest": pilot.parcel,
+                "feature_kind": "boundary-polygon",
+                "spatial_support": "boundary-polygon",
+            }
+        )
+        refused = store.add_observation(laundered, at=after_receipt)
+        self.assertEqual(refused.refusal.rule_id, "R-foi")
+        self.assertEqual(store.observations[obs.iri].native_resolution.value, 0.05)
 
 
 if __name__ == "__main__":
