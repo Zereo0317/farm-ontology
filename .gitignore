@@ -7,3 +7,5 @@ __pycache__/
 *service-account*.json
 application_default_credentials.json
 field-notes/
+web/node_modules/
+web/.next/

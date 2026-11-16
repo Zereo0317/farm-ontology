@@ -24,12 +24,14 @@ The tests set those variables themselves when an adapter plan needs them. Unset 
 The walk is `docs/field-playbook.md`. The steps are `docs/field-sop.md`. Later dates are `docs/later-routes.md`.
 
 ```powershell
-python -m farm_ontology.ui
+cd web
+npm install
+npm run dev
 python -m farm_ontology.mcp_stdio
 python -m farm_ontology.fieldkit --lat LAT --lon LON --sample-id SAMPLE --out field-notes\SAMPLE.json
 ```
 
-The page is `http://127.0.0.1:8765/`. Recording is local. Weather is optional. Class C stays closed. GPS accuracy stays unknown unless you pass metres. A shape check that is not a farm:
+The field page is `http://127.0.0.1:3000/`. Recording is local and does not call weather or a map. Class C stays closed. GPS accuracy stays unknown unless you pass metres. A shape check that is not a farm:
 
 ```powershell
 python -m farm_ontology.fieldkit --dry-run --out fixtures\field\dry-run-not-a-farm.json
