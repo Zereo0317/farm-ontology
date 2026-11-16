@@ -8,7 +8,7 @@ The laptop already has this repository. Recording does not call a weather or map
 4. Stand at the sample. Type latitude and longitude from the phone or meter.
 5. Type the sample id. Add a photo path, harvest unit, or moisture only when you have them.
 6. Type metres only when the device showed metres. Otherwise leave accuracy unknown.
-7. Save. The note is written under `field-notes/` on this laptop. The page does not call weather.
+7. Save. The observation is `field-notes/obs-*.json`. A verification or feedback note is `field-notes/notes/note-*.json`. The page does not call weather.
 8. After you look at the row, add a verification note. A feedback note is for what the form should do differently next time.
 
 The command-line shape check that is not his farm:

@@ -43,6 +43,10 @@ class PageIoTests(unittest.TestCase):
         self.assertIsNone(obs["weather"]["value"])
         self.assertNotIn("attach_error", obs["weather"])
         self.assertEqual(obs["crop_ontology_id"], "CO_336")
+        record = Path(self._tmp.name)
+        self.assertTrue(saved["file"].startswith("obs-"))
+        self.assertTrue(saved["file"].endswith(".json"))
+        self.assertTrue((record / saved["file"]).is_file())
         listed = dispatch({"op": "list"})
         self.assertEqual(listed["observations"][0]["file"], saved["file"])
         note = dispatch(
@@ -55,6 +59,8 @@ class PageIoTests(unittest.TestCase):
         )
         self.assertEqual(note["note"]["kind"], "feedback")
         self.assertFalse(note["note"]["permits_financial_use"])
+        self.assertTrue(note["file"].startswith("note-feedback-"))
+        self.assertTrue((record / "notes" / note["file"]).is_file())
 
     def test_next_sources_do_not_call_weather_or_maps(self):
         root = Path(__file__).resolve().parents[1] / "web"
@@ -80,7 +86,9 @@ class PageIoTests(unittest.TestCase):
         from farm_ontology.fieldkit import main
         from farm_ontology.mcp_stdio import call_tool
 
-        out = Path(self._tmp.name) / "kit.json"
+        kit_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(kit_dir.cleanup)
+        out = Path(kit_dir.name) / "kit.json"
         self.assertEqual(
             main(["--lat", "1.25", "--lon", "2.5", "--sample-id", "shared-row", "--out", str(out)]),
             0,
@@ -97,8 +105,15 @@ class PageIoTests(unittest.TestCase):
         )
         body = json.loads(saved["content"][0]["text"])
         obs = body["observation"]
+        record = Path(self._tmp.name)
+        self.assertTrue(body["file"].startswith("obs-"))
+        self.assertTrue((record / body["file"]).is_file())
+        self.assertEqual(list(record.glob("kit.json")), [])
+        self.assertEqual(set(kit), set(obs))
+        self.assertEqual(set(kit["weather"]), set(obs["weather"]))
         self.assertEqual(kit["latitude"], obs["latitude"])
         self.assertEqual(kit["longitude"], obs["longitude"])
+        self.assertEqual(kit["row_or_sample_id"], obs["row_or_sample_id"])
         self.assertEqual(obs["class_c_policy"], "closed")
         self.assertFalse(obs["permits_financial_use"])
         self.assertFalse(kit["permits_financial_use"])

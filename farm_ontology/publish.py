@@ -57,7 +57,7 @@ def render_memo(store: Store, t: datetime) -> str:
         f"On {t.isoformat()}, these entities were available.",
         "Each measurement states its phenomenon time, availability time, native spatial support, unit, licence, method version, and an error metric or an explicit unstated mark.",
         "Joins to boundaries are listed separately and do not change that support.",
-        "Promotions above screening were not signed. Q13 is unanswered.",
+        "A class B gate is stored only when the reviewer name is set and matches. The observation stays at its stored use class.",
         "Settlement, hedge, trigger, and nature-unit uses were refused.",
         "Hectare weather is present only where a calibrated sensor was present.",
         "Crop cuts, farmer recall, and administrative estimates are different procedures.",
@@ -78,7 +78,6 @@ def render_memo(store: Store, t: datetime) -> str:
         lines.append(
             "No calibrated on-farm sensor is in the facts available at this time. Hectare weather is unsupported."
         )
-    seen_boundaries = []
     for boundary_iri in store.boundaries:
         joins = associated_at(store, t, boundary_iri)
         for join in joins:
@@ -90,10 +89,17 @@ def render_memo(store: Store, t: datetime) -> str:
                     res=resolution,
                 )
             )
-            seen_boundaries.append(boundary_iri)
     for overlap in store.overlaps.values():
         if overlap.disposition is None:
             lines.append(
                 f"overlap {overlap.iri} area_ha {overlap.area_ha} method {overlap.method}; no disposition; not read as distinct plots"
             )
+    for gate in store.accepted_gates:
+        lines.append(
+            "gate {iri}: {frm} to {to}; stored use class unchanged".format(
+                iri=gate["iri"],
+                frm=gate["from_class"],
+                to=gate["to_class"],
+            )
+        )
     return "\n".join(lines)

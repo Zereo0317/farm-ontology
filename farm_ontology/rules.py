@@ -377,7 +377,7 @@ def boundary_violations(boundary: BoundaryVersion) -> list[Violation]:
         found.append(
             Violation(
                 "R-personal",
-                "real personal data is not loaded; Q14 is unanswered",
+                "real personal data is not loaded",
             )
         )
     return found

@@ -60,6 +60,9 @@ class RecordTests(unittest.TestCase):
             at=AT,
         )
         document = saved["observation"]
+        record = Path(self._tmp.name)
+        self.assertTrue(saved["file"].startswith("obs-"))
+        self.assertTrue((record / saved["file"]).is_file())
         self.assertEqual(document["crop"], "soybean")
         self.assertEqual(document["crop_ontology_id"], SOYBEAN_ID)
         self.assertEqual(document["weather"]["native_resolution_deg"], GRID_DEG)
@@ -98,6 +101,11 @@ class RecordTests(unittest.TestCase):
         self.assertFalse(saved["observation"]["labeled_as_farm"])
         verified = add_note(kind="verification", text="row looked harvested", observation_file=saved["file"], at=AT)
         feedback = add_note(kind="feedback", text="moisture field was easy to skip", at=AT)
+        record = Path(self._tmp.name)
+        self.assertTrue(verified["file"].startswith("note-verification-"))
+        self.assertTrue((record / "notes" / verified["file"]).is_file())
+        self.assertTrue(feedback["file"].startswith("note-feedback-"))
+        self.assertTrue((record / "notes" / feedback["file"]).is_file())
         self.assertEqual(verified["note"]["kind"], "verification")
         self.assertEqual(feedback["note"]["kind"], "feedback")
         self.assertFalse(feedback["note"]["permits_financial_use"])

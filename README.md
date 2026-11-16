@@ -28,10 +28,9 @@ cd web
 npm install
 npm run dev
 python -m farm_ontology.mcp_stdio
-python -m farm_ontology.fieldkit --lat LAT --lon LON --sample-id SAMPLE --out field-notes\SAMPLE.json
 ```
 
-The field page is `http://127.0.0.1:3000/`. Recording is local and does not call weather or a map. Class C stays closed. GPS accuracy stays unknown unless you pass metres. A shape check that is not a farm:
+The field page is `http://127.0.0.1:3000/`. The page and the MCP server write `field-notes/obs-*.json`. Notes are `field-notes/notes/note-*.json`. The page does not call weather or a map. Class C stays closed. GPS accuracy stays unknown unless you pass metres. The command-line shape check writes only the file you name. It is not the page record:
 
 ```powershell
 python -m farm_ontology.fieldkit --dry-run --out fixtures\field\dry-run-not-a-farm.json
@@ -59,37 +58,37 @@ A recorded check from 2026-11-16 is in `fixtures/dry_run/gcp-preflight.json`. Ea
 
 One live Open-Meteo sample is recorded in `fixtures/live/open_meteo_jma_msm_2026-11-16.json`. The point is 23.5°N, 121.0°E. The model is `jma_msm`. The stored spatial support is the published JMA MSM grid, **0.05° (about 5 km)**, not the 0.4 ha parcel. The stored hour is precipitation `0.0 mm` for 2026-11-16T04:00Z–05:00Z, issued at 2026-11-16T03:00Z and received at 2026-11-16T10:23:44Z. The plain forecast endpoint was called and does not return a model-run time, so its body is not the stored observation. No API key is in the repository. The test suite does not call the network. Class C stays closed.
 
-Upstream ontology files are not in git. Pins and the local-module SHA-256 are in `vocabulary-manifest.json`. QUDT unit IRIs are references; the release file was not downloaded and no hash is claimed for it. Crop Ontology concept URIs for maize and the other Q4 crops are not invented. The precipitation observed-property IRI is a local id marked unresolved against CF standard-name collection P07 version 95.
+Upstream ontology files are not in git. Pins and the local-module SHA-256 are in `vocabulary-manifest.json`. QUDT unit IRIs are references; the release file was not downloaded and no hash is claimed for it. Crop Ontology ids in the manifest are the recorded pins: maize CO_322, sorghum CO_324, chickpea CO_338, groundnut CO_337, common bean CO_335, potato CO_330, and banana CO_325. Trait repositories CO_320, CO_321, and CO_334 are named and not cloned. Soybean field notes use CO_336. No ontology titled Musa was found. The precipitation observed-property IRI is a local id marked unresolved against CF standard-name collection P07 version 95.
 
-There is no SPARQL server and no OWL DL reasoner. The production triple store (Q6) is not chosen. The in-memory store is the development record.
+There is no SPARQL server and no OWL DL reasoner. The recorded store choice is Apache Jena. It is not deployed. The in-memory store is the development record.
 
-## What is still a human decision
+## What stays closed
 
-The implementer did not answer these. The closed or empty state is what the software does today.
+These decisions are recorded. The software keeps the missing files out and the closed switches closed.
 
 | ID | While it is open |
 | --- | --- |
 | Q1 | The GitHub IRI base above is provisional, not a final domain. |
-| Q2 | ENVO is not imported. |
+| Q2 | ENVO v2026-10-23 is pinned and not imported. |
 | Q3 | OGC AIM is not vendored. |
-| Q4 | Only CO_320, CO_321, and CO_334 are named. Their files are not cloned. Other crops are not pinned. |
+| Q4 | Crop ids are recorded, including soybean CO_336 on a field note. Trait repositories CO_320, CO_321, and CO_334 are not cloned. No ontology titled Musa was found. |
 | Q5 | Plant Stress Ontology is not shipped. |
-| Q6 | No production store is named. Development uses memory. |
-| Q7 | Livestock is out. |
+| Q6 | The store choice is Apache Jena. It is not deployed. Development uses memory. |
+| Q7 | Livestock is in scope. ATOL and EOL OWL files were not downloaded. |
 | Q8 | No African, Indian, or Indonesian meteorological service is named or ingested. |
 | Q9 | Open-Meteo `permitsFinancialUse` stays false. |
 | Q10 | No listed instrument and no basis. Hedge and trigger annotations do not load. |
 | Q11 | Financial use stays false. Earth Engine registration type on this project is `unknown`. |
 | Q12 | `fd:classCPolicy` is `closed`. Data and environment variables cannot open it. |
-| Q13 | No named reviewer. Promotions out of Screening do not run. |
+| Q13 | The reviewer name defaults to empty. A matching non-empty name can store a class B gate. The observation stays at Screening. Class C stays closed. |
 | Q14 | Synthetic parties only. Real personal data does not load. |
 | Q15 | No livelihood-zone layer. |
-| Q16 | No Indian registry extract. |
+| Q16 | No AgriStack extract is ingested. |
 | Q17 | No AGROVOC labels outside English, French, Spanish, Arabic, Russian, and Chinese. The shipped example label is English. |
 | Q18 | Phone-point accuracy stays unknown. Six decimal places do not count as metres. |
 | Q19 | Unmatched local names are not forced into maize. |
 | Q20 | No soil-profile store. |
-| Q21 | No unaudited internal score is treated as an independent error bar. |
+| Q21 | 宇辰 洪 is named as the independent validator. Pay and trading affiliates were not supplied. An internal score is not an error bar. |
 
 ## What a memo will not say
 
