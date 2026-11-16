@@ -23,6 +23,7 @@ from farm_ontology.model import (
 from farm_ontology.namespaces import (
     EUDR_COMMODITIES,
     FAO_LABEL_LANGUAGES,
+    REQUESTED_LABEL_LANGUAGES,
     JOIN_RELATIONS,
     OVERLAP_DISPOSITIONS,
 )
@@ -294,6 +295,13 @@ class Store:
                 "AGROVOC links are skos:exactMatch, not owl:sameAs or owl:equivalentClass",
                 at,
             )
+        if language in REQUESTED_LABEL_LANGUAGES:
+            return self._refuse(
+                "R-language",
+                local_iri,
+                "Japanese, zh-TW, zh-CN, Indonesian, Thai, and Vietnamese need a fetched label source; none is attached",
+                at,
+            )
         if language not in FAO_LABEL_LANGUAGES and not extra_grant:
             return self._refuse(
                 "R-language",
@@ -447,7 +455,7 @@ class Store:
             return self._refuse(
                 "R-gate",
                 observation_iri,
-                "Q13 is unanswered; promotions do not run; ingest stays at Screening",
+                "Q13 placeholder FARM_NAMED_REVIEWER is empty; promotions do not run",
                 at,
             )
         obs = self.observations.get(observation_iri)
@@ -461,7 +469,7 @@ class Store:
         return self._refuse(
             "R-gate",
             observation_iri,
-            "no production reviewer is configured",
+            "promotions stay off; naming a reviewer does not open a gate in this build",
             at,
         )
 

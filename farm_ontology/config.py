@@ -16,6 +16,11 @@ class Settings:
     gcp_project: str
 
 
+def named_reviewer_placeholder() -> str:
+    """Q13. Empty until a person is named. Promotions stay off while this is empty."""
+    return os.environ.get("FARM_NAMED_REVIEWER", "").strip()
+
+
 def load_settings() -> Settings:
     """Read the gcloud configuration name and the GCP project from the environment.
 

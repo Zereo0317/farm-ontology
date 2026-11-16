@@ -4,7 +4,7 @@ A small, tested record for cultivated-land facts. It stores what was known, at w
 
 It does not estimate yield. It does not issue a hedge ratio, a parametric trigger, or a nature unit. Class C stays closed.
 
-The IRI base `https://github.com/Zereo0317/farm-ontology/ns/` is **provisional**. It is not a final domain. Question Q1 in the implementation spec is still unanswered.
+The IRI base `https://github.com/Zereo0317/farm-ontology/ns/` stays **provisional** until seges.ai serves the namespace. The intended domain is seges.ai. No DNS record was written.
 
 ## Run the tests
 
