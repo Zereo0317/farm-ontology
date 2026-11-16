@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 
+from farm_ontology.header_schema import PAGE_API_SCHEMA, read_stored_header
 from farm_ontology.record import add_note, list_notes, record_observation, status
 
 
@@ -37,6 +38,10 @@ def dispatch(req: dict) -> dict:
             text=str(req.get("text") or ""),
             observation_file=req.get("observation_file") or None,
         )
+    if op == "schema":
+        return PAGE_API_SCHEMA
+    if op == "read_header":
+        return read_stored_header(req.get("header"))
     raise ValueError("unknown page operation")
 
 

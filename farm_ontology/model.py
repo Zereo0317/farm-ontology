@@ -30,9 +30,6 @@ class LicenceGrant:
     territory: str
     expiry: str
     lawful_basis: str | None = None
-    who_pays: str | None = None
-    who_may_trade: str | None = None
-    who_may_change_method: str | None = None
     rerun_if_vendor_stops: str | None = None
 
 

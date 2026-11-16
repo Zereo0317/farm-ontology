@@ -115,7 +115,15 @@ class RecordTests(unittest.TestCase):
         names = [tool["name"] for tool in TOOLS]
         self.assertEqual(
             names,
-            ["show_status", "read_playbook", "read_sop", "record_field_observation", "list_notes", "add_note"],
+            [
+                "show_status",
+                "read_playbook",
+                "read_sop",
+                "record_field_observation",
+                "list_notes",
+                "add_note",
+                "read_stored_header",
+            ],
         )
         listed_tool = call_tool("list_notes", {})
         body = json.loads(listed_tool["content"][0]["text"])

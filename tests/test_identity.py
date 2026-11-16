@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.build import mint
 from farm_ontology.identity import AT, load_synthetic_pilot
-from farm_ontology.model import BoundaryVersion, Holding
+from farm_ontology.model import BoundaryVersion, Holding, LicenceGrant
 from farm_ontology.namespaces import MAIZE_AGROVOC
 from farm_ontology.store import Store
 
@@ -101,6 +101,8 @@ class IdentityTests(unittest.TestCase):
 
     def test_no_real_person_and_holding_is_not_a_polygon(self):
         self.assertNotIn("wkt", Holding.__dataclass_fields__)
+        for name in ("who_pays", "who_may_trade", "who_may_change_method"):
+            self.assertNotIn(name, LicenceGrant.__dataclass_fields__)
         for party in self.store.parties.values():
             self.assertTrue(party.label.startswith("synthetic-"))
             self.assertFalse(party.personal_data)
