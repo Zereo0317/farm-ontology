@@ -1,9 +1,10 @@
 """Decision from stored supply headers.
 
 The statement uses header records this package already stores. It reads
-only publisher, product, period, unit, administrative_area, citation_url,
-kind, and permits_financial_use. It does not fetch the network and it
-does not invent a number. A forecast is not a completed harvest. An
+publisher, product, administrative_area, citation_url, kind, and
+permits_financial_use. Period and unit are copied when the stored
+header has them and are not invented when it does not. It does not
+fetch the network and it does not invent a number. A forecast is not a completed harvest. An
 index is not a quantity of goods. A licence, terms, disclaimer, or
 methodology header is not a right to trade. permits_financial_use stays
 false. This module is not called from a field save.
@@ -24,6 +25,7 @@ HEADER_FIELDS = (
     "kind",
     "permits_financial_use",
 )
+_OPTIONAL_FIELDS = frozenset({"period", "unit"})
 SUBJECTS = (
     "food supply",
     "oil supply",
@@ -45,10 +47,14 @@ _RIGHT_TO_TRADE = (
 def _stored_header(header) -> dict:
     if not isinstance(header, dict):
         raise ValueError("a stored header is required")
-    missing = [name for name in HEADER_FIELDS if name not in header]
+    missing = [
+        name
+        for name in HEADER_FIELDS
+        if name not in header and name not in _OPTIONAL_FIELDS
+    ]
     if missing:
         raise ValueError("a stored header field is missing")
-    stored = {name: header[name] for name in HEADER_FIELDS}
+    stored = {name: header[name] for name in HEADER_FIELDS if name in header}
     if stored["permits_financial_use"] is not False:
         raise ValueError("permits_financial_use stays false")
     return stored
