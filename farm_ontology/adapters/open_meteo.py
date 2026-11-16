@@ -251,6 +251,7 @@ def fetch_live_sample(
     latitude: float = SAMPLE_LATITUDE,
     longitude: float = SAMPLE_LONGITUDE,
     model: str = SAMPLE_MODEL,
+    feature_local: str | None = None,
 ) -> dict:
     """Call the free forecast API, then store only a run with an issue time.
 
@@ -309,7 +310,7 @@ def fetch_live_sample(
         "requested_longitude": longitude,
         "cell_selection": "nearest",
         "local": "jma-msm-live-" + accepted_issue.strftime("%Y%m%dt%Hz"),
-        "feature_local": "jma-msm-005deg-2350n-12100e",
+        "feature_local": feature_local or "jma-msm-005deg-2350n-12100e",
         "endpoint": SINGLE_RUN_ENDPOINT,
         "run_parameter": accepted_stamp,
         "http_date": accepted_date,

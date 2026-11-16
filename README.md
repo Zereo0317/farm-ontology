@@ -19,21 +19,21 @@ python -m unittest discover -s tests -t . -v
 
 The tests set those variables themselves when an adapter plan needs them. Unset variables make a cloud plan fail closed.
 
-## Field kit
+## Field record
 
-One soybean observation, written on the laptop. No network.
+The walk is `docs/field-playbook.md`. The steps are `docs/field-sop.md`. Later dates are `docs/later-routes.md`.
 
 ```powershell
+python -m farm_ontology.ui
+python -m farm_ontology.mcp_stdio
 python -m farm_ontology.fieldkit --lat LAT --lon LON --sample-id SAMPLE --out field-notes\SAMPLE.json
 ```
 
-GPS accuracy stays unknown unless you pass `--metres`. The weather slot stays the 0.05° JMA MSM grid. Class C stays closed. A shape check that is not a farm:
+The page is `http://127.0.0.1:8765/`. Recording is local. Weather is optional. Class C stays closed. GPS accuracy stays unknown unless you pass metres. A shape check that is not a farm:
 
 ```powershell
 python -m farm_ontology.fieldkit --dry-run --out fixtures\field\dry-run-not-a-farm.json
 ```
-
-Soybean is Crop Ontology CO_336, resolved on cropontology.org on 2026-11-16. Later travel dates are in `docs/later-routes.md`.
 
 ## GCP
 

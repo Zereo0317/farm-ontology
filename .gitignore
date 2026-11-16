@@ -6,3 +6,4 @@ __pycache__/
 *credentials*.json
 *service-account*.json
 application_default_credentials.json
+field-notes/

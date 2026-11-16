@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soybean field record</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; font: 18px/1.4 system-ui, sans-serif; background: #f4f1ea; color: #1c1915; }
+  main { max-width: 42rem; margin: 0 auto; padding: 1rem 1rem 3rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.15rem; margin: 1.5rem 0 0.5rem; }
+  section { background: #fff; border: 1px solid #d9d2c5; border-radius: 12px; padding: 0.9rem 1rem; margin-top: 0.8rem; }
+  label { display: block; margin: 0.7rem 0 0.2rem; font-weight: 650; }
+  input, textarea, select, button { font: inherit; width: 100%; box-sizing: border-box; }
+  input, textarea, select { padding: 0.65rem 0.7rem; border: 1px solid #8a8175; border-radius: 8px; background: #fff; }
+  textarea { min-height: 5rem; }
+  button { margin-top: 0.8rem; padding: 0.8rem; border: 0; border-radius: 8px; background: #2f5d38; color: #fff; font-weight: 700; }
+  button.secondary { background: #3d4a5c; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  pre { white-space: pre-wrap; font: 0.9rem/1.45 ui-monospace, monospace; margin: 0; }
+  .warn { color: #7a2e12; }
+  .ok { color: #1d4d2c; }
+  ul { padding-left: 1.1rem; margin: 0.3rem 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Soybean field record</h1>
+  <p>Local page. Recording stays on this laptop. Network is only the optional weather attach.</p>
+  <section>
+    <h2>Status</h2>
+    <pre id="status">Loading…</pre>
+  </section>
+  <section>
+    <h2>Playbook</h2>
+    <pre id="playbook"></pre>
+  </section>
+  <section>
+    <h2>SOP</h2>
+    <pre id="sop"></pre>
+  </section>
+  <section>
+    <h2>Record</h2>
+    <form id="obs">
+      <div class="row">
+        <div><label for="lat">Latitude</label><input id="lat" name="latitude" inputmode="decimal"></div>
+        <div><label for="lon">Longitude</label><input id="lon" name="longitude" inputmode="decimal"></div>
+      </div>
+      <label for="sample">Row or sample id</label><input id="sample" name="sample_id">
+      <label for="note">Note</label><input id="note" name="note">
+      <div class="row">
+        <div><label for="metres">GPS metres, if shown</label><input id="metres" name="metres" inputmode="decimal"></div>
+        <div><label for="moisture">Moisture, if metered</label><input id="moisture" name="moisture" inputmode="decimal"></div>
+      </div>
+      <label for="photo">Photo path</label><input id="photo" name="photo">
+      <label for="unit">Harvest unit</label><input id="unit" name="harvest_unit">
+      <label><input type="checkbox" id="weather" style="width:auto"> Attach Open-Meteo grid (needs network)</label>
+      <label><input type="checkbox" id="dry" style="width:auto"> Dry run at 0° N, 0° E. Not the farm.</label>
+      <button type="submit">Save observation</button>
+      <p id="obs-msg"></p>
+    </form>
+  </section>
+  <section>
+    <h2>Recorded notes</h2>
+    <div id="notes">None yet.</div>
+    <button class="secondary" id="refresh" type="button">Refresh list</button>
+  </section>
+  <section>
+    <h2>Verify or feedback</h2>
+    <form id="note">
+      <label for="kind">Kind</label>
+      <select id="kind" name="kind">
+        <option value="verification">Verification</option>
+        <option value="feedback">Feedback</option>
+      </select>
+      <label for="file">Observation file, optional</label><input id="file" name="observation_file" placeholder="obs-….json">
+      <label for="text">Note</label><textarea id="text" name="text" required></textarea>
+      <button type="submit">Save note</button>
+      <p id="note-msg"></p>
+    </form>
+  </section>
+</main>
+<script>
+async function getJSON(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+function show(id, value) {
+  document.getElementById(id).textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+async function loadStatus() {
+  const body = await getJSON("/api/status");
+  show("status", body);
+}
+async function loadDocs() {
+  show("playbook", await getJSON("/api/playbook").then((b) => b.playbook));
+  show("sop", await getJSON("/api/sop").then((b) => b.sop));
+}
+function line(item) {
+  const li = document.createElement("li");
+  li.textContent = item.file + (item.kind ? " · " + item.kind : " · " + (item.sample_id || "no sample")) + (item.text ? " · " + item.text : "");
+  return li;
+}
+async function loadNotes() {
+  const body = await getJSON("/api/notes");
+  const box = document.getElementById("notes");
+  box.replaceChildren();
+  if (!body.observations.length && !body.notes.length) {
+    box.textContent = "None yet.";
+    return;
+  }
+  const obs = document.createElement("ul");
+  body.observations.forEach((item) => obs.append(line(item)));
+  const notes = document.createElement("ul");
+  body.notes.forEach((item) => notes.append(line(item)));
+  box.append("Observations", obs, "Notes", notes);
+}
+function numberOrNull(value) {
+  if (value === "") return null;
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) throw new Error("a number field is not a number");
+  return parsed;
+}
+document.getElementById("obs").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const msg = document.getElementById("obs-msg");
+  msg.textContent = "Saving…";
+  try {
+    const dry = document.getElementById("dry").checked;
+    const payload = {
+      latitude: dry ? 0 : numberOrNull(document.getElementById("lat").value),
+      longitude: dry ? 0 : numberOrNull(document.getElementById("lon").value),
+      note: document.getElementById("note").value,
+      sample_id: document.getElementById("sample").value,
+      photo: document.getElementById("photo").value,
+      harvest_unit: document.getElementById("unit").value,
+      metres: numberOrNull(document.getElementById("metres").value),
+      moisture: numberOrNull(document.getElementById("moisture").value),
+      attach_weather: document.getElementById("weather").checked,
+      dry_run: dry
+    };
+    const response = await fetch("/api/observations", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "save failed");
+    msg.className = "ok";
+    msg.textContent = "Saved " + body.file + (body.observation.weather.attach_error ? ". Weather was not attached: " + body.observation.weather.attach_error : "");
+    await loadNotes();
+    await loadStatus();
+  } catch (error) {
+    msg.className = "warn";
+    msg.textContent = String(error.message || error);
+  }
+});
+document.getElementById("note").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const msg = document.getElementById("note-msg");
+  try {
+    const payload = {
+      kind: document.getElementById("kind").value,
+      text: document.getElementById("text").value,
+      observation_file: document.getElementById("file").value
+    };
+    const response = await fetch("/api/notes", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "save failed");
+    msg.className = "ok";
+    msg.textContent = "Saved " + body.file;
+    document.getElementById("text").value = "";
+    await loadNotes();
+  } catch (error) {
+    msg.className = "warn";
+    msg.textContent = String(error.message || error);
+  }
+});
+document.getElementById("refresh").addEventListener("click", () => loadNotes().catch((error) => {
+  document.getElementById("notes").textContent = String(error.message || error);
+}));
+Promise.all([loadStatus(), loadDocs(), loadNotes()]).catch((error) => {
+  document.getElementById("status").textContent = String(error.message || error);
+});
+</script>
+</body>
+</html>
