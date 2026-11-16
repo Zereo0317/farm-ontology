@@ -1,0 +1,151 @@
+:root {
+  --ink: #14120b;
+  --paper: #f6f1e4;
+  --sheet: #fffdf8;
+  --line: #14120b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font: 23px/1.4 "Segoe UI", "Microsoft JhengHei", "Yu Gothic UI", sans-serif;
+}
+
+.sheet {
+  width: min(40rem, 100%);
+  margin: 0 auto;
+  padding: 0.85rem 1rem 3rem;
+}
+
+.langs {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.langs button,
+button.quiet {
+  font: inherit;
+  font-weight: 750;
+  background: transparent;
+  color: var(--ink);
+  border: 3px solid var(--line);
+  min-height: 3.1rem;
+}
+
+.langs button {
+  flex: 1;
+}
+
+.langs button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+h1 {
+  margin: 0.85rem 0 0.55rem;
+  font-size: 2.55rem;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.status {
+  margin: 0 0 0.9rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--ink);
+  color: #fffdf8;
+  font-weight: 750;
+}
+
+.place,
+.steps {
+  margin: 0 0 1rem;
+}
+
+.steps h2,
+.later h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.steps ol {
+  margin: 0;
+  padding-left: 1.35rem;
+}
+
+.steps li { margin: 0.28rem 0; }
+
+label {
+  display: block;
+  margin: 0.85rem 0 0.28rem;
+  font-weight: 800;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--sheet);
+  border: 3px solid var(--line);
+  border-radius: 0;
+  min-height: 3.35rem;
+  padding: 0.55rem 0.7rem;
+}
+
+textarea { min-height: 6.5rem; }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+  font-weight: 800;
+}
+
+.check input {
+  width: 1.6rem;
+  height: 1.6rem;
+  min-height: 0;
+}
+
+button.primary {
+  width: 100%;
+  margin-top: 1.15rem;
+  min-height: 4.2rem;
+  border: 3px solid var(--line);
+  background: var(--ink);
+  color: #fffdf8;
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+button.quiet {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.msg {
+  min-height: 1.4em;
+  margin: 0.55rem 0 0;
+  font-weight: 800;
+}
+
+.msg.bad { color: #8f1d1d; }
+
+.later {
+  margin-top: 1.6rem;
+  padding-top: 0.4rem;
+  border-top: 3px solid var(--line);
+}
+
+.files { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+
+.files li { margin: 0.2rem 0; }
