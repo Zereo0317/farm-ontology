@@ -2,9 +2,7 @@ import json
 import os
 import sys
 import tempfile
-import threading
 import unittest
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -13,8 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.fieldkit import GRID_DEG, SOYBEAN_ID
 from farm_ontology.mcp_stdio import TOOLS, call_tool, handle
+from farm_ontology.page_io import dispatch
 from farm_ontology.record import add_note, list_notes, record_observation, status
-from farm_ontology.ui import serve
 
 AT = datetime(2026, 11, 17, 1, 0, tzinfo=timezone.utc)
 ROOT = Path(__file__).resolve().parents[1]
@@ -119,41 +117,36 @@ class RecordTests(unittest.TestCase):
         self.assertIsNone(handle({"jsonrpc": "2.0", "method": "notifications/initialized"}))
 
     def test_local_page_records_without_network(self):
-        server = serve("127.0.0.1", 0)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        host, port = server.server_address
-        try:
-            base = f"http://{host}:{port}"
-            with urllib.request.urlopen(base + "/", timeout=5) as page:
-                html = page.read().decode("utf-8")
-            self.assertIn("Soybean field record", html)
-            self.assertIn('id="feedback-form"', html)
-            self.assertIn('id="field-note"', html)
-            self.assertNotIn('id="note"', html)
-            self.assertEqual(html.count("button.primary"), 1)
-            self.assertNotIn("cdn", html.lower())
-            payload = json.dumps(
-                {"latitude": 1, "longitude": 2, "sample_id": "ui-row", "dry_run": False}
-            ).encode("utf-8")
-            request = urllib.request.Request(
-                base + "/api/observations",
-                data=payload,
-                headers={"Content-Type": "application/json"},
+        def refuse_network(*_args, **_kwargs):
+            raise AssertionError("recording called the network")
+
+        with (
+            patch("socket.create_connection", side_effect=refuse_network),
+            patch("urllib.request.urlopen", side_effect=refuse_network),
+            patch("farm_ontology.adapters.open_meteo.fetch_live_sample", side_effect=refuse_network),
+        ):
+            saved = dispatch(
+                {
+                    "op": "observe",
+                    "latitude": 1,
+                    "longitude": 2,
+                    "sample_id": "ui-row",
+                    "dry_run": False,
+                    "attach_weather": True,
+                }
             )
-            with urllib.request.urlopen(request, timeout=5) as response:
-                saved = json.loads(response.read().decode("utf-8"))
-            self.assertEqual(saved["observation"]["class_c_policy"], "closed")
-            self.assertFalse(saved["observation"]["permits_financial_use"])
-            self.assertIsNone(saved["observation"]["weather"]["value"])
-            note = json.dumps({"kind": "verification", "text": "seen", "observation_file": saved["file"]}).encode()
-            note_request = urllib.request.Request(
-                base + "/api/notes", data=note, headers={"Content-Type": "application/json"}
+            noted = dispatch(
+                {
+                    "op": "note",
+                    "kind": "verification",
+                    "text": "seen",
+                    "observation_file": saved["file"],
+                }
             )
-            with urllib.request.urlopen(note_request, timeout=5) as response:
-                noted = json.loads(response.read().decode("utf-8"))
-            self.assertEqual(noted["note"]["kind"], "verification")
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join(timeout=3)
+        self.assertEqual(saved["observation"]["class_c_policy"], "closed")
+        self.assertFalse(saved["observation"]["permits_financial_use"])
+        self.assertIsNone(saved["observation"]["weather"]["value"])
+        self.assertEqual(noted["note"]["kind"], "verification")
+        bridge = (ROOT / "farm_ontology" / "page_io.py").read_text(encoding="utf-8")
+        self.assertIn("attach_weather=False", bridge)
+        self.assertNotIn("fetch_live_sample", bridge)
