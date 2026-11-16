@@ -1,5 +1,6 @@
 """The Next page bridge writes the same record and does not call weather."""
 
+import json
 import os
 import sys
 import tempfile
@@ -72,6 +73,41 @@ class PageIoTests(unittest.TestCase):
         self.assertIn("zh-tw", text)
         self.assertIn("zh-cn", text)
         self.assertIn('"ja"', text)
+        self.assertIn("geolocation", text)
+        self.assertNotIn("openstreetmap", text)
+
+    def test_mcp_and_fieldkit_write_the_same_coordinates(self):
+        from farm_ontology.fieldkit import main
+        from farm_ontology.mcp_stdio import call_tool
+
+        out = Path(self._tmp.name) / "kit.json"
+        self.assertEqual(
+            main(["--lat", "1.25", "--lon", "2.5", "--sample-id", "shared-row", "--out", str(out)]),
+            0,
+        )
+        kit = json.loads(out.read_text(encoding="utf-8"))
+        saved = call_tool(
+            "record_field_observation",
+            {
+                "latitude": 1.25,
+                "longitude": 2.5,
+                "sample_id": "shared-row",
+                "attach_weather": False,
+            },
+        )
+        body = json.loads(saved["content"][0]["text"])
+        obs = body["observation"]
+        self.assertEqual(kit["latitude"], obs["latitude"])
+        self.assertEqual(kit["longitude"], obs["longitude"])
+        self.assertEqual(obs["class_c_policy"], "closed")
+        self.assertFalse(obs["permits_financial_use"])
+        self.assertFalse(kit["permits_financial_use"])
+        self.assertIsNone(obs["weather"]["value"])
+        flags = (Path(__file__).resolve().parents[1] / "farm_ontology" / "fieldkit.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"--lat"', flags)
+        self.assertIn('"--lon"', flags)
 
 
 if __name__ == "__main__":
