@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+*.pem
+*credentials*.json
+*service-account*.json
+application_default_credentials.json
