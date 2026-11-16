@@ -1,0 +1,15 @@
+[project]
+name = "farm-ontology"
+version = "0.1.0"
+description = "Farm decision record: native spatial support, point-in-time reads, and a closed class C switch."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["farm_ontology*"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

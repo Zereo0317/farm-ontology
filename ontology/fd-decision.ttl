@@ -1,0 +1,70 @@
+@prefix fd: <https://github.com/Zereo0317/farm-ontology/ns/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+# Provisional IRI base. Not a final domain. Q1 is unanswered.
+# Namespaces above are references. This file does not import them
+# and does not vendor their artefacts.
+
+<https://github.com/Zereo0317/farm-ontology/ns/>
+    a owl:Ontology ;
+    rdfs:label "Farm decision module"@en ;
+    rdfs:comment "Provisional IRI base, not a final domain. No upstream ontology is imported."@en ;
+    owl:versionIRI <https://github.com/Zereo0317/farm-ontology/ns/releases/2026-11-16/> .
+
+fd:classCPolicy a owl:NamedIndividual ;
+    rdfs:label "class C policy"@en ;
+    rdfs:comment "closed. Data cannot set this to open."@en .
+
+fd:BoundaryVersion a owl:Class ;
+    rdfs:label "boundary version"@en ;
+    rdfs:subClassOf geo:Feature .
+
+fd:Holding a owl:Class ;
+    rdfs:label "holding"@en ;
+    rdfs:comment "An economic unit. Not a polygon."@en .
+
+fd:Operator a owl:Class ;
+    rdfs:label "operator"@en ;
+    rdfs:subClassOf prov:Agent .
+
+fd:RightHolder a owl:Class ;
+    rdfs:label "right-holder"@en ;
+    rdfs:subClassOf prov:Agent .
+
+fd:Season a owl:Class ;
+    rdfs:label "season"@en .
+
+fd:Cropping a owl:Class ;
+    rdfs:label "cropping"@en .
+
+fd:SpatialJoin a owl:Class ;
+    rdfs:label "spatial join"@en ;
+    owl:disjointWith sosa:Observation .
+
+fd:ErrorStatement a owl:Class ;
+    rdfs:label "error statement"@en .
+
+fd:LicenceGrant a owl:Class ;
+    rdfs:label "licence grant"@en .
+
+fd:MethodVersion a owl:Class ;
+    rdfs:label "method version"@en .
+
+fd:HumanGate a owl:Class ;
+    rdfs:label "human gate"@en ;
+    rdfs:subClassOf prov:Activity .
+
+fd:Refusal a owl:Class ;
+    rdfs:label "refusal"@en .
+
+fd:ObservationGap a owl:Class ;
+    rdfs:label "observation gap"@en .
+
+fd:crop-maize a skos:Concept ;
+    rdfs:label "maize"@en ;
+    skos:exactMatch <http://aims.fao.org/aos/agrovoc/c_12332> .

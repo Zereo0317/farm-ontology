@@ -1,0 +1,15 @@
+{
+  "captured_live": false,
+  "service_name": "CWA",
+  "product": "F-D0047",
+  "township": "synthetic-township",
+  "representative_point": "township-office",
+  "issue_time": "2026-11-16T00:00:00+00:00",
+  "valid_time": "2026-11-16T06:00:00+00:00",
+  "valid_end": "2026-11-16T07:00:00+00:00",
+  "value_mm": 2.0,
+  "licence_instrument": "Taiwan CWA open data; a paid-index reading was not reviewed (Q11)",
+  "permits_financial_use": false,
+  "local": "cwa-township",
+  "note": "Contract fixture. Not a live CWA response. The point is the township office, not a field."
+}
