@@ -10,7 +10,7 @@
   "local_module": {
     "path": "ontology/fd-decision.ttl",
     "version_iri": "https://github.com/Zereo0317/farm-ontology/ns/releases/2026-11-16/",
-    "sha256": "e51663046140a05b6b68f53996bd6b054dcdba1894c6d460c335d5b08f066983",
+    "sha256": "2c15f14df5c5502d57a5bc5a5954445fc8d5d90e18929c415a339a2312f71bf1",
     "hash_computed_here": true,
     "vendored_upstream": false
   },
