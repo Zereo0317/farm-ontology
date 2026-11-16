@@ -5,6 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from farm_ontology.bmkg_prakiraan import BMKG_PRAKIRAAN_URL
+from farm_ontology.bmkg_prakiraan import record_series_header as record_bmkg
 from farm_ontology.csd_industrial import CSD_INDUSTRIAL_URL
 from farm_ontology.csd_industrial import record_series_header as record_csd
 from farm_ontology.eia_steo import EIA_STEO_URL
@@ -24,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DECISION = """\
 food supply: Food and Agriculture Organization of the United Nations; Food Price Index; kind index. An index is not a quantity of goods. permits_financial_use is false.
 food supply: World Agricultural Outlook Board, U.S. Department of Agriculture; World Agricultural Supply and Demand Estimates; kind forecast. A forecast is not a completed harvest. permits_financial_use is false.
+food supply: Badan Meteorologi, Klimatologi, dan Geofisika; Prakiraan Cuaca; kind Prakiraan Cuaca. permits_financial_use is false.
 oil supply: U.S. Energy Information Administration; Short-Term Energy Outlook; kind forecast. A forecast is not a completed harvest. permits_financial_use is false.
 oil supply: International Energy Agency ("IEA"); Terms of Use for Non-CC Material; kind Terms. A licence, terms, disclaimer, or methodology header is not a right to trade. permits_financial_use is false.
 oil supply: OPEC Secretariat; OPEC Annual Statistical Bulletin (ASB); kind Disclaimer. A licence, terms, disclaimer, or methodology header is not a right to trade. permits_financial_use is false.
@@ -47,6 +50,7 @@ class SupplyDecisionTests(unittest.TestCase):
     def _records(self):
         fao = record_fao(self.headers, citation_url=FAO_FOOD_PRICE_INDEX_URL)["header"]
         wasde = record_wasde(self.headers, citation_url=USDA_WASDE_URL)["header"]
+        bmkg = record_bmkg(self.headers, citation_url=BMKG_PRAKIRAAN_URL)["header"]
         steo = record_steo(self.headers, citation_url=EIA_STEO_URL)["header"]
         iea = record_iea(self.headers, citation_url=IEA_OIL_URL)["header"]
         opec = record_opec(self.headers, citation_url=OPEC_ASB_URL)["header"]
@@ -54,6 +58,7 @@ class SupplyDecisionTests(unittest.TestCase):
         return [
             {"subject": "food supply", "header": fao},
             {"subject": "food supply", "header": wasde},
+            {"subject": "food supply", "header": bmkg},
             {"subject": "oil supply", "header": steo},
             {"subject": "oil supply", "header": iea},
             {"subject": "oil supply", "header": opec},
@@ -69,6 +74,7 @@ class SupplyDecisionTests(unittest.TestCase):
         parsed_decision = saved["decision"]
         self.assertIn("kind index.", parsed_decision)
         self.assertIn("kind forecast.", parsed_decision)
+        self.assertIn("kind Prakiraan Cuaca.", parsed_decision)
         self.assertIn("kind Terms.", parsed_decision)
         self.assertIn("kind Disclaimer.", parsed_decision)
         self.assertIn("A forecast is not a completed harvest.", parsed_decision)
@@ -85,24 +91,31 @@ class SupplyDecisionTests(unittest.TestCase):
         self.assertNotIn("position", parsed_decision)
         stored = __import__("json").loads(body)
         self.assertFalse(stored["permits_financial_use"])
+        stored_fields = {
+            "publisher",
+            "product",
+            "period",
+            "unit",
+            "administrative_area",
+            "citation_url",
+            "kind",
+            "permits_financial_use",
+        }
         for record in stored["records"]:
-            self.assertEqual(
-                set(record["header"]),
-                {
-                    "publisher",
-                    "product",
-                    "period",
-                    "unit",
-                    "administrative_area",
-                    "citation_url",
-                    "kind",
-                    "permits_financial_use",
-                },
-            )
+            keys = set(record["header"])
+            if record["header"]["kind"] == "Prakiraan Cuaca":
+                self.assertEqual(keys, stored_fields - {"period", "unit"})
+                self.assertNotIn("the field was not opened", parsed_decision)
+            else:
+                self.assertEqual(keys, stored_fields)
             self.assertFalse(record["header"]["permits_financial_use"])
 
     def test_refused_asks_write_nothing(self):
         records = self._records()
+        self.assertIn(
+            "Prakiraan Cuaca",
+            [record["header"]["kind"] for record in records],
+        )
         out = self.folder / "out"
         out.mkdir()
         for ask in (
