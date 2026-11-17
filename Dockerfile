@@ -10,6 +10,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY farm_ontology ./farm_ontology
 COPY grants ./grants
+COPY pipelines ./pipelines
 
 RUN addgroup --system app && adduser --system --ingroup app app
 USER app
