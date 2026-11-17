@@ -21,6 +21,8 @@ from farm_ontology.jma_daily import JMA_DAILY_URL
 from farm_ontology.jma_daily import record_series_header as record_jma_daily
 from farm_ontology.jma_three_hourly import JMA_THREE_HOURLY_URL
 from farm_ontology.jma_three_hourly import record_series_header as record_three_hourly
+from farm_ontology.jma_torrential import JMA_TORRENTIAL_URL
+from farm_ontology.jma_torrential import record_series_header as record_torrential
 from farm_ontology.jma_two_week import JMA_TWO_WEEK_URL
 from farm_ontology.jma_two_week import record_series_header as record_two_week
 from farm_ontology.jma_seasonal import JMA_SEASONAL_URL
@@ -48,6 +50,7 @@ food supply: Japan Meteorological Agency; Daily Forecasts; kind Daily Forecasts.
 food supply: Japan Meteorological Agency; Distribution/Three-hourly Forecasts; kind Distribution/Three-hourly Forecasts. permits_financial_use is false.
 food supply: Japan Meteorological Agency; Two-week Temperature Forecast; kind Two-week Temperature Forecast. permits_financial_use is false.
 food supply: Japan Meteorological Agency; Seasonal Forecasts; kind Seasonal Forecasts. permits_financial_use is false.
+food supply: Japan Meteorological Agency; Localized Torrential Rain Forecast Map; kind Forecast. A forecast is not a completed harvest. permits_financial_use is false.
 oil supply: U.S. Energy Information Administration; Short-Term Energy Outlook; kind forecast. A forecast is not a completed harvest. permits_financial_use is false.
 oil supply: International Energy Agency ("IEA"); Terms of Use for Non-CC Material; kind Terms. A licence, terms, disclaimer, or methodology header is not a right to trade. permits_financial_use is false.
 oil supply: OPEC Secretariat; OPEC Annual Statistical Bulletin (ASB); kind Disclaimer. A licence, terms, disclaimer, or methodology header is not a right to trade. permits_financial_use is false.
@@ -79,6 +82,7 @@ class SupplyDecisionTests(unittest.TestCase):
         three = record_three_hourly(self.headers, citation_url=JMA_THREE_HOURLY_URL)["header"]
         two_week = record_two_week(self.headers, citation_url=JMA_TWO_WEEK_URL)["header"]
         seasonal = record_seasonal(self.headers, citation_url=JMA_SEASONAL_URL)["header"]
+        torrential = record_torrential(self.headers, citation_url=JMA_TORRENTIAL_URL)["header"]
         steo = record_steo(self.headers, citation_url=EIA_STEO_URL)["header"]
         iea = record_iea(self.headers, citation_url=IEA_OIL_URL)["header"]
         opec = record_opec(self.headers, citation_url=OPEC_ASB_URL)["header"]
@@ -94,6 +98,7 @@ class SupplyDecisionTests(unittest.TestCase):
             {"subject": "food supply", "header": three},
             {"subject": "food supply", "header": two_week},
             {"subject": "food supply", "header": seasonal},
+            {"subject": "food supply", "header": torrential},
             {"subject": "oil supply", "header": steo},
             {"subject": "oil supply", "header": iea},
             {"subject": "oil supply", "header": opec},
@@ -117,6 +122,7 @@ class SupplyDecisionTests(unittest.TestCase):
         self.assertIn("kind Distribution/Three-hourly Forecasts.", parsed_decision)
         self.assertIn("kind Two-week Temperature Forecast.", parsed_decision)
         self.assertIn("kind Seasonal Forecasts.", parsed_decision)
+        self.assertIn("kind Forecast.", parsed_decision)
         self.assertIn("kind Terms.", parsed_decision)
         self.assertIn("kind Disclaimer.", parsed_decision)
         self.assertIn("A forecast is not a completed harvest.", parsed_decision)
@@ -202,6 +208,20 @@ class SupplyDecisionTests(unittest.TestCase):
                 self.assertNotIn("unit", record["header"])
                 self.assertNotIn("administrative_area", record["header"])
                 self.assertNotEqual(record["header"]["kind"], "Forecasts")
+            elif record["header"]["kind"] == "Forecast":
+                self.assertEqual(keys, stored_fields - {"administrative_area"})
+                self.assertIn("08:50 JST, 17 November 2026", record["header"]["period"])
+                self.assertIn("next 3 h", record["header"]["period"])
+                self.assertIn("every 10 minutes", record["header"]["period"])
+                self.assertIn("up to 6 hours ahead", record["header"]["period"])
+                self.assertIn("from 7 to 15 hours ahead", record["header"]["period"])
+                self.assertIn("every hour", record["header"]["period"])
+                self.assertEqual(record["header"]["unit"], "300 km; 1 km; 5 km")
+                self.assertNotIn("administrative_area", record["header"])
+                self.assertNotEqual(
+                    record["header"]["kind"],
+                    record["header"]["product"],
+                )
             elif record["header"]["kind"] == "Daily Forecasts":
                 self.assertEqual(keys, stored_fields - {"unit"})
                 self.assertIn(
@@ -229,6 +249,7 @@ class SupplyDecisionTests(unittest.TestCase):
         self.assertIn("Distribution/Three-hourly Forecasts", kinds)
         self.assertIn("Two-week Temperature Forecast", kinds)
         self.assertIn("Seasonal Forecasts", kinds)
+        self.assertIn("Forecast", kinds)
         out = self.folder / "out"
         out.mkdir()
         for ask in (
