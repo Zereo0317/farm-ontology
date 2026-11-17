@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -6,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.china_nbs import CITATION_URL, record_nbs_header
+from farm_ontology.policy import CLASS_C_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = CITATION_URL
@@ -69,3 +71,25 @@ class ChinaNbsTests(unittest.TestCase):
             text = (ROOT / "farm_ontology" / name).read_text(encoding="utf-8")
             self.assertNotIn("china_nbs", text)
             self.assertNotIn("t20240524_1953659", text)
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_nbs_header(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        before = path.read_text(encoding="utf-8")
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        record = json.loads(before)
+        after = path.read_text(encoding="utf-8")
+        names_after = sorted(item.name for item in self.folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["output-of-major-farm-products.json"])
+        self.assertIs(record["permits_financial_use"], False)
+        self.assertEqual(CLASS_C_POLICY, "closed")
+        self.assertTrue(record["administrative_area"].startswith("national query"))
+        self.assertNotIn("trade", record)
+        self.assertNotIn("value", record)
+        self.assertNotIn("number", record)
+        self.assertNotIn("output", record)
+        self.assertNotIn("farm", record)
+        self.assertNotIn("county", record)
+        self.assertFalse((self.folder / "trade.json").exists())
