@@ -1,0 +1,16 @@
+{
+  "hokkaido": {
+    "http_status": 200,
+    "feature_count": 1,
+    "scene_id": "20261117_011638_27_2570",
+    "item_type": "PSScene",
+    "acquired": "2026-11-17T01:16:38.278446Z"
+  },
+  "china": {
+    "http_status": 200,
+    "feature_count": 1,
+    "scene_id": "20261117_031202_96_2588",
+    "item_type": "PSScene",
+    "acquired": "2026-11-17T03:12:02.962777Z"
+  }
+}
