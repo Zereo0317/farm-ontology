@@ -7,7 +7,8 @@ https://www.datos.gob.ar/dataset/estimaciones-agricolas
 The refetch of that URL returned HTTP 200 and stayed on that URL.
 The catalog prints no production or area figure for a campaign and a
 province or department. It links one CSV titled Estimaciones agrícolas.
-Only that linked file was opened. Its latest campaign's last printed
+Only that linked file was opened. The stored citation is that CSV,
+not the catalog page. Its latest campaign's last printed
 row is trigo total, 2024/2025, Buenos Aires, General Arenales,
 production 117600 tm. The yield column is not stored. A province or
 department is not a farm. An estimate is not a completed harvest and
@@ -143,7 +144,7 @@ def record_argentina_estimate_current(
     if file_body is None or file_body.strip() == "":
         raise ValueError("the linked file has no figure")
     stored = _figure(file_body)
-    stored["citation_url"] = CITATION_URL
+    stored["citation_url"] = file_url
     stored["file_url"] = file_url
     stored["permits_financial_use"] = False
     stored["class_c_policy"] = CLASS_C_POLICY

@@ -51,13 +51,14 @@ class ArgentinaEstimateCurrentTest(unittest.TestCase):
                 "value": 117600,
                 "unit": "tm",
                 "kind": "estimate",
-                "citation_url": CITATION_URL,
+                "citation_url": FILE_URL,
                 "file_url": FILE_URL,
                 "permits_financial_use": False,
                 "class_c_policy": "closed",
             },
         )
         self.assertEqual(stored["class_c_policy"], CLASS_C_POLICY)
+        self.assertNotEqual(stored["citation_url"], CITATION_URL)
         text = json.dumps(stored)
         for word in ("4200", "28000", "74180", "1080", "kg/ha", "kgxha", "farm", "trade", "yield", "completed harvest"):
             self.assertNotIn(word, text)
