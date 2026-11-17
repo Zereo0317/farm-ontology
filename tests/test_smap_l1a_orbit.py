@@ -1,8 +1,8 @@
 """Live refetch of the cited SMAP L1A ISO metadata.
 
 The citation is the ISO XML already cited.
-The refetch stores halfOrbitStartDateTime and halfOrbitEndDateTime
-only when that body prints them.
+The refetch stores halfOrbitStartDateTime, halfOrbitEndDateTime,
+gml:beginPosition, and gml:endPosition only when that body prints them.
 It does not store a soil-moisture pixel.
 permits_financial_use stays false. Class C stays closed.
 """
@@ -24,6 +24,8 @@ from farm_ontology.smap_l1a_orbit import (
     ORBIT_START,
     ORBIT_START_NAME,
     SMAP_L1A_ORBIT_URL,
+    TEMPORAL_BEGIN,
+    TEMPORAL_END,
     record_orbit_times,
 )
 
@@ -47,6 +49,12 @@ class SmapL1aOrbitTests(unittest.TestCase):
         self.assertEqual(header["orbit_start"], ORBIT_START)
         self.assertEqual(header["orbit_end"], "2026-11-16T22:49:43.000Z")
         self.assertEqual(header["orbit_end"], ORBIT_END)
+        self.assertEqual(header["temporal_begin"], "2026-11-16T21:58:29.862Z")
+        self.assertEqual(header["temporal_begin"], TEMPORAL_BEGIN)
+        self.assertEqual(header["temporal_end"], "2026-11-16T22:51:51.299Z")
+        self.assertEqual(header["temporal_end"], TEMPORAL_END)
+        self.assertNotEqual(header["temporal_begin"], header["orbit_start"])
+        self.assertNotEqual(header["temporal_end"], header["orbit_end"])
         self.assertFalse(header["permits_financial_use"])
         self.assertEqual(header["class_c_policy"], "closed")
         self.assertEqual(header["class_c_policy"], CLASS_C_POLICY)
@@ -56,6 +64,8 @@ class SmapL1aOrbitTests(unittest.TestCase):
                 "citation_url",
                 "orbit_start",
                 "orbit_end",
+                "temporal_begin",
+                "temporal_end",
                 "permits_financial_use",
                 "class_c_policy",
             },
@@ -91,14 +101,18 @@ class SmapL1aOrbitTests(unittest.TestCase):
             r"<gml:endPosition[^>]*>([^<]+)</gml:endPosition>",
             text_body,
         ).group(1)
+        self.assertEqual(header["temporal_begin"], begin)
+        self.assertEqual(header["temporal_end"], end)
         self.assertNotEqual(header["orbit_start"], begin)
         self.assertNotEqual(header["orbit_end"], end)
+        self.assertIn(f">{TEMPORAL_BEGIN}</gml:beginPosition>", text_body)
+        self.assertIn(f">{TEMPORAL_END}</gml:endPosition>", text_body)
         text = (self.folder / saved["file"]).read_text(encoding="utf-8")
         self.assertIn(URL, text)
         self.assertIn(ORBIT_START, text)
         self.assertIn(ORBIT_END, text)
-        self.assertNotIn(begin, text)
-        self.assertNotIn(end, text)
+        self.assertIn(begin, text)
+        self.assertIn(end, text)
         self.assertNotIn(final_url, text)
         for word in (
             "pixel",
@@ -116,14 +130,16 @@ class SmapL1aOrbitTests(unittest.TestCase):
         flat = source.replace("\n", " ")
         self.assertIn("halfOrbitStartDateTime prints 2026-11-16T22:00:29.000Z.", flat)
         self.assertIn("halfOrbitEndDateTime prints 2026-11-16T22:49:43.000Z.", flat)
+        self.assertIn("gml:beginPosition prints 2026-11-16T21:58:29.862Z.", flat)
+        self.assertIn("gml:endPosition prints 2026-11-16T22:51:51.299Z.", flat)
         self.assertIn("The temporal extent is not the orbit time.", flat)
         self.assertIn("A soil-moisture pixel is not stored.", flat)
         self.assertIn("The redirect URL is not stored.", flat)
         self.assertIn("permits_financial_use stays false.", flat)
         self.assertIn("Class C stays closed.", flat)
         self.assertIn("A body with no orbit time writes nothing.", flat)
-        self.assertNotIn(begin, source)
-        self.assertNotIn(end, source)
+        self.assertIn(begin, source)
+        self.assertIn(end, source)
         self.assertNotIn(final_url, source)
         self.assertEqual(len(list(self.folder.iterdir())), 1)
 
@@ -177,6 +193,13 @@ class SmapL1aOrbitTests(unittest.TestCase):
                     citation_url=URL,
                     orbit_start="2020-01-01T00:00:00.000Z",
                     orbit_end="2020-01-01T01:00:00.000Z",
+                )
+            with self.assertRaises(ValueError):
+                record_orbit_times(
+                    self.folder,
+                    citation_url=URL,
+                    temporal_begin="2020-01-01T00:00:00.000Z",
+                    temporal_end="2020-01-01T01:00:00.000Z",
                 )
             with self.assertRaises(ValueError):
                 record_orbit_times(self.folder, citation_url=URL, permits_financial_use=True)
