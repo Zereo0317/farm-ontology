@@ -15,6 +15,10 @@ GET /farm/weather    live Open-Meteo current block for the farm point,
 GET /farm/planet     Planet Labs quick search headers near the farm
 GET /farm/ee         Earth Engine REST catalog status for the project
 GET /farm/memo       decision memo render at the current time
+GET /farm/ingest-status
+                     WS2 ingest workers' last-run summaries from the
+                     record backend (pipelines/run-log); jobs without
+                     runs are reported as gaps
 
 No secret is echoed. Logs stay off stdout buffers of records. Financial
 use stays false. Class C stays closed. A failed upstream answer is
@@ -345,8 +349,25 @@ STATUS_JSON = {
         "/farm/ee",
         "/farm/memo",
         "/farm/licences",
+        "/farm/ingest-status",
     ],
 }
+
+
+def _ingest_status_snapshot() -> dict:
+    """WS2 ingest observability read through the record backend (gap-honest)."""
+    from datetime import datetime, timezone as _tz
+
+    from farm_ontology import ingest_core
+    from farm_ontology.ingest_status import ingest_status
+
+    now = datetime.now(_tz.utc)
+    try:
+        backend = ingest_core.open_pipe_backend()
+        status = ingest_status(backend, now=now)
+        return {**status, "backend": ingest_core.describe_backend(backend)}
+    except (OSError, ValueError, RuntimeError) as error:
+        return {"gap": f"ingest-status unreadable: {str(error)[:160]}"}
 
 
 def handle_target(path: str) -> tuple[int, dict | str, str]:
@@ -369,6 +390,8 @@ def handle_target(path: str) -> tuple[int, dict | str, str]:
         return 200, _ee_catalog(), "json"
     if path == "/farm/licences":
         return 200, _licences_snapshot(), "json"
+    if path == "/farm/ingest-status":
+        return 200, _ingest_status_snapshot(), "json"
     if path == "/farm/memo":
         return 200, _memo_text(), "text"
     return 404, {"error": f"no route {path}"}, "json"
