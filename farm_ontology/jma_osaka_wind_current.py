@@ -5,7 +5,8 @@ The refetch of
 https://www.data.jma.go.jp/stats/data/mdrr/synopday/data1s.html
 
 returned HTTP 200. The heading prints 2026年11月17日　10時現在. For 大阪,
-the 最大 wind group prints 風速 3.7], 風向 北], and 起時 08:33]. The unit
+the 最大 wind group prints 風速 3.7], 風向 北], and 起時 08:33]. The
+same row prints 最大瞬間 風速 5.8], 風向 北], and 起時 08:43]. The unit
 table prints m/s for 風速. The legend prints 値] as 資料不足値 *2. The
 bracket stays on the printed cells. A request that fails, or a body
 with no place, speed, direction, or time, writes nothing. No second
@@ -26,6 +27,9 @@ PLACE = "大阪"
 SPEED_AT = 15
 DIRECTION_AT = 16
 TIME_AT = 17
+GUST_SPEED_AT = 18
+GUST_DIRECTION_AT = 19
+GUST_TIME_AT = 20
 
 FORBIDDEN_LABELS = frozenset(
     {
@@ -93,13 +97,17 @@ def _reading(body: str) -> dict:
     for row in parser.rows:
         if not row or row[0] != PLACE:
             continue
-        if len(row) <= TIME_AT:
+        if len(row) <= GUST_TIME_AT:
             break
         speed = row[SPEED_AT]
         direction = row[DIRECTION_AT]
         wind_time = row[TIME_AT]
-        if not speed or not direction or not wind_time:
+        gust_speed = row[GUST_SPEED_AT]
+        gust_direction = row[GUST_DIRECTION_AT]
+        gust_time = row[GUST_TIME_AT]
+        if not all((speed, direction, wind_time, gust_speed, gust_direction, gust_time)):
             break
+        mark = {"mark": "値]", "mark_meaning": "資料不足値 *2"}
         return {
             "place": PLACE,
             "heading": _heading(body),
@@ -108,8 +116,15 @@ def _reading(body: str) -> dict:
             "unit": "m/s",
             "direction": direction,
             "time": wind_time,
-            "mark": "値]",
-            "mark_meaning": "資料不足値 *2",
+            **mark,
+            "gust": {
+                "group": "最大瞬間",
+                "speed": gust_speed,
+                "unit": "m/s",
+                "direction": gust_direction,
+                "time": gust_time,
+                **mark,
+            },
         }
     raise ValueError("the response body has no wind value")
 
@@ -137,6 +152,7 @@ def record_jma_osaka_wind_current(
     if permits_financial_use not in (None, False) or class_c_policy not in (None, CLASS_C_POLICY):
         raise ValueError("permits_financial_use stays false and Class C stays closed")
     reading = _reading(body)
+    reading["gust"]["citation_url"] = JMA_SYNOPDAY_URL
     reading["citation_url"] = JMA_SYNOPDAY_URL
     reading["permits_financial_use"] = False
     reading["class_c_policy"] = CLASS_C_POLICY

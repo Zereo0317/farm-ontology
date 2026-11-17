@@ -46,16 +46,24 @@ class JmaOsakaWindCurrentTest(unittest.TestCase):
                 "time": "08:33]",
                 "mark": "値]",
                 "mark_meaning": "資料不足値 *2",
+                "gust": {
+                    "group": "最大瞬間",
+                    "speed": "5.8]",
+                    "unit": "m/s",
+                    "direction": "北]",
+                    "time": "08:43]",
+                    "mark": "値]",
+                    "mark_meaning": "資料不足値 *2",
+                    "citation_url": jma_osaka_wind_current.JMA_SYNOPDAY_URL,
+                },
                 "citation_url": jma_osaka_wind_current.JMA_SYNOPDAY_URL,
                 "permits_financial_use": False,
                 "class_c_policy": "closed",
             },
         )
         self.assertEqual(stored["class_c_policy"], CLASS_C_POLICY)
-        text = json.dumps(stored, ensure_ascii=False)
-        self.assertNotIn("5.8", text)
-        self.assertNotIn("08:43", text)
-        self.assertNotIn("平取", text)
+        self.assertEqual(stored["place"], "大阪")
+        self.assertNotIn("平取", json.dumps(stored, ensure_ascii=False))
 
     def test_failed_request_or_empty_body_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -77,6 +85,18 @@ class JmaOsakaWindCurrentTest(unittest.TestCase):
 
     def test_missing_direction_or_time_writes_nothing(self) -> None:
         missing = LIVE_BODY.replace("<td>北]</td><td>08:33]</td>", "<td></td><td></td>", 1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "osaka-wind.json"
+            with self.assertRaises(ValueError):
+                jma_osaka_wind_current.record_jma_osaka_wind_current(
+                    path,
+                    jma_osaka_wind_current.JMA_SYNOPDAY_URL,
+                    missing,
+                )
+            self.assertFalse(path.exists())
+
+    def test_missing_gust_writes_nothing(self) -> None:
+        missing = LIVE_BODY.replace("<td>5.8]</td><td>北]</td><td>08:43]</td>", "<td></td><td></td><td></td>", 1)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "osaka-wind.json"
             with self.assertRaises(ValueError):
@@ -113,7 +133,7 @@ class JmaOsakaWindCurrentTest(unittest.TestCase):
                     )
             self.assertFalse(path.exists())
             source = Path(jma_osaka_wind_current.__file__).read_text(encoding="utf-8")
-            self.assertNotIn("5.8]", source)
+            self.assertNotIn("東京", source)
 
 
 if __name__ == "__main__":
