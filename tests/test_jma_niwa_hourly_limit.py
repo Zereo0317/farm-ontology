@@ -6,6 +6,7 @@ from pathlib import Path
 
 from farm_ontology import jma_niwa_hourly_limit
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -118,6 +119,7 @@ class JmaNiwaHourlyLimitTest(unittest.TestCase):
         self.assertNotIn("field_save", source)
         self.assertNotIn("91", source)
 
+    @online_gate()
     def test_live_refetch_prints_the_viewable_limit_and_no_percent(self) -> None:
         request = urllib.request.Request(
             jma_niwa_hourly_limit.NIWA_URL,

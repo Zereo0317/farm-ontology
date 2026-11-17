@@ -7,6 +7,7 @@ from pathlib import Path
 
 from farm_ontology import g17_total_index
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -107,6 +108,7 @@ class G17TotalIndexTest(unittest.TestCase):
         self.assertIn("not a price and not a trade", source)
         self.assertNotIn("field_save", source)
 
+    @online_gate()
     def test_live_refetch_prints_the_september_index(self) -> None:
         request = urllib.request.Request(
             g17_total_index.G17_URL,

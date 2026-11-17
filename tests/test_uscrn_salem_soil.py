@@ -6,6 +6,7 @@ from pathlib import Path
 
 from farm_ontology import uscrn_salem_soil
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -198,6 +199,7 @@ class UscrnSalemSoilTest(unittest.TestCase):
                 )
             self.assertFalse(path.exists())
 
+    @online_gate()
     def test_live_refetch_prints_the_stored_cell(self) -> None:
         status, final_url, body = _open(uscrn_salem_soil.SALEM_DAILY_URL)
         self.assertEqual(status, 200)

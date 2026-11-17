@@ -7,6 +7,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.eia_weekly import EIA_WEEKLY_CRUDE_STOCKS_URL, record_series_header
+from farm_ontology.testing import online_gate
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = EIA_WEEKLY_CRUDE_STOCKS_URL
@@ -20,6 +21,7 @@ class EiaWeeklyTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
+    @online_gate()
     def test_fetch_stores_one_series_header_without_a_stock_level(self):
         saved = record_series_header(self.folder, citation_url=URL)
         header = saved["header"]
