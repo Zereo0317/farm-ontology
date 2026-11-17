@@ -1,0 +1,31 @@
+{
+  "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20261108",
+  "wanted": [
+    "runoff_sum",
+    "sub_surface_runoff_sum",
+    "surface_runoff_sum",
+    "total_precipitation_sum",
+    "runoff_min",
+    "runoff_max",
+    "sub_surface_runoff_min",
+    "sub_surface_runoff_max",
+    "surface_runoff_min",
+    "surface_runoff_max",
+    "total_precipitation_min",
+    "total_precipitation_max"
+  ],
+  "values": {
+    "runoff_max": 3.8951635360717773e-05,
+    "runoff_min": 3.580283373594284e-05,
+    "runoff_sum": 0.0008704811334609985,
+    "sub_surface_runoff_max": 3.662705421447754e-05,
+    "sub_surface_runoff_min": 3.565195947885513e-05,
+    "sub_surface_runoff_sum": 0.0008672624826431274,
+    "surface_runoff_max": 2.339482307434082e-06,
+    "surface_runoff_min": 0,
+    "surface_runoff_sum": 3.2186508178710938e-06,
+    "total_precipitation_max": 3.4749507904052734e-05,
+    "total_precipitation_min": 2.115964889526367e-06,
+    "total_precipitation_sum": 0.00030462741841574825
+  }
+}
