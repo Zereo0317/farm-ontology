@@ -173,8 +173,10 @@ def _planet_search(lat: float, lon: float) -> dict:
                 f"(HTTP {error.status}): {error.body[:160]}"
             ),
             "hint": (
-                "Regenerate the key at planet.com/account (My Settings) and update "
-                "secret manager entry Planet-labs; the service needs no redeploy."
+                "The key authenticates (the account probe returns 403, not 401) but "
+                "its principal has no active Planet Insights subscription. "
+                "Activate or purchase a plan for the key's owner at "
+                "planet.com/account; then this service needs no redeploy."
             ),
             "auth_scheme_tried": ["Basic", "api-key"],
         }

@@ -14,7 +14,7 @@ with `gcloud run deploy --source .`.
 | Test suite at ship time | 1068 tests, green |
 | Farm pin | Hiroki Tomiyasu field, Biratori, Hokkaido — 42.7018152 N, 142.4071291 E (`FARM_LAT` / `FARM_LON`) |
 | Earth Engine | catalog check HTTP 200 through the Cloud Run runtime identity (compute SA); SA holds `roles/earthengine.viewer`; registration stays `unknown`, so `permits_financial_use` stays false and the use class stays Screening |
-| Planet Labs | `PLANET_API_KEY` mounts from Secret Manager secret `Planet-labs:latest`; both documented schemes (HTTP Basic, `api-key`) are tried; the mounted key is rejected by Planet (`401 Please provide valid credentials`) — rotating the secret value is enough, no redeploy is needed |
+| Planet Labs | `PLANET_API_KEY` mounts from Secret Manager secret `Planet-labs:latest`; both documented schemes (HTTP Basic, `api-key`) are tried. Discriminator result 2026-11-17: the key value is byte-identical to the owner-provided key and Planet's account probe returns 403 for it (key recognized) while Data search returns 401 — the key authenticates but its principal has **no active Insights subscription**. Activating the plan is enough; no redeploy, no secret change |
 | Open-Meteo | live `jma_msm` current block for the farm point; stored support stays the 0.05 deg grid cell |
 
 ## Deployment notes (pitfalls encountered)
