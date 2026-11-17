@@ -5,8 +5,10 @@ The hourly page refetched on 17 Nov 2026 is:
 https://www.data.jma.go.jp/stats/etrn/view/hourly_a1.php?prec_no=22&block_no=0137&year=2026&month=11&day=16&view=
 
 The heading prints 新和（日高地方) and 2026年11月16日. The row whose 時
-cell is 1 prints 91 in the column 湿度(％). That percent is the printed
-cell. Humidity is not calculated.
+cell is 1 still prints 91 in the column 湿度(％). Later rows also print
+a humidity percent. The last printed hour is 24, and that row prints 77
+in 湿度(％). Hour 24 and 77 are the current reading. Hour 1 is kept
+because it is still printed. Neither percent is calculated.
 
 The station of this citation is 新和. The response does not print 平取,
 and a second station is not added.
@@ -34,6 +36,8 @@ HOUR_COLUMN = "時"
 HOUR = "1"
 HUMIDITY_COLUMN = "湿度(％)"
 HUMIDITY_PERCENT = 91
+CURRENT_HOUR = "24"
+CURRENT_HUMIDITY_PERCENT = 77
 
 FORBIDDEN_LABELS = frozenset(
     {
@@ -57,6 +61,8 @@ def record_jma_niwa_hour_humidity(
     place: str | None = None,
     hour: object = None,
     humidity_percent: object = None,
+    current_hour: object = None,
+    current_humidity_percent: object = None,
     label: str | None = None,
     permits_financial_use: bool | None = None,
     class_c_policy: str | None = None,
@@ -77,6 +83,8 @@ def record_jma_niwa_hour_humidity(
             place,
             hour,
             humidity_percent,
+            current_hour,
+            current_humidity_percent,
             permits_financial_use,
             class_c_policy,
         )
@@ -90,6 +98,10 @@ def record_jma_niwa_hour_humidity(
         "hour": HOUR,
         "humidity_column": HUMIDITY_COLUMN,
         "humidity_percent": HUMIDITY_PERCENT,
+        "current_reading": {
+            "hour": CURRENT_HOUR,
+            "humidity_percent": CURRENT_HUMIDITY_PERCENT,
+        },
         "citation_url": NIWA_URL,
         "permits_financial_use": False,
         "class_c_policy": CLASS_C_POLICY,

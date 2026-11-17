@@ -14,19 +14,21 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         raise AssertionError("the refetch does not follow another page")
 
 
-def _hour_one_humidity(page: str) -> str:
-    row = re.search(
+def _printed_humidity_rows(page: str) -> list[tuple[str, str]]:
+    rows = re.findall(
         r'<tr class="mtx" style="text-align:right;">(.*?)</tr>',
         page,
         re.S,
     )
-    cells = [
-        re.sub(r"<[^>]+>", "", cell)
-        for cell in re.findall(r"<td[^>]*>(.*?)</td>", row.group(1), re.S)
-    ]
-    if cells[0] != "1":
-        raise AssertionError("the first printed hour is not 1")
-    return cells[5]
+    printed = []
+    for row in rows:
+        cells = [
+            re.sub(r"<[^>]+>", "", cell).strip()
+            for cell in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)
+        ]
+        if cells[0].isdigit() and cells[5].isdigit():
+            printed.append((cells[0], cells[5]))
+    return printed
 
 
 class JmaNiwaHourHumidityTest(unittest.TestCase):
@@ -52,6 +54,7 @@ class JmaNiwaHourHumidityTest(unittest.TestCase):
                 "hour": "1",
                 "humidity_column": "湿度(％)",
                 "humidity_percent": 91,
+                "current_reading": {"hour": "24", "humidity_percent": 77},
                 "citation_url": jma_niwa_hour_humidity.NIWA_URL,
                 "permits_financial_use": False,
                 "class_c_policy": "closed",
@@ -59,6 +62,7 @@ class JmaNiwaHourHumidityTest(unittest.TestCase):
         )
         self.assertEqual(header["class_c_policy"], CLASS_C_POLICY)
         self.assertIsInstance(header["humidity_percent"], int)
+        self.assertIsInstance(header["current_reading"]["humidity_percent"], int)
         self.assertEqual(list(header).count("place"), 1)
         text = json.dumps(header, ensure_ascii=False)
         self.assertNotIn("平取", text)
@@ -111,6 +115,18 @@ class JmaNiwaHourHumidityTest(unittest.TestCase):
                 jma_niwa_hour_humidity.record_jma_niwa_hour_humidity(
                     path,
                     jma_niwa_hour_humidity.NIWA_URL,
+                    current_hour="24",
+                )
+            with self.assertRaises(ValueError):
+                jma_niwa_hour_humidity.record_jma_niwa_hour_humidity(
+                    path,
+                    jma_niwa_hour_humidity.NIWA_URL,
+                    current_humidity_percent=77,
+                )
+            with self.assertRaises(ValueError):
+                jma_niwa_hour_humidity.record_jma_niwa_hour_humidity(
+                    path,
+                    jma_niwa_hour_humidity.NIWA_URL,
                     permits_financial_use=True,
                 )
             self.assertFalse(path.exists())
@@ -123,7 +139,9 @@ class JmaNiwaHourHumidityTest(unittest.TestCase):
         )
         self.assertIn("station of this citation is 新和", source)
         self.assertIn("second station is not added", source)
-        self.assertIn("Humidity is not calculated", source)
+        self.assertIn("Neither percent is calculated", source)
+        self.assertIn("current reading", source)
+        self.assertIn("Hour 1 is kept", source)
         self.assertIn("does not print 平取", source)
         self.assertIn("湿度(％)", source)
         self.assertNotIn("field_save", source)
@@ -142,15 +160,20 @@ class JmaNiwaHourHumidityTest(unittest.TestCase):
         self.assertIn("新和", page)
         self.assertNotIn("平取", page)
         self.assertIn("湿度", page)
-        self.assertEqual(_hour_one_humidity(page), "91")
+        printed = _printed_humidity_rows(page)
+        self.assertEqual(printed[0], ("1", "91"))
+        self.assertEqual(printed[-1], ("24", "77"))
         self.assertEqual(jma_niwa_hour_humidity.HOUR, "1")
         self.assertEqual(jma_niwa_hour_humidity.HUMIDITY_PERCENT, 91)
+        self.assertEqual(jma_niwa_hour_humidity.CURRENT_HOUR, printed[-1][0])
+        self.assertEqual(jma_niwa_hour_humidity.CURRENT_HUMIDITY_PERCENT, int(printed[-1][1]))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "niwa-humidity.json"
             self._record(path)
             stored = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(stored["hour"], "1")
         self.assertEqual(stored["humidity_percent"], 91)
+        self.assertEqual(stored["current_reading"], {"hour": "24", "humidity_percent": 77})
         self.assertFalse(stored["permits_financial_use"])
         self.assertEqual(stored["class_c_policy"], "closed")
 
