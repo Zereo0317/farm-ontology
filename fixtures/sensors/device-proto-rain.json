@@ -1,0 +1,39 @@
+{
+  "adapter": "sensors.device-json/v1",
+  "device_id": "protokit-sn50-raingauge",
+  "vendor": "Dragino",
+  "model": "SN50v3-LB",
+  "firmware": "v1.3.4",
+  "device_class": "rain-tip",
+  "tip_mm": 0.2794,
+  "tip_count": 8,
+  "phenomenon_time": "2026-11-15T14:00:00+00:00",
+  "availability_time": "2026-11-15T14:00:35+00:00",
+  "generated_at": "2026-11-15T14:00:36+00:00",
+  "window_hours": 24,
+  "calibration_activity": "activity/proto-gauge-volume-check-2026q2",
+  "recalibration_due": "2027-05-01",
+  "calibration_error": {
+    "metric": "bias",
+    "value_fraction": 0.041,
+    "samples": 3,
+    "method": "known-volume-pour",
+    "reference_doc": "hardware/calibration-protocol.md",
+    "region_demo": "Hokkaido-demo-not-biratori",
+    "crop": "soybean",
+    "season": "2026"
+  },
+  "records": [
+    {
+      "device_class": "leaf-wetness",
+      "device_id": "protokit-sn50-raingauge",
+      "value": 0,
+      "phenomenon_time": "2026-11-15T14:00:00+00:00",
+      "availability_time": "2026-11-15T14:00:35+00:00",
+      "generated_at": "2026-11-15T14:00:36+00:00"
+    }
+  ],
+  "device_battery_mv": 3590,
+  "dry_run": true,
+  "note": "fictitious demonstration uplink: eight bucket tips and one dry leaf-wetness bit; synthetic, tied to no real place"
+}
