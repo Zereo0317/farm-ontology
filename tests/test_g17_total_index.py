@@ -135,6 +135,34 @@ class G17TotalIndexTest(unittest.TestCase):
         self.assertNotIn("price", stored)
         self.assertNotIn("trade", stored)
 
+    def test_september_2026_index_is_not_a_price_and_reading_writes_no_trade(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            path = folder / "g17-total-index.json"
+            self._record(path)
+            before = path.read_text(encoding="utf-8")
+            names_before = sorted(item.name for item in folder.iterdir())
+            header = json.loads(before)
+            after = path.read_text(encoding="utf-8")
+            names_after = sorted(item.name for item in folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["g17-total-index.json"])
+        self.assertEqual(header["series"], "Total index")
+        self.assertEqual(header["month"], "Sept.")
+        self.assertEqual(header["year"], "2026")
+        self.assertEqual(header["value"], 104.0)
+        self.assertEqual(header["unit"], "2017=100")
+        self.assertNotEqual(header["value"], 0.7)
+        self.assertFalse(header["permits_financial_use"])
+        self.assertNotIn("price", header)
+        self.assertNotIn("trade", header)
+        self.assertNotIn("percent_change", header)
+        self.assertNotIn("price", after)
+        self.assertNotIn("trade", after)
+        self.assertNotIn("0.7", after)
+        self.assertNotIn(".7", after)
+
 
 if __name__ == "__main__":
     unittest.main()
