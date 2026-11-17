@@ -1,0 +1,23 @@
+{
+  "collection": "MODIS/061/MOD13Q1",
+  "image_id": "MODIS/061/MOD13Q1/2026_10_16",
+  "date": "2026-10-16",
+  "bands": [
+    "NDVI",
+    "EVI",
+    "DetailedQA",
+    "sur_refl_b01",
+    "sur_refl_b02",
+    "sur_refl_b03",
+    "sur_refl_b07",
+    "ViewZenith",
+    "SolarZenith",
+    "RelativeAzimuth",
+    "DayOfYear",
+    "SummaryQA"
+  ],
+  "scale": 231.65635826395828,
+  "values": {
+    "NDVI": 6067
+  }
+}
