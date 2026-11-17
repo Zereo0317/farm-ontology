@@ -1,0 +1,43 @@
+{
+  "_provenance": "variant of soil-chemistry.json with two analytes removed (exercises the needs-soil-chemistry enumeration); captured_live=false",
+  "captured_live": false,
+  "parcel_iri": "observation/boundary/demo-not-a-real-farm",
+  "rows": [
+    {
+      "analyte": "ph",
+      "value": 5.6,
+      "unit": "pH",
+      "depth_cm": 15,
+      "sampled_at": "2026-10-20T02:00:00+00:00",
+      "method": "1:2.5 water suspension",
+      "native_support": "soil-sample-grid-composite"
+    },
+    {
+      "analyte": "ec",
+      "value": 0.35,
+      "unit": "dS/m",
+      "depth_cm": 15,
+      "sampled_at": "2026-10-20T02:00:00+00:00",
+      "method": "1:5 extract",
+      "native_support": "soil-sample-grid-composite"
+    },
+    {
+      "analyte": "n_available",
+      "value": 18.0,
+      "unit": "mg/100g",
+      "depth_cm": 15,
+      "sampled_at": "2026-10-20T02:00:00+00:00",
+      "method": "1/13N HCl extraction",
+      "native_support": "soil-sample-grid-composite"
+    },
+    {
+      "analyte": "p_available",
+      "value": 12.0,
+      "unit": "mg/100g",
+      "depth_cm": 15,
+      "sampled_at": "2026-10-20T02:00:00+00:00",
+      "method": "Troug",
+      "native_support": "soil-sample-grid-composite"
+    }
+  ]
+}
