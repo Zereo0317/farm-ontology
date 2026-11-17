@@ -1,0 +1,22 @@
+{
+  "scene_id": "20261117_011638_27_2570",
+  "item_type": "PSScene",
+  "latitude": "42.7018152",
+  "longitude": "142.4071291",
+  "acquired": "2026-11-17T01:16:38.278446Z",
+  "item_http_status": 200,
+  "publishing_stage": "preview",
+  "quality_category": "test",
+  "permissions": [],
+  "assets_http_status": 200,
+  "assets": [],
+  "asset_requests": {
+    "ortho_analytic_8b_sr": 404,
+    "ortho_analytic_8b": 404,
+    "ortho_analytic_4b_sr": 404,
+    "ortho_analytic_4b": 404,
+    "basic_analytic_8b": 404,
+    "basic_analytic_4b": 404
+  },
+  "message": "Could not find the requested asset, it may not exist or may not be visible."
+}
