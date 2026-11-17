@@ -6,7 +6,8 @@ https://www.census.gov/manufacturing/m3/current/index.html
 
 The lead paragraph prints "New orders for manufactured goods in
 September" and then "Shipments, up eleven of the last twelve months,
-increased $8.8 billion or 1.3 percent to $668.5 billion." August is
+increased $8.8 billion or 1.3 percent to $668.5 billion." That
+shipments sentence prints no year, so no year is stored. August is
 named only as the prior increase. The shipments figure is the printed
 level $668.5 billion. The $8.8 billion change is not the figure. The
 figure is not a price and not a trade.

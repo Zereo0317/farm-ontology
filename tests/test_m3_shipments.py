@@ -103,6 +103,7 @@ class M3ShipmentsTest(unittest.TestCase):
         self.assertIn("$668.5 billion", source)
         self.assertIn("September", source)
         self.assertIn("not the figure", source)
+        self.assertIn("prints no year", source)
         self.assertIn("not a price and not a trade", source)
         self.assertNotIn("field_save", source)
 
@@ -118,6 +119,12 @@ class M3ShipmentsTest(unittest.TestCase):
             page = response.read().decode("utf-8")
         self.assertIn("manufactured goods in September", page)
         self.assertEqual(_shipments_level(page), "$668.5 billion")
+        sentence = re.search(
+            r"Shipments, up eleven of the last twelve months, "
+            r"increased \$8\.8 billion or 1\.3 percent to \$668\.5 billion\.",
+            page,
+        )
+        self.assertIsNone(re.search(r"\d{4}", sentence.group(0)))
         self.assertEqual(m3_shipments.SERIES, "Shipments")
         self.assertEqual(m3_shipments.MONTH, "September")
         self.assertEqual(m3_shipments.VALUE, "$668.5 billion")
@@ -133,6 +140,33 @@ class M3ShipmentsTest(unittest.TestCase):
         self.assertEqual(stored["class_c_policy"], "closed")
         self.assertNotIn("price", stored)
         self.assertNotIn("trade", stored)
+        self.assertNotIn("year", stored)
+
+    def test_shipments_figure_is_not_a_price_and_reading_writes_no_trade(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            path = folder / "m3-shipments.json"
+            self._record(path)
+            before = path.read_text(encoding="utf-8")
+            names_before = sorted(item.name for item in folder.iterdir())
+            header = json.loads(before)
+            after = path.read_text(encoding="utf-8")
+            names_after = sorted(item.name for item in folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["m3-shipments.json"])
+        self.assertEqual(header["series"], "Shipments")
+        self.assertEqual(header["month"], "September")
+        self.assertEqual(header["value"], "$668.5 billion")
+        self.assertNotEqual(header["value"], "$8.8 billion")
+        self.assertNotIn("year", header)
+        self.assertFalse(header["permits_financial_use"])
+        self.assertNotIn("price", header)
+        self.assertNotIn("trade", header)
+        self.assertNotIn("price", after)
+        self.assertNotIn("trade", after)
+        self.assertNotIn("8.8", after)
+        self.assertNotIn("2026", after)
 
 
 if __name__ == "__main__":
