@@ -1,17 +1,12 @@
-"""Hong Kong local production and fresh-food header.
+"""Hong Kong vegetable land figure.
 
-One official estimate from the pages that were already opened. The
-stored record is the printed header. Soybean is not in the opened crop
-list. It is not a farm yield and not a trade. It does not store a
-farmed-area figure or a throughput number. This module is not called
-from a field save.
-
-Refetched on 17 Nov 2026, the stored citation prints land areas, dollar
-values, a daily production line with no year, and consumption shares.
-It does not print one local quantity for vegetables, flowers, fruit,
-pigs, poultry, fish, eggs, or cattle with a year. No quantity is
-stored. Hong Kong is not a farm. It is not a completed harvest and not
-a trade.
+The stored citation prints: "By the end of 2025, the land used for
+vegetable, flower, field crop, and orchard are 342 ha, 116 ha, 4 ha,
+and 250 ha respectively." The stored record is only the vegetable
+figure: 342 ha at the end of 2025. The other land figures in that
+sentence are not stored. Dollar values and the daily production line
+are not stored. Hong Kong is not a farm. It is not a yield and not a
+trade. This module is not called from a field save.
 """
 
 from __future__ import annotations
@@ -24,11 +19,10 @@ PUBLISHER = (
     "and the Census and Statistics Department"
 )
 PRODUCT = "local agricultural production and fresh-food consumption"
-PERIOD = "2025; the wholesale consumption table includes 2023–2025"
-UNIT = (
-    "not printed as one unit; the opened pages name vegetables, flowers, "
-    "fruit, pigs, poultry, fish, eggs, and cattle"
-)
+SERIES = "land used for vegetable"
+PERIOD = "the end of 2025"
+VALUE = "342 ha"
+UNIT = "ha"
 ADMINISTRATIVE_AREA = "Hong Kong, the territory and named wholesale markets"
 CITATION_URL = "https://www.afcd.gov.hk/english/agriculture/agr_hk/agr_hk.html"
 KIND = "estimate"
@@ -41,19 +35,35 @@ FORBIDDEN_LABELS = frozenset({
 })
 
 
-def record_afcd_header(directory, *, citation_url=None, label=None) -> dict:
+def record_afcd_header(
+    directory,
+    *,
+    citation_url=None,
+    label=None,
+    series=None,
+    period=None,
+    value=None,
+) -> dict:
     if citation_url is None or str(citation_url).strip() == "":
         raise ValueError("citation_url is required")
+    if str(citation_url).strip() != CITATION_URL:
+        raise ValueError("citation_url is the stored agriculture page")
     if label is not None and str(label).strip().lower() in FORBIDDEN_LABELS:
         raise ValueError(
             "a Hong Kong food-supply figure is not a settlement, a yield, "
             "a trade, a soybean crop, or a completed harvest"
         )
+    if any(item is not None for item in (series, period, value)):
+        raise ValueError("only the printed vegetable land figure is stored")
+    if ADMINISTRATIVE_AREA.strip().lower() == "farm":
+        raise ValueError("Hong Kong is not a farm")
     citation = str(citation_url).strip()
     header = {
         "publisher": PUBLISHER,
         "product": PRODUCT,
+        "series": SERIES,
         "period": PERIOD,
+        "value": VALUE,
         "unit": UNIT,
         "administrative_area": ADMINISTRATIVE_AREA,
         "citation_url": citation,
