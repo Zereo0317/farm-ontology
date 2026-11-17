@@ -5,6 +5,13 @@ stored record is the printed header. Soybean is not in the opened crop
 list. It is not a farm yield and not a trade. It does not store a
 farmed-area figure or a throughput number. This module is not called
 from a field save.
+
+Refetched on 17 Nov 2026, the stored citation prints land areas, dollar
+values, a daily production line with no year, and consumption shares.
+It does not print one local quantity for vegetables, flowers, fruit,
+pigs, poultry, fish, eggs, or cattle with a year. No quantity is
+stored. Hong Kong is not a farm. It is not a completed harvest and not
+a trade.
 """
 
 from __future__ import annotations
@@ -61,3 +68,23 @@ def record_afcd_header(directory, *, citation_url=None, label=None) -> dict:
         encoding="utf-8",
     )
     return {"file": path.name, "header": header}
+
+
+def read_stored_record(path) -> dict:
+    """Read the stored header. Reading writes no file and no trade."""
+
+    source = Path(path)
+    folder = source.parent
+    before = sorted(item.name for item in folder.iterdir())
+    record = json.loads(source.read_text(encoding="utf-8"))
+    after = sorted(item.name for item in folder.iterdir())
+    if after != before:
+        raise ValueError("reading the stored record writes no trade")
+    if record.get("permits_financial_use") is not False:
+        raise ValueError("permits_financial_use stays false")
+    if "trade" in record:
+        raise ValueError("a Hong Kong record is not a trade")
+    for value in record.values():
+        if "trade" in str(value).lower():
+            raise ValueError("a Hong Kong record is not a trade")
+    return record

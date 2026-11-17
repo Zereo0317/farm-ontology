@@ -5,7 +5,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from farm_ontology.hong_kong_afcd import CITATION_URL, record_afcd_header
+from farm_ontology.hong_kong_afcd import (
+    CITATION_URL,
+    read_stored_record,
+    record_afcd_header,
+)
+from farm_ontology.policy import CLASS_C_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = CITATION_URL
@@ -91,6 +96,23 @@ class HongKongAfcdTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 record_afcd_header(self.folder, citation_url=URL, label=label)
         self.assertEqual(list(self.folder.iterdir()), [])
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_afcd_header(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        record = read_stored_record(path)
+        names_after = sorted(item.name for item in self.folder.iterdir())
+        text = path.read_text(encoding="utf-8")
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["local-agricultural-production.json"])
+        self.assertFalse(record["permits_financial_use"])
+        self.assertNotIn("trade", record)
+        self.assertNotIn("trade", text)
+        self.assertNotIn("value", record)
+        self.assertNotIn("series", record)
+        self.assertNotEqual(record["administrative_area"].strip().lower(), "farm")
+        self.assertEqual(CLASS_C_POLICY, "closed")
 
     def test_field_save_does_not_ingest_the_afcd_estimate(self):
         for name in ("record.py", "page_io.py", "mcp_stdio.py"):
