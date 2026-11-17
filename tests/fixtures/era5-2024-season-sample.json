@@ -1,0 +1,62 @@
+{
+  "returned": [
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240609",
+      "temperature_2m": 288.9521077473958,
+      "total_precipitation_sum": 0.014481455087661743,
+      "scale": 11131.949079327358
+    },
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240625",
+      "temperature_2m": 288.5377833048503,
+      "total_precipitation_sum": 0.0023400604724770346,
+      "scale": 11131.949079327358
+    },
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240711",
+      "temperature_2m": 292.8079662322998,
+      "total_precipitation_sum": 0.0015412449835707775,
+      "scale": 11131.949079327358
+    },
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240727",
+      "temperature_2m": 292.32324409484863,
+      "total_precipitation_sum": 0.02605074644088745,
+      "scale": 11131.949079327358
+    },
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240812",
+      "temperature_2m": 297.82244364420575,
+      "total_precipitation_sum": 0.00029669106006124935,
+      "scale": 11131.949079327358
+    },
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240828",
+      "temperature_2m": 294.45959726969403,
+      "total_precipitation_sum": 0.00046935081481436214,
+      "scale": 11131.949079327358
+    },
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240913",
+      "temperature_2m": 289.6643708546956,
+      "total_precipitation_sum": 0.0013131201266673997,
+      "scale": 11131.949079327358
+    },
+    {
+      "image_id": "ECMWF/ERA5_LAND/DAILY_AGGR/20240929",
+      "temperature_2m": 287.72180493672687,
+      "total_precipitation_sum": 4.199445237418331e-05,
+      "scale": 11131.949079327358
+    }
+  ],
+  "requested": [
+    "2024-06-09",
+    "2024-06-25",
+    "2024-07-11",
+    "2024-07-27",
+    "2024-08-12",
+    "2024-08-28",
+    "2024-09-13",
+    "2024-09-29"
+  ]
+}
