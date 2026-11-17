@@ -59,10 +59,26 @@ def _key_present(name: str) -> bool:
     return bool(os.environ.get(name))
 
 
+def _read_capped(response, cap: int) -> bytes:
+    """Stream the whole body, raising IOError past the cap instead of truncating."""
+    chunks = []
+    total = 0
+    while True:
+        chunk = response.read(65536)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > cap:
+            raise IOError(f"response body exceeded {cap} bytes")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _get_json(url: str, *, headers: dict | None = None, timeout: int = 20):
     request = urllib.request.Request(url, headers=headers or {})
+    cap = int(os.environ.get("SERVICE_MAX_BYTES", "2097152"))
     with urllib.request.urlopen(request, timeout=timeout) as response:
-        body = response.read(int(os.environ.get("SERVICE_MAX_BYTES", "262144")))
+        body = _read_capped(response, cap)
         ctype = response.headers.get("content-type", "")
         return response.status, ctype, body
 
@@ -119,11 +135,15 @@ def _planet_post(url: str, body: bytes, key: str, timeout: int = 30):
         )
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
-                return response.status, json.loads(response.read(262144)), name
+                cap = int(os.environ.get("SERVICE_MAX_BYTES", "2097152"))
+                raw = _read_capped(response, cap)
+                return response.status, json.loads(raw.decode("utf-8")), name
         except urllib.error.HTTPError as error:
             last_status, last_body = error.code, error.read(2048).decode("utf-8", "replace")
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             last_status, last_body = 0, str(error)[:200]
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise PlanetAuthError(0, f"unreadable body: {str(error)[:160]}")
     raise PlanetAuthError(last_status or 0, last_body or "")
 
 
@@ -329,7 +349,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API)
-        status, payload, kind = handle_target(self.path)
+        try:
+            status, payload, kind = handle_target(self.path)
+        except Exception as error:  # a gap is reported; the connection survives
+            status, payload, kind = 200, {"gap": f"handler error: {str(error)[:200]}"}, "json"
         self._respond(status, payload, kind)
 
     def log_message(self, fmt: str, *args) -> None:  # logs stay quiet but real
