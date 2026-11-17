@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -5,7 +6,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from farm_ontology.geoglam_crop_monitor import CITATION_URL, record_crop_monitor_header
+from farm_ontology.geoglam_crop_monitor import (
+    CITATION_URL,
+    record_crop_monitor_header,
+    record_printed_class,
+)
+from farm_ontology.policy import CLASS_C_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = CITATION_URL
@@ -80,6 +86,51 @@ class GeoglamCropMonitorTests(unittest.TestCase):
         for label in labels:
             with self.assertRaises(ValueError):
                 record_crop_monitor_header(self.folder, citation_url=URL, label=label)
+        self.assertEqual(list(self.folder.iterdir()), [])
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_printed_class(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        before = path.read_text(encoding="utf-8")
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        record = json.loads(before)
+        after = path.read_text(encoding="utf-8")
+        names_after = sorted(item.name for item in self.folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["china-rice-condition.json"])
+        self.assertEqual(record["crop"], "rice")
+        self.assertEqual(record["place"], "China")
+        self.assertEqual(record["month"], "October 28th, 2026")
+        self.assertEqual(record["condition_class"], "favourable")
+        self.assertEqual(record["citation_url"], URL)
+        self.assertFalse(record["permits_financial_use"])
+        self.assertEqual(record["class_c_policy"], "closed")
+        self.assertEqual(record["class_c_policy"], CLASS_C_POLICY)
+        self.assertNotIn("trade", record)
+        self.assertNotIn("yield", record)
+        self.assertNotIn("tonne", record)
+        for word in ("trade", "yield", "tonne", "percent", "%"):
+            self.assertNotIn(word, after)
+
+    def test_class_without_the_citation_or_as_a_trade_writes_nothing(self):
+        for citation in (
+            None,
+            "",
+            "   ",
+            "https://www.cropmonitor.org/s/AMIS_CropMonitor_202611-d7hb.pdf",
+        ):
+            with self.assertRaises(ValueError):
+                record_printed_class(self.folder, citation_url=citation)
+        for label in ("yield", "tonne", "tonnes", "trade", "YIELD", "Trade"):
+            with self.assertRaises(ValueError):
+                record_printed_class(self.folder, citation_url=URL, label=label)
+        with self.assertRaises(ValueError):
+            record_printed_class(self.folder, citation_url=URL, condition_class="poor")
+        with self.assertRaises(ValueError):
+            record_printed_class(self.folder, citation_url=URL, permits_financial_use=True)
+        with self.assertRaises(ValueError):
+            record_printed_class(self.folder, citation_url=URL, class_c_policy="open")
         self.assertEqual(list(self.folder.iterdir()), [])
 
     def test_field_save_does_not_ingest_the_crop_monitor(self):
