@@ -287,6 +287,45 @@ def _memo_text() -> str:
     return "\n".join(lines)
 
 
+def _licences_snapshot() -> dict:
+    """Expose the grants engine verdicts for the headline feeds (fail-closed view)."""
+    from datetime import datetime, timezone as _tz
+
+    try:
+        from farm_ontology.licences.grants import evaluate
+
+        FEEDS = (
+            "earth-engine.export",
+            "jma.hazard",
+            "open-meteo.jma-msm",
+            "planet.planetary-variable.soil-water-content",
+            "planet.psscene",
+            "usdm.hazard",
+        )
+        at = datetime.now(_tz.utc)
+        feeds = {}
+        for feed in FEEDS:
+            financial_allowed, _grant, fin_reason = evaluate(feed, "settlement", at)
+            screening_allowed, _grant2, scr_reason = evaluate(feed, "screening", at)
+            feeds[feed] = {
+                "settlement_allowed": bool(financial_allowed),
+                "settlement_reason": fin_reason,
+                "screening_allowed": bool(screening_allowed),
+                "screening_reason": scr_reason,
+            }
+        return {
+            "grant_registry": "grants/ (specimens never unlock; fail closed)",
+            "evaluated_at": _now(),
+            "feeds": feeds,
+            "note": (
+                "Specimen certificates exist but never unlock a feed. "
+                "Commercial punch-list: docs/legal/commercial-punchlist.md"
+            ),
+        }
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return {"gap": f"grants state unreadable: {str(error)[:160]}"}
+
+
 STATUS_JSON = {
     "service": "farm-ontology-decision-record",
     "version": os.environ.get("SERVICE_VERSION", "git-unknown"),
@@ -305,6 +344,7 @@ STATUS_JSON = {
         "/farm/planet",
         "/farm/ee",
         "/farm/memo",
+        "/farm/licences",
     ],
 }
 
@@ -327,6 +367,8 @@ def handle_target(path: str) -> tuple[int, dict | str, str]:
         return 200, _planet_search(lat, lon), "json"
     if path == "/farm/ee":
         return 200, _ee_catalog(), "json"
+    if path == "/farm/licences":
+        return 200, _licences_snapshot(), "json"
     if path == "/farm/memo":
         return 200, _memo_text(), "text"
     return 404, {"error": f"no route {path}"}, "json"

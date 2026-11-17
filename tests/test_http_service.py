@@ -114,6 +114,31 @@ class HttpServiceRoutingTests(unittest.TestCase):
         self.assertEqual(result["catalog_http_status"], 200)
         self.assertTrue(result["used_runtime_identity"])
 
+    def test_licences_snapshot_is_fail_closed_now(self):
+        result = hs._licences_snapshot()
+        self.assertNotIn("gap", result)
+        self.assertTrue(result["feeds"])
+        self.assertEqual(set(result["feeds"]), {
+            "earth-engine.export",
+            "jma.hazard",
+            "open-meteo.jma-msm",
+            "planet.planetary-variable.soil-water-content",
+            "planet.psscene",
+            "usdm.hazard",
+        })
+        for feed, verdict in result["feeds"].items():
+            self.assertFalse(verdict["settlement_allowed"], feed)
+            self.assertTrue(verdict["settlement_reason"], feed)
+            self.assertIsInstance(verdict["screening_allowed"], bool)
+            self.assertTrue(verdict["screening_reason"], feed)
+        self.assertIn("specimen", result["note"])
+
+    def test_licences_route_registered(self):
+        status, payload, kind = handle_target("/farm/licences")
+        self.assertEqual(status, 200)
+        self.assertEqual(kind, "json")
+        self.assertIn("feeds", payload)
+
     def test_metadata_token_off_platform_is_none(self):
         with mock.patch.object(
             hs.urllib.request, "urlopen", side_effect=OSError("no metadata")
