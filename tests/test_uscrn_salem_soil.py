@@ -130,7 +130,73 @@ class UscrnSalemSoilTest(unittest.TestCase):
         self.assertIn("m^3/m^3", source)
         self.assertIn("NASS condition classes are not converted", source)
         self.assertIn("No SMAP pixel", source)
+        self.assertIn("printed missing sentinel", source)
+        self.assertIn("not a moisture value", source)
+        self.assertIn("not converted into a volumetric number", source)
+        self.assertIn("does not add a station", source)
         self.assertNotIn("field_save", source)
+
+    def test_stores_the_printed_missing_sentinel(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "salem-missing.json"
+            uscrn_salem_soil.record_uscrn_salem_missing_sentinel(
+                path,
+                uscrn_salem_soil.SALEM_DAILY_URL,
+            )
+            header = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            header,
+            {
+                "lst_date": "20261116",
+                "series": "SOIL_MOISTURE_5_DAILY",
+                "missing_sentinel": "-99.000",
+                "citation_url": uscrn_salem_soil.SALEM_DAILY_URL,
+                "permits_financial_use": False,
+                "class_c_policy": "closed",
+            },
+        )
+        self.assertIsInstance(header["missing_sentinel"], str)
+        self.assertEqual(header["class_c_policy"], CLASS_C_POLICY)
+        self.assertNotIn("station", header)
+        self.assertNotIn("value", header)
+        self.assertNotIn("unit", header)
+        text = json.dumps(header)
+        self.assertNotIn("23909", text)
+        self.assertNotIn("m^3/m^3", text)
+        self.assertNotIn("m3/m3", text)
+
+    def test_sentinel_rejects_a_station_or_a_volumetric_number(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "salem-missing.json"
+            with self.assertRaises(ValueError):
+                uscrn_salem_soil.record_uscrn_salem_missing_sentinel(path, None)
+            with self.assertRaises(ValueError):
+                uscrn_salem_soil.record_uscrn_salem_missing_sentinel(
+                    path,
+                    uscrn_salem_soil.SALEM_DAILY_URL,
+                    station="MO_Salem_10_W",
+                )
+            for value in (-99, -99.0, -99.000, "-99"):
+                with self.assertRaises(ValueError):
+                    uscrn_salem_soil.record_uscrn_salem_missing_sentinel(
+                        path,
+                        uscrn_salem_soil.SALEM_DAILY_URL,
+                        value=value,
+                    )
+            with self.assertRaises(ValueError):
+                uscrn_salem_soil.record_uscrn_salem_missing_sentinel(
+                    path,
+                    uscrn_salem_soil.SALEM_DAILY_URL,
+                    unit="m^3/m^3",
+                )
+            with self.assertRaises(ValueError):
+                uscrn_salem_soil.record_uscrn_salem_missing_sentinel(
+                    path,
+                    uscrn_salem_soil.SALEM_DAILY_URL,
+                    permits_financial_use=True,
+                )
+            self.assertFalse(path.exists())
 
     def test_live_refetch_prints_the_stored_cell(self) -> None:
         status, final_url, body = _open(uscrn_salem_soil.SALEM_DAILY_URL)
@@ -148,6 +214,12 @@ class UscrnSalemSoilTest(unittest.TestCase):
             latest = (line[6:14], cell)
         self.assertEqual(latest, (uscrn_salem_soil.LST_DATE, "  0.123"))
         self.assertEqual(uscrn_salem_soil.VALUE, 0.123)
+        sentinel_line = next(
+            line
+            for line in text.splitlines()
+            if len(line) >= 144 and line[6:14] == "20261116"
+        )
+        self.assertEqual(sentinel_line[137:144], "-99.000")
         readme_status, readme_url, readme_body = _open(uscrn_salem_soil.README_URL)
         self.assertEqual(readme_status, 200)
         self.assertEqual(readme_url, uscrn_salem_soil.README_URL)
