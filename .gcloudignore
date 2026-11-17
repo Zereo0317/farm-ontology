@@ -20,5 +20,4 @@ ontology/
 specs/
 steps/
 vocabulary-manifest.json
-Dockerfile
 .gcloudignore
