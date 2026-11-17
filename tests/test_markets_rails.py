@@ -311,3 +311,63 @@ class StructuralGuardsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---- Lead integration seam tests (2026-11-18) ----
+
+class Ws6GrantSeamTests(unittest.TestCase):
+    """The Lead-added bridge: a real WS6 Grant through grant_ref_from_ws6_grant."""
+
+    def _ws6(self, *, expiry, specimen=False):
+        from farm_ontology.licences.grants import Grant
+
+        return Grant(
+            grant_id="GR-TEST-001",
+            issuer="Planet Labs PBC",
+            grantee_seat="zereo0317@gmail.com",
+            feeds=("planet.psscene",),
+            uses=("screening", "settlement"),
+            territory="JP",
+            purpose="testing",
+            expiry_utc=expiry,
+            evidence_url="https://example.com/quote.pdf",
+            specimen=specimen,
+        )
+
+    def test_specimen_grant_is_closed_with_no_ref(self):
+        from datetime import datetime, timezone
+
+        from farm_ontology.markets.rails import grant_ref_from_ws6_grant
+
+        state, ref = grant_ref_from_ws6_grant(
+            self._ws6(expiry="2099-01-01T00:00:00+00:00", specimen=True),
+            at=datetime(2026, 11, 18, tzinfo=timezone.utc),
+        )
+        self.assertEqual(state, "closed")
+        self.assertIsNone(ref)
+
+    def test_live_non_specimen_grant_adapts_with_financial_true(self):
+        from datetime import datetime, timezone
+
+        from farm_ontology.markets.rails import GRANT_VALID, grant_ref_from_ws6_grant
+
+        grant = self._ws6(expiry="2099-01-01T00:00:00+00:00")
+        state, ref = grant_ref_from_ws6_grant(grant, at=datetime(2026, 11, 18, tzinfo=timezone.utc))
+        self.assertEqual(state, GRANT_VALID)
+        self.assertIsNotNone(ref)
+        self.assertTrue(ref.permits_financial_use)
+        self.assertTrue(ref.permits_market_data_use)
+        self.assertIn("planet.psscene", ref.scope)
+        self.assertEqual(ref.expiry, "2099-01-01T00:00:00+00:00")
+
+    def test_expired_grant_reads_expired(self):
+        from datetime import datetime, timezone
+
+        from farm_ontology.markets.rails import grant_ref_from_ws6_grant
+
+        state, ref = grant_ref_from_ws6_grant(
+            self._ws6(expiry="2020-01-01T00:00:00+00:00"),
+            at=datetime(2026, 11, 18, tzinfo=timezone.utc),
+        )
+        self.assertEqual(state, "expired")
+        self.assertIsNone(ref)

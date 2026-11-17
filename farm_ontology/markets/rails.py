@@ -258,6 +258,52 @@ def grant_ref_from_v2_like(**fields) -> GrantRef:
     return GrantRef(**known)
 
 
+def grant_ref_from_ws6_grant(grant, *, at=None) -> tuple[str, GrantRef | None]:
+    """Adapt a real WS6 licences ``Grant`` (task-6 engine) to a ``GrantRef``.
+
+    Lead-integration seam (2026-11-18): task-7 shipped against the
+    anticipated roster; task-6's actual dataclass differs (``grant_id``,
+    ``grantee_seat``, ``feeds``/``uses`` tuples, ``expiry_utc``). The
+    translation, judged at ``at`` (default: now):
+
+    - a SPECIMEN grant is never live ⇒ ``GRANT_CLOSED`` with the specimen
+      reason and no ref — specimen paper must never unlock a rail;
+    - an expired grant ⇒ ``GRANT_EXPIRED`` and no ref;
+    - a live grant ⇒ ``GRANT_VALID`` plus the adapted ref, with
+      ``permits_financial_use`` true iff the grant carries any financial
+      use (the class-C family) and ``permits_market_data_use`` mirroring it.
+
+    Returns ``(state, ref_or_None)``; never raises for judged states —
+    a malformed WS6 grant object is ``GRANT_UNPARSEABLE``.
+    """
+    specimen = bool(getattr(grant, "specimen", False))
+    if specimen:
+        return GRANT_CLOSED, None
+    try:
+        live = grant.is_live_at(at if at is not None else datetime.now(timezone.utc))
+    except (TypeError, ValueError) as error:
+        return GRANT_UNPARSEABLE, f"ws6 grant is_live_at failed: {error}"
+    if not live:
+        return GRANT_EXPIRED, None
+    financial = bool(getattr(grant, "financial_uses", ()) or ())
+    ref = GrantRef(
+        name=str(getattr(grant, "grant_id", "")),
+        issuer=str(getattr(grant, "issuer", "")),
+        seat=str(getattr(grant, "grantee_seat", "")),
+        scope=(
+            "feeds=" + ",".join(getattr(grant, "feeds", ()) or ())
+            + "; uses=" + ",".join(getattr(grant, "uses", ()) or ())
+        ),
+        territory=str(getattr(grant, "territory", "")),
+        purpose=str(getattr(grant, "purpose", "")),
+        expiry=str(getattr(grant, "expiry_utc", "")),
+        evidence_url=str(getattr(grant, "evidence_url", "")),
+        permits_financial_use=financial,
+        permits_market_data_use=financial,
+    )
+    return GRANT_VALID, ref
+
+
 # ----------------------- doctrine section 4 rails ---------------------- #
 
 
