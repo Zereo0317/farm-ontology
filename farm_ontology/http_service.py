@@ -101,6 +101,39 @@ def _open_meteo_current(lat: float, lon: float) -> dict:
     }
 
 
+def _planet_post(url: str, body: bytes, key: str, timeout: int = 30):
+    """POST with the two schemes Planet documents; returns (status, parsed, scheme)."""
+    import base64
+
+    schemes = (
+        ("Basic", "Basic " + base64.b64encode(f"{key}:".encode()).decode()),
+        ("api-key", f"api-key {key}"),
+    )
+    last_status, last_body = None, None
+    for name, header in schemes:
+        request = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Authorization": header, "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return response.status, json.loads(response.read(262144)), name
+        except urllib.error.HTTPError as error:
+            last_status, last_body = error.code, error.read(2048).decode("utf-8", "replace")
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            last_status, last_body = 0, str(error)[:200]
+    raise PlanetAuthError(last_status or 0, last_body or "")
+
+
+class PlanetAuthError(Exception):
+    def __init__(self, status: int, body: str):
+        super().__init__(f"Planet HTTP {status}: {body[:200]}")
+        self.status = status
+        self.body = body
+
+
 def _planet_search(lat: float, lon: float) -> dict:
     radius_m = float(os.environ.get("PLANET_RADIUS_M", "2000"))
     body = json.dumps(
@@ -129,61 +162,81 @@ def _planet_search(lat: float, lon: float) -> dict:
     key = os.environ.get("PLANET_API_KEY", "")
     if not key:
         return {"gap": "PLANET_API_KEY not mounted; refusing to report search headers"}
-    request = urllib.request.Request(
-        "https://api.planet.com/data/v1/quick-search",
-        data=body,
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            doc = json.loads(response.read(262144))
-            features = doc.get("features") or []
-            headers_rows = []
-            for feature in features[:10]:
-                props = feature.get("properties") or {}
-                headers_rows.append(
-                    {
-                        "id": feature.get("id"),
-                        "acquired": props.get("acquired"),
-                        "cloud_cover": props.get("cloud_cover"),
-                        "instrument": props.get("instrument"),
-                        "publishing_stage": props.get("publishing_stage"),
-                        "quality_category": props.get("quality_category"),
-                        "strip_id": props.get("strip_id"),
-                    }
-                )
-            return {
-                "api": "Planet Data API quick-search (headers only; no pixels downloaded)",
-                "matched": doc.get("_links", {}) and len(features),
-                "search_center": {"latitude": lat, "longitude": lon},
-                "radius_note": f"Point geometry within ~{radius_m:.0f} m scene coverage",
-                "scenes": headers_rows,
-                "retrieved_at": _now(),
-                "licence_note": (
-                    "Planet subscription imagery: quote only scene headers here. "
-                    "Pixels stay unexported until a licence grant is attached; "
-                    "permits_financial_use stays false."
-                ),
-                "use_class": USE_CLASS,
-                "permits_financial_use": False,
+        status, doc, scheme = _planet_post(
+            "https://api.planet.com/data/v1/quick-search", body, key
+        )
+    except PlanetAuthError as error:
+        return {
+            "gap": (
+                "Planet rejected the mounted key "
+                f"(HTTP {error.status}): {error.body[:160]}"
+            ),
+            "hint": (
+                "Regenerate the key at planet.com/account (My Settings) and update "
+                "secret manager entry Planet-labs; the service needs no redeploy."
+            ),
+            "auth_scheme_tried": ["Basic", "api-key"],
+        }
+    features = doc.get("features") or []
+    headers_rows = []
+    for feature in features[:10]:
+        props = feature.get("properties") or {}
+        headers_rows.append(
+            {
+                "id": feature.get("id"),
+                "acquired": props.get("acquired"),
+                "cloud_cover": props.get("cloud_cover"),
+                "instrument": props.get("instrument"),
+                "publishing_stage": props.get("publishing_stage"),
+                "quality_category": props.get("quality_category"),
+                "strip_id": props.get("strip_id"),
             }
-    except urllib.error.HTTPError as error:
-        return {"gap": f"Planet search HTTP {error.code}", "detail": str(error.reason)[:120]}
-    except (urllib.error.URLError, TimeoutError, OSError) as error:
-        return {"gap": f"Planet search unreachable: {str(error)[:120]}"}
+        )
+    return {
+        "api": "Planet Data API quick-search (headers only; no pixels downloaded)",
+        "matched": len(features),
+        "search_center": {"latitude": lat, "longitude": lon},
+        "radius_note": f"Point geometry within ~{radius_m:.0f} m scene coverage",
+        "auth_scheme": scheme,
+        "scenes": headers_rows,
+        "retrieved_at": _now(),
+        "licence_note": (
+            "Planet subscription imagery: quote only scene headers here. "
+            "Pixels stay unexported until a licence grant is attached; "
+            "permits_financial_use stays false."
+        ),
+        "use_class": USE_CLASS,
+        "permits_financial_use": False,
+    }
+
+
+def _metadata_token() -> str | None:
+    """Access token from the Cloud Run metadata server, or None off-platform."""
+    try:
+        request = urllib.request.Request(
+            "http://metadata.google.internal/computeMetadata/v1/"
+            "instance/service-accounts/default/token",
+            headers={"Metadata-Flavor": "Google"},
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            doc = json.loads(response.read(65536))
+            token = doc.get("access_token")
+            return str(token) if token else None
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError, ValueError):
+        return None
 
 
 def _ee_catalog() -> dict:
     url = f"https://earthengine.googleapis.com/v1/projects/{GCP_PROJECT}/algorithms"
+    token = _metadata_token()
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
     try:
-        status, ctype, _body = _get_json(url)
+        status, ctype, _body = _get_json(url, headers=headers, timeout=20)
         return {
             "project": GCP_PROJECT,
             "catalog_http_status": status,
+            "used_runtime_identity": bool(token),
             "registration_type": "unknown",
             "permits_financial_use": False,
             "cap_note": (

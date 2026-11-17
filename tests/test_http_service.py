@@ -62,24 +62,42 @@ class HttpServiceRoutingTests(unittest.TestCase):
         self.assertIn("PLANET_API_KEY", result["gap"])
 
     def test_planet_success_lists_header_rows_only(self):
-        scene_props = {
-            "acquired": "2026-11-16T01:23:45.000Z",
-            "cloud_cover": 0.12,
-            "instrument": "PSB.SD",
-            "publishing_stage": "finalized",
-            "quality_category": "standard",
-            "strip_id": "123456",
+        doc = {
+            "features": [
+                {
+                    "id": "20261116_012345_88",
+                    "properties": {
+                        "acquired": "2026-11-16T01:23:45.000Z",
+                        "cloud_cover": 0.12,
+                        "instrument": "PSB.SD",
+                        "publishing_stage": "finalized",
+                        "quality_category": "standard",
+                        "strip_id": "123456",
+                    },
+                }
+            ]
         }
-        payload = {"features": [{"id": "20261116_012345_88", "properties": scene_props}]}
-        fake_response = mock.MagicMock()
-        fake_response.read.return_value = json.dumps(payload).encode("utf-8")
-        fake_response.__enter__.return_value = fake_response
         with mock.patch.dict(hs.os.environ, {"PLANET_API_KEY": "test-key"}, clear=False):
-            with mock.patch.object(hs.urllib.request, "urlopen", return_value=fake_response):
+            with mock.patch.object(
+                hs, "_planet_post", return_value=(200, doc, "Basic")
+            ) as poster:
                 result = hs._planet_search(42.7, 142.4)
         self.assertNotIn("gap", result)
         self.assertEqual(result["scenes"][0]["id"], "20261116_012345_88")
+        self.assertEqual(result["auth_scheme"], "Basic")
         self.assertFalse(result["permits_financial_use"])
+        poster.assert_called_once()
+
+    def test_planet_auth_failure_reports_hint(self):
+        with mock.patch.dict(hs.os.environ, {"PLANET_API_KEY": "bad-key"}, clear=False):
+            with mock.patch.object(
+                hs,
+                "_planet_post",
+                side_effect=hs.PlanetAuthError(401, '{"message":"api_key not found"}'),
+            ):
+                result = hs._planet_search(42.7, 142.4)
+        self.assertIn("gap", result)
+        self.assertIn("planet.com/account", result["hint"])
 
     def test_memo_states_the_rules(self):
         _status, text, kind = handle_target("/farm/memo")
@@ -87,6 +105,20 @@ class HttpServiceRoutingTests(unittest.TestCase):
         self.assertIn("permits_financial_use: false", text)
         self.assertIn("no hectare extrapolation", text)
         self.assertIn("refused", text)
+
+    def test_ee_catalog_uses_runtime_identity_when_available(self):
+        with mock.patch.object(hs, "_metadata_token", return_value="tok-xyz"), mock.patch.object(
+            hs, "_get_json", return_value=(200, "application/json", b"{}")
+        ):
+            result = hs._ee_catalog()
+        self.assertEqual(result["catalog_http_status"], 200)
+        self.assertTrue(result["used_runtime_identity"])
+
+    def test_metadata_token_off_platform_is_none(self):
+        with mock.patch.object(
+            hs.urllib.request, "urlopen", side_effect=OSError("no metadata")
+        ):
+            self.assertIsNone(hs._metadata_token())
 
 
 if __name__ == "__main__":
