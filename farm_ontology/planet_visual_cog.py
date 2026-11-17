@@ -13,8 +13,13 @@ The stored ETag is the ETag header.
 The stored Last-Modified is the Last-Modified header.
 Last-Modified is the object header, not a period and not a scene datetime.
 The stored printed text is bytes 8 through 190 of the response body.
-The tiff datetime is not stored.
-The coordinate string in the same bytes is not stored.
+The stored tiff datetime is 2026:11:05 16:24:10.
+That string is the printed tiff datetime.
+2026-11-05T16:24:10 is not the printed tiff datetime.
+The stored crs name is WGS 84 / UTM zone 15S.
+That string is the printed name.
+A latitude, a longitude, an easting, and a northing are not stored.
+A coordinate is not invented.
 A pixel is not stored.
 Content-Length is not stored.
 Content-Range is not stored.
@@ -61,6 +66,8 @@ PRINTED = (
     "BLOCK_TRAILER=LAST_4_BYTES_REPEATED\n"
     "KNOWN_INCOMPATIBLE_EDITION=NO\n "
 )
+TIFF_DATETIME = "2026:11:05 16:24:10"
+CRS_NAME = "WGS 84 / UTM zone 15S"
 RANGE = "bytes=0-4095"
 FORBIDDEN_LABELS = frozenset({
     "yield",
@@ -119,6 +126,8 @@ def fetch_visual_cog(citation_url: str):
         raise ValueError("the visual cog response was not stored")
     if len(body) != 4096 or body[:4] != b"II*\x00" or body[8:191] != printed:
         raise ValueError("the visual cog response was not stored")
+    if TIFF_DATETIME.encode("ascii") not in body or CRS_NAME.encode("ascii") not in body:
+        raise ValueError("the visual cog response was not stored")
     return body
 
 
@@ -132,6 +141,10 @@ def record_visual_cog(
     column=None,
     row=None,
     band_values=None,
+    latitude=None,
+    longitude=None,
+    easting=None,
+    northing=None,
 ) -> dict:
     if citation_url is None or str(citation_url).strip() == "":
         raise ValueError("citation_url is required")
@@ -143,6 +156,13 @@ def record_visual_cog(
         raise ValueError("class C stays closed")
     if column is not None or row is not None or band_values is not None:
         raise ValueError("a pixel is not stored")
+    if (
+        latitude is not None
+        or longitude is not None
+        or easting is not None
+        or northing is not None
+    ):
+        raise ValueError("a coordinate is not invented")
     citation = str(citation_url).strip()
     if citation != PLANET_VISUAL_COG_URL:
         raise ValueError("citation_url is not the visual cog")
@@ -156,6 +176,8 @@ def record_visual_cog(
             "Last-Modified": LAST_MODIFIED,
         },
         "printed": PRINTED,
+        "tiff_datetime": TIFF_DATETIME,
+        "crs_name": CRS_NAME,
         "permits_financial_use": False,
         "class_c_policy": "closed",
     }

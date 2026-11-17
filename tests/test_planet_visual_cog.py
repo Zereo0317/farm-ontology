@@ -2,8 +2,8 @@
 
 The citation is the visual cog already cited.
 The refetch reads that response and stores its status, three headers,
-and the printed bytes.
-It does not store a pixel, a yield, a price, or a trade.
+the printed bytes, the printed tiff datetime, and the printed crs name.
+It does not store a pixel, a coordinate, a yield, a price, or a trade.
 permits_financial_use stays false. Class C stays closed.
 """
 
@@ -17,8 +17,10 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.planet_visual_cog import (
+    CRS_NAME,
     PLANET_VISUAL_COG_URL,
     PRINTED,
+    TIFF_DATETIME,
     record_visual_cog,
 )
 from farm_ontology.policy import CLASS_C_POLICY
@@ -60,6 +62,10 @@ class PlanetVisualCogTests(unittest.TestCase):
         self.assertEqual(header["printed"], PRINTED)
         self.assertEqual(header["printed"][:8], "GDAL_STR")
         self.assertTrue(header["printed"].endswith("NO\n "))
+        self.assertEqual(header["tiff_datetime"], "2026:11:05 16:24:10")
+        self.assertEqual(header["tiff_datetime"], TIFF_DATETIME)
+        self.assertEqual(header["crs_name"], "WGS 84 / UTM zone 15S")
+        self.assertEqual(header["crs_name"], CRS_NAME)
         self.assertFalse(header["permits_financial_use"])
         self.assertEqual(header["class_c_policy"], "closed")
         self.assertEqual(header["class_c_policy"], CLASS_C_POLICY)
@@ -70,6 +76,8 @@ class PlanetVisualCogTests(unittest.TestCase):
                 "status",
                 "headers",
                 "printed",
+                "tiff_datetime",
+                "crs_name",
                 "permits_financial_use",
                 "class_c_policy",
             },
@@ -104,13 +112,15 @@ class PlanetVisualCogTests(unittest.TestCase):
             body = response.read()
         self.assertEqual(body[:4], b"II*\x00")
         self.assertEqual(body[8:191], PRINTED.encode("ascii"))
-        self.assertIn(b"2026:11:05 16:24:10", body)
-        self.assertIn(b"WGS 84 / UTM zone 15S", body)
+        self.assertIn(TIFF_DATETIME.encode("ascii"), body)
+        self.assertIn(CRS_NAME.encode("ascii"), body)
+        self.assertEqual(header["tiff_datetime"].encode("ascii"), TIFF_DATETIME.encode("ascii"))
+        self.assertIn(header["crs_name"].encode("ascii"), body)
         text = (self.folder / saved["file"]).read_text(encoding="utf-8")
-        self.assertNotIn("2026:11:05 16:24:10", text)
+        self.assertIn(TIFF_DATETIME, text)
+        self.assertIn(CRS_NAME, text)
+        self.assertIn(header["citation_url"], text)
         self.assertNotIn("2026-11-05T16:24:10", text)
-        self.assertNotIn("WGS 84", text)
-        self.assertNotIn("UTM", text)
         self.assertNotIn(str(content_range).split("/")[-1], text)
         for word in (
             "yield",
@@ -121,6 +131,10 @@ class PlanetVisualCogTests(unittest.TestCase):
             "row",
             "band_values",
             "pixel",
+            "latitude",
+            "longitude",
+            "easting",
+            "northing",
             "content_length",
             "Content-Length",
             "Content-Range",
@@ -132,8 +146,9 @@ class PlanetVisualCogTests(unittest.TestCase):
             encoding="utf-8"
         )
         flat = source.replace("\n", " ")
-        self.assertIn("The tiff datetime is not stored.", flat)
-        self.assertIn("The coordinate string in the same bytes is not stored.", flat)
+        self.assertIn("The stored tiff datetime is 2026:11:05 16:24:10.", flat)
+        self.assertIn("The stored crs name is WGS 84 / UTM zone 15S.", flat)
+        self.assertIn("A coordinate is not invented.", flat)
         self.assertIn("A pixel is not stored.", flat)
         self.assertIn("Content-Length is not stored.", flat)
         self.assertIn("Content-Range is not stored.", flat)
@@ -147,7 +162,9 @@ class PlanetVisualCogTests(unittest.TestCase):
         self.assertIn("It is not a price.", flat)
         self.assertIn("It is not a trade.", flat)
         self.assertNotIn(str(content_range).split("/")[-1], source)
-        self.assertNotIn("2026:11:05 16:24:10", source)
+        self.assertIn("2026:11:05 16:24:10", source)
+        self.assertIn("WGS 84 / UTM zone 15S", source)
+        self.assertIn("2026-11-05T16:24:10 is not the printed tiff datetime.", flat)
         self.assertEqual(len(list(self.folder.iterdir())), 1)
 
     def test_missing_citation_writes_nothing(self):
@@ -209,6 +226,20 @@ class PlanetVisualCogTests(unittest.TestCase):
                     column=1,
                     row=1,
                     band_values=[0],
+                )
+            with self.assertRaises(ValueError):
+                record_visual_cog(
+                    self.folder,
+                    citation_url=URL,
+                    latitude=0,
+                    longitude=0,
+                )
+            with self.assertRaises(ValueError):
+                record_visual_cog(
+                    self.folder,
+                    citation_url=URL,
+                    easting=1,
+                    northing=1,
                 )
         self.assertEqual(list(self.folder.iterdir()), [])
 
