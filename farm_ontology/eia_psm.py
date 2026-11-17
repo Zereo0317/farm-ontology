@@ -5,6 +5,10 @@ record is the printed header plus EIA's statement on its own
 publications. That statement is not permission to trade. The latest
 months stay preliminary. This report is not a forecast, a settlement,
 a completed supply, or a world balance. It does not store a quantity.
+The same page was refetched on 17 November 2026. It prints "With Data
+for August 2026" and table titles for supply, stocks, production,
+imports, and exports. It prints no quantity with a month, so no figure
+is written. Reading the stored record writes no trade.
 This module is not called from a field save.
 """
 
@@ -79,3 +83,14 @@ def record_series_header(directory, *, citation_url=None, label=None) -> dict:
         encoding="utf-8",
     )
     return {"file": path.name, "header": header}
+
+
+def read_stored_record(directory) -> dict:
+    """Read the stored header. Reading writes no file and no trade."""
+    path = Path(directory) / "petroleum-supply-monthly.json"
+    header = json.loads(path.read_text(encoding="utf-8"))
+    if header.get("permits_financial_use") is not False:
+        raise ValueError("permits_financial_use stays false")
+    if "trade" in header:
+        raise ValueError("a Petroleum Supply Monthly figure is not a trade")
+    return header
