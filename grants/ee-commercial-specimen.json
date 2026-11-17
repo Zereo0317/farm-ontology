@@ -1,0 +1,20 @@
+{
+  "grant_id": "ee-commercial-specimen",
+  "specimen": true,
+  "specimen_note": "SPECIMEN - NOT A VALID GRANT. Registration is still unknown (catalog reads 200 through roles/earthengine.viewer only), so this certificate describes what a completed COMMERCIAL registration would earn and unlocks nothing. Execute only after the registration flip is documented.",
+  "issuer": "Google LLC (Earth Engine)",
+  "grantee_seat": "451400509859-compute@developer.gserviceaccount.com (roles/earthengine.viewer; commercial registration: unknown)",
+  "feeds": [
+    "earth-engine.export"
+  ],
+  "uses": [
+    "screening",
+    "research"
+  ],
+  "territory": "*",
+  "purpose": "shape of the certificate that a commercial Earth Engine registration (permitsFinancialUse true for exports) would earn; the sidecar refusal 'noncommercial or unknown registration forces financial use false' stands until then",
+  "expiry_utc": "2027-12-31T23:59:59+00:00",
+  "evidence_url": "https://developers.google.com/earth-engine",
+  "issued_at_utc": "2026-11-17T00:00:00+00:00",
+  "permits_redistribution": false
+}

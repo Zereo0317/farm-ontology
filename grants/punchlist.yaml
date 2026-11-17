@@ -1,0 +1,286 @@
+# Commercial punch-list as data (WS6 deliverable 6.3, task-6).
+#
+# RULES OF THIS FILE:
+# - No legal conclusions. Every item states requirements TO VERIFY with
+#   sources. Verification date: 2026-11-17 (dates in each source row).
+# - Every item carries status: NOT-YET-EXECUTED until the evidence named in
+#   `evidence_to_attach` exists in the repo or a referenced drive.
+# - Executing an item means replacing the matching SPECIMEN grant under
+#   grants/ with an executed certificate (specimen: false) - the specimen
+#   itself unlocks nothing (evaluation reason: 'specimen').
+# - The contract pack below is READY-TO-SIGN TEXT awaiting the corporate
+#   status item (PL-CORPORATE-STATUS); a not-yet-incorporated entity must
+#   not be named as principal on any signed copy.
+
+meta:
+  title: Commercial unlock punch-list (Planet / Earth Engine / Open-Meteo / JMA / actuation / corporate)
+  written: "2026-11-17"
+  verification_date: "2026-11-17"
+  status_default: NOT-YET-EXECUTED
+  owner_convention: >-
+    Humans (founder, lead) own every externally signed artefact; agents
+    prepare evidence drafts only.
+  fail_closed_reminder: >-
+    Until an item is executed, its feed evaluates to a refusal ('specimen',
+    'no_grant', 'expired') and permits_financial_use stays false.
+
+contract_pack:
+  status: READY-TO-SIGN (awaiting PL-CORPORATE-STATUS)
+  applicable_when: >-
+    Any contract sold to a farmer (decision-support or revenue-share), per
+    docs/alpha-fairness-doctrine.md section 4 rail 1.
+  clause_4_1_concurrent_position_disclosure:
+    label: Concurrent-position disclosure (doctrine §4.1, verbatim, mandatory)
+    text: >-
+      "The Company maintains proprietary positions in agricultural
+      commodities. When its data indicates materially adverse or favourable
+      conditions for Your fields, the Company shall disclose the existence
+      — never the size — of related positions in its periodic
+      decision-support report, before the affected transaction dates."
+    placement: every farmer-facing contract body, before the signatures block
+    tested_by: tests/test_licences_punchlist.py
+  signatory_block:
+    Company_principal: PENDING-PL-CORPORATE-STATUS
+    Counterparty: per-contract
+    Witness: per-contract
+  drafter_note: >-
+    The §4.1 sentence is bound verbatim; edits require a Lead-approved
+    doctrine commit referencing a dated rationale (doctrine §8).
+
+items:
+
+  - id: PL-PLANET-COMMERCIAL
+    title: Planet Labs commercial monitoring plan (post-trial conversion)
+    area: satellite imagery, planetary variables
+    status: NOT-YET-EXECUTED
+    current_status: >-
+      Trial activated 2026-11-17 (account 34a96e83-bf8c-4002-b5e1-7c2757d6500b,
+      key in Secret Manager 'Planet-labs' v3): 3,000 monitoring credits,
+      1 OAuth client seat, Sandbox Data + Open Data + BYOD, Catalog /
+      Statistical / Process / OGC APIs. Trial terminates 2026-12-17. Decision
+      checkpoint 2026-11-30: purchase or accept downgrade to header-only Open
+      Data + Sentinel-2 path.
+    next_action: >-
+      BEFORE 2026-11-30: request a written quote for a commercial monitoring
+      plan that converts (1) the QUOTE PATH - sales contact through the
+      pricing page; (2) SEATS - at least two (ops + continuity) against the
+      single trial seat; (3) the CREDIT MODEL - replace 3,000 trial credits
+      with real monthly consumption maths sized to the nightly psscene
+      refresh + soil-water-content pulls; (4) the contractual sentence that
+      establishes commercial use of derived products, so a non-specimen
+      grant can be signed. At the checkpoint, record purchase-or-lapse in
+      this file, then (if purchased) replace grants/planet-trial.json.
+    owner: lead + founder (human decision at 2026-11-30 checkpoint)
+    evidence_to_attach: >-
+      Quote PDF / mail thread; executed MSA or order-form URL; countersigned
+      contract; invoice; the executed grant JSON (specimen: false) replacing
+      grants/planet-trial.json with the same feed list.
+    expected_unlock: >-
+      planet.psscene and planet.planetary-variable.soil-water-content gain
+      permits_financial_use=true for the granted uses; 10 m-scale imagery
+      enters the commercial spine (roadmap P3) instead of dying with the
+      trial.
+    spec_is_specimen_until: 2026-11-30 checkpoint recorded
+    sources:
+      - url: https://www.planet.com/pricing/
+        note: Planet pricing page (quote/contact path); fetched HTTP 200
+        verified: "2026-11-17"
+
+  - id: PL-EE-COMMERCIAL-REGISTRATION
+    title: Earth Engine commercial registration flip (permitsFinancialUse for exports)
+    area: raster processing / exports
+    status: NOT-YET-EXECUTED
+    current_status: >-
+      Catalog reads HTTP 200 through the Cloud Run runtime identity with
+      roles/earthengine.viewer; registration status stays unknown, so
+      backend-live records permits_financial_use=false and the
+      earth-engine adapter refuses sidecars claiming financial use under
+      noncommercial/unknown registration (R-licence).
+    next_action: >-
+      Human completes the commercial-registration path in the Earth Engine /
+      Cloud console (sign-up under the commercial terms), documents the
+      resulting registration value into ee_registration on MethodVersion,
+      re-verifies an export-capable call end-to-end, and only then attaches
+      an executed grant (specimen: false) for feed earth-engine.export whose
+      evidence names the registration record.
+    owner: founder (console actions) + lead (record + grant)
+    evidence_to_attach: >-
+      Registration confirmation (ID / screenshot); billing-account linkage;
+      export smoke result; executed grant JSON replacing
+      grants/ee-commercial-specimen.json.
+    expected_unlock: >-
+      earth-engine.export permits_financial_use=true for the granted uses;
+      export-derived NDVI/indices become commercial-grade inputs with
+      support and error statements travelling unchanged.
+    verify_exact_steps: >-
+      The registration UI path changes; locate the current commercial
+      sign-up page from the product documentation root before acting.
+    sources:
+      - url: https://developers.google.com/earth-engine
+        note: Earth Engine product documentation root (sign-up/registration pages hang from here); root reached 2026-11-17
+        verified: "2026-11-17"
+      - url: https://farm-seges-ai-451400509859.asia-east1.run.app
+        note: backend-live.md record; registration=unknown today (repo doc)
+        verified: "2026-11-17"
+
+  - id: PL-OPENMETEO-Q9
+    title: Open-Meteo Q9 - business/commercial licence text and adapter assumptions
+    area: NWP forecast grids
+    status: NOT-YET-EXECUTED
+    current_status: >-
+      Q9 undecided. Adapter assumptions to CHANGE only when Q9 lands
+      (farm_ontology/adapters/open_meteo.py): (1) the doc header
+      'financial use stays false (Q9)' - a business-tier answer would let a
+      GRANT decide, sidecar writers then consume evaluate() instead of the
+      hard-coded false; (2) keep forever - the refusal that Open-Meteo is
+      not the legal meteorological authority; (3) keep - jma_msm native
+      0.05 deg / 5 km minima and no-consensus rules. The free tier is
+      currently consumed without an API key.
+    next_action: >-
+      Obtain the WRITTEN commercial/business-tier licence text (which
+      capabilities commercial use requires, attribution duties,
+      redistribution of derived products), get the founder's Q9 decision
+      memo, then attach an executed grant open-meteo-q9 (specimen: false)
+      scoped to the decided uses; adjust sidecar writers only at that point.
+    owner: licences agent (drafts the Q9 memo) + founder (decides)
+    evidence_to_attach: >-
+      Terms snapshot (HTML/PDF) + URL + fetch date; licence email thread;
+      signed Q9 decision memo; executed grant replacing
+      grants/open-meteo-q9-specimen.json.
+    expected_unlock: >-
+      open-meteo.jma-msm leaves Screening for the granted uses only, with
+      attribution preserved in every publication text (publication tests
+      stay truthful); anything not granted stays refused.
+    sources:
+      - url: https://open-meteo.com/en/license
+        note: Open-Meteo licence page; fetched HTTP 200 (content JS-rendered - capture snapshot when drafting the Q9 memo)
+        verified: "2026-11-17"
+
+  - id: PL-JMA-REDISTRIBUTION
+    title: JMA redistribution - official data usage terms for commercial products; 二次提供 agreement if any
+    area: official weather warnings / hazard feeds
+    status: NOT-YET-EXECUTED
+    current_status: >-
+      Torrential-rain, snow, marine warnings and the two-week/seasonal
+      headers are recorded from JMA publication. Whether COMMERCIAL
+      redistribution of these (or derivatives) requires JMA-site usage-term
+      compliance beyond copyright attribution, or constitutes 二次提供
+      (secondary provision) needing a separate arrangement, is UNVERIFIED.
+      We never claim to be the legal meteorological authority; that adapter
+      refusal is permanent.
+    next_action: >-
+      Verify the current JMA site usage / copyright notice for commercial
+      redistribution; search the Meteorological Services Act (気象業務法)
+      and related guidance for whether our product pattern counts as
+      二次提供 requiring registration/notification/agreement; record the
+      finding here (still without legal conclusions); if an agreement or
+      notice is required, prepare it for founder signature, then attach an
+      executed jma.hazard grant (specimen-less, none shipped yet).
+    owner: founder (external enquiry) + licences agent (evidence pack)
+    evidence_to_attach: >-
+      JMA terms snapshot + URL + fetch date; statute/guidance excerpts with
+      URLs; mail thread with JMA or 気象業務支援機関 if engaged; executed
+      grant when applicable.
+    expected_unlock: >-
+      jma.hazard gains a permit only to the extent the terms verifiably
+      allow, e.g. redistribution of recorded warnings inside commercial
+      advisories; every publication text must keep JMA attribution.
+    sources:
+      - url: https://www.jma.go.jp/
+        note: JMA site root - the usage/copyright notice is linked in the page footer; enter there and snapshot the current terms (site paths move)
+        verified: "2026-11-17"
+      - url: https://laws.e-gov.go.jp/search?keyword=%E6%B0%97%E8%B1%A1%E6%A5%AD%E5%8B%99%E6%B3%95
+        note: e-Gov statute search for 気象業務法 (Meteorological Services Act) - check registration/certification duties before commercial weather publication
+        verified: "2026-11-17"
+
+  - id: PL-ACTUATION-COMPLIANCE
+    title: Actuation-era compliance stubs (航空法 drone spraying, 農薬適用基準, ISO11783 data ownership)
+    area: actuation (WS5 prerequisites)
+    status: NOT-YET-EXECUTED
+    current_status: >-
+      No machine/drone/valve interface exists yet (roadmap ground truth).
+      Three requirement families must be verified BEFORE any live actuation
+      packet is produced: (1) 航空法 - drone registration (mandatory since
+      2022-06-20 for >=100 g airframes), Remote ID, flight
+      permission/approval via DIPS2.0, and for beyond-visual-line-of-sight
+      spraying the レベル4 (level 4) certified-airframe / certified-pilot
+      framework; spraying flights add duties on top of generic flight
+      permissions. (2) 農薬適用基準 - a spray prescription may only cite
+      registered crop x agent combinations per the FAMIC/ACIS 農薬登録情報
+      (application criteria); aerial (drone) application sits under
+      prefectural and MAFF guidance layered on the registered uses.
+      (3) ISO11783 - the TaskData standard governs interchange format, NOT
+      data ownership; before the command ledger dispatches anything derived
+      from machine telemetry, the machine vendor's data-rights terms must
+      be read and a data-sharing agreement signed.
+    next_action: >-
+      Keep these as DESIGN STUBS with the refusal rules proposed here:
+      command-ledger 'propose' must refuse a drone packet lacking permit
+      numbers; recommendation engine refuses spray rows not matching
+      registered uses; command ledger refuses telemetry-derived prescriptions
+      absent a signed data-sharing agreement. Humans verify each family and
+      record findings/evidence here; no live actuation before the Phase-4
+      gate regardless.
+    owner: lead (specs) + actuation agent (stubs) + founder (registrations/signature)
+    evidence_to_attach: >-
+      Airframe registration numbers; pilot certificates; flight-permission
+      approvals (DIPS2.0 receipts); registered-use extracts per agent/crop
+      (FAMIC); machine-vendor data-rights excerpts + signed data-sharing
+      agreement (ISO11783 host-equipment context).
+    expected_unlock: >-
+      WS5 deliverables become LEGAL to execute against real machines in the
+      Phase-4 window; none of the three families can be satisfied by a
+      grant alone - they are separate certificates/evidence attached to the
+      command ledger records.
+    verification_stub_note: >-
+      Packet-production code that will read these stubs does not exist yet
+      (actuation package is WS5's scope); the stub definitions live here so
+      WS5 inherits closed doors, not open guesses.
+    sources:
+      - url: https://www.mlit.go.jp/koku/drone/
+        note: MLIT unmanned-aircraft registration portal (registration mandatory >=100 g since 2022-06-20; DIPS2.0 link); fetched HTTP 200
+        verified: "2026-11-17"
+      - url: https://www.mlit.go.jp/koku/level4/
+        note: MLIT level-4 flight portal (certified airframe / certified pilot for BVLOS); linked live from the registration portal
+        verified: "2026-11-17"
+      - url: https://www.mlit.go.jp/koku/permitapproval/
+        note: MLIT flight permission/approval application portal; linked live from the registration portal
+        verified: "2026-11-17"
+      - url: https://www.acis.famic.go.jp/
+        note: FAMIC pesticide hub (農薬登録情報ダウンロード holds registered uses / application criteria incl. aerial guidance); fetched HTTP 200
+        verified: "2026-11-17"
+      - url: https://committee.iso.org/home/tc23
+        note: ISO/TC 23 (agricultural machinery, custodian of the ISO 11783 series) - locate the current TaskData part there; VERIFY the data-ownership posture with machine vendors, the standard itself buys no rights
+        verified: "2026-11-17"
+
+  - id: PL-CORPORATE-STATUS
+    title: Corporate status dependency - who may sign grants and the contract pack
+    area: corporate/legal identity
+    status: NOT-YET-EXECUTED
+    current_status: >-
+      Company incorporation is IN PROGRESS (owner-reported, 2026-11). Until
+      the register (登記) issues, no corporate principal exists for
+      countersigning vendor contracts, grants, or the farmer-facing contract
+      pack above; a purported signature by a not-yet-existing entity is a
+      void-risk that would invalidate the very unlock evidence grants
+      carry.
+    next_action: >-
+      Confirm incorporation completion; obtain the 登記事項証明書
+      (certificate of registered matters) and 法人番号 (corporate number);
+      fill the signatory block in the contract pack with the registered
+      entity name and representative; retro-bind every executed grant's
+      `issuer`/seat naming to the corporate entity (sole-proprietor-signed
+      interim grants, if any, must state the personal capacity explicitly).
+    owner: founder (human; registry actions)
+    evidence_to_attach: >-
+      Certificate of registered matters (scan + fetch date); corporate
+      number notification; updated signatory block; grant re-issue notes if
+      any interim grants were signed personally.
+    expected_unlock: >-
+      Executed grants become attributable to a legal person - the
+      prerequisite for PL-PLANET-COMMERCIAL / PL-EE-COMMERCIAL-REGISTRATION
+      signatures and for the farmer contract pack leaving READY-TO-SIGN.
+    sources:
+      - url: https://www.moj.go.jp/
+        note: Ministry of Justice (法務局 corporate registration procedures and certificates)
+        verified: "2026-11-17"

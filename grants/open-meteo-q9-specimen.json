@@ -1,0 +1,19 @@
+{
+  "grant_id": "open-meteo-q9-specimen",
+  "specimen": true,
+  "specimen_note": "SPECIMEN - NOT A VALID GRANT. Q9 (whether any Open-Meteo tier attaches commercial/redistribution rights worth a certificate) is undecided; this placeholder unlocks nothing. Execute only after the written licence answer lands in the punch-list evidence.",
+  "issuer": "Open-Meteo.com",
+  "grantee_seat": "open-meteo free-tier consumer, no API key (adapter sends none)",
+  "feeds": [
+    "open-meteo.jma-msm"
+  ],
+  "uses": [
+    "screening"
+  ],
+  "territory": "*",
+  "purpose": "placeholder for the Q9 answer: what commercial terms would have to be attached before the free-tier jma_msm 0.05deg cell leaves Screening; the adapter keeps refusing 'not the legal meteorological authority' forever regardless of any grant",
+  "expiry_utc": "2027-01-31T23:59:59+00:00",
+  "evidence_url": "https://open-meteo.com/en/license",
+  "issued_at_utc": "2026-11-17T00:00:00+00:00",
+  "permits_redistribution": false
+}

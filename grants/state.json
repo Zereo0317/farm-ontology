@@ -1,0 +1,104 @@
+{
+  "schema": "farm-ontology.grants.state/1",
+  "generated_at": "2026-11-17T08:43:49.907184+00:00",
+  "evaluated_at": "2026-11-17T08:00:00+00:00",
+  "fail_closed": true,
+  "policy": "class C stays closed; a grant unlocks financial_use only for a valid non-specimen certificate",
+  "feeds": {
+    "earth-engine.export": {
+      "use_class": "Screening",
+      "permits_financial_use": false,
+      "reason": "specimen"
+    },
+    "jma.hazard": {
+      "use_class": "Screening",
+      "permits_financial_use": false,
+      "reason": "no_grant"
+    },
+    "open-meteo.jma-msm": {
+      "use_class": "Screening",
+      "permits_financial_use": false,
+      "reason": "specimen"
+    },
+    "planet.planetary-variable.soil-water-content": {
+      "use_class": "Screening",
+      "permits_financial_use": false,
+      "reason": "specimen"
+    },
+    "planet.psscene": {
+      "use_class": "Screening",
+      "permits_financial_use": false,
+      "reason": "specimen"
+    },
+    "usdm.hazard": {
+      "use_class": "Screening",
+      "permits_financial_use": false,
+      "reason": "no_grant"
+    }
+  },
+  "grants": [
+    {
+      "grant_id": "ee-commercial-specimen",
+      "issuer": "Google LLC (Earth Engine)",
+      "grantee_seat": "451400509859-compute@developer.gserviceaccount.com (roles/earthengine.viewer; commercial registration: unknown)",
+      "feeds": [
+        "earth-engine.export"
+      ],
+      "uses": [
+        "screening",
+        "research"
+      ],
+      "territory": "*",
+      "purpose": "shape of the certificate that a commercial Earth Engine registration (permitsFinancialUse true for exports) would earn; the sidecar refusal 'noncommercial or unknown registration forces financial use false' stands until then",
+      "expiry_utc": "2027-12-31T23:59:59+00:00",
+      "evidence_url": "https://developers.google.com/earth-engine",
+      "issued_at_utc": "2026-11-17T00:00:00+00:00",
+      "permits_redistribution": false,
+      "specimen": true,
+      "specimen_note": "SPECIMEN - NOT A VALID GRANT. Registration is still unknown (catalog reads 200 through roles/earthengine.viewer only), so this certificate describes what a completed COMMERCIAL registration would earn and unlocks nothing. Execute only after the registration flip is documented.",
+      "fingerprint": "e1470079184594011e9b2f0c3fe6cacce73c76c0b8603de930fc346704822636"
+    },
+    {
+      "grant_id": "open-meteo-q9-specimen",
+      "issuer": "Open-Meteo.com",
+      "grantee_seat": "open-meteo free-tier consumer, no API key (adapter sends none)",
+      "feeds": [
+        "open-meteo.jma-msm"
+      ],
+      "uses": [
+        "screening"
+      ],
+      "territory": "*",
+      "purpose": "placeholder for the Q9 answer: what commercial terms would have to be attached before the free-tier jma_msm 0.05deg cell leaves Screening; the adapter keeps refusing 'not the legal meteorological authority' forever regardless of any grant",
+      "expiry_utc": "2027-01-31T23:59:59+00:00",
+      "evidence_url": "https://open-meteo.com/en/license",
+      "issued_at_utc": "2026-11-17T00:00:00+00:00",
+      "permits_redistribution": false,
+      "specimen": true,
+      "specimen_note": "SPECIMEN - NOT A VALID GRANT. Q9 (whether any Open-Meteo tier attaches commercial/redistribution rights worth a certificate) is undecided; this placeholder unlocks nothing. Execute only after the written licence answer lands in the punch-list evidence.",
+      "fingerprint": "a4b6eba4c6dff2a7bb847971c160df248758c0cbb85ed4b4dcf991d4c3cf6147"
+    },
+    {
+      "grant_id": "planet-trial-specimen",
+      "issuer": "Planet Labs PBC",
+      "grantee_seat": "zereo0317@gmail.com (Insights Account 34a96e83-bf8c-4002-b5e1-7c2757d6500b, single trial OAuth seat)",
+      "feeds": [
+        "planet.psscene",
+        "planet.planetary-variable.soil-water-content"
+      ],
+      "uses": [
+        "screening",
+        "research"
+      ],
+      "territory": "JP",
+      "purpose": "trial-window evaluation only for the Biratori decision record (values illustrate the shape an executed commercial monitoring grant must take: quote, seats, real credit model)",
+      "expiry_utc": "2026-12-17T14:59:59+00:00",
+      "evidence_url": "https://www.planet.com/pricing/",
+      "issued_at_utc": "2026-11-17T00:00:00+00:00",
+      "permits_redistribution": false,
+      "specimen": true,
+      "specimen_note": "SPECIMEN — NOT A VALID GRANT. Illustrates the certificate an EXECUTED Planet commercial monitoring plan would carry. The 2026-11-17 trial unlocks nothing commercially; this file must never be relied upon. Replace with an executed grant (specimen: false) only after the 2026-11-30 checkpoint decision.",
+      "fingerprint": "258ba1d6cfc952dfdea5e9c3af0aa83eed6a9767ce6b221cce8a151871c3f9ea"
+    }
+  ]
+}

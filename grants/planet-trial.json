@@ -1,0 +1,21 @@
+{
+  "grant_id": "planet-trial-specimen",
+  "specimen": true,
+  "specimen_note": "SPECIMEN — NOT A VALID GRANT. Illustrates the certificate an EXECUTED Planet commercial monitoring plan would carry. The 2026-11-17 trial unlocks nothing commercially; this file must never be relied upon. Replace with an executed grant (specimen: false) only after the 2026-11-30 checkpoint decision.",
+  "issuer": "Planet Labs PBC",
+  "grantee_seat": "zereo0317@gmail.com (Insights Account 34a96e83-bf8c-4002-b5e1-7c2757d6500b, single trial OAuth seat)",
+  "feeds": [
+    "planet.psscene",
+    "planet.planetary-variable.soil-water-content"
+  ],
+  "uses": [
+    "screening",
+    "research"
+  ],
+  "territory": "JP",
+  "purpose": "trial-window evaluation only for the Biratori decision record (values illustrate the shape an executed commercial monitoring grant must take: quote, seats, real credit model)",
+  "expiry_utc": "2026-12-17T14:59:59+00:00",
+  "evidence_url": "https://www.planet.com/pricing/",
+  "issued_at_utc": "2026-11-17T00:00:00+00:00",
+  "permits_redistribution": false
+}
