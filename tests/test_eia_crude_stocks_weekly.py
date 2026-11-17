@@ -38,6 +38,7 @@ class EiaCrudeStocksWeeklyTest(unittest.TestCase):
                 "week": "11/06",
                 "value": "414,417",
                 "unit": "Thousand Barrels",
+                "kind": "stock level",
                 "citation_url": eia_crude_stocks_weekly.EIA_STOCKS_URL,
                 "permits_financial_use": False,
                 "class_c_policy": "closed",
@@ -51,6 +52,36 @@ class EiaCrudeStocksWeeklyTest(unittest.TestCase):
         self.assertNotIn("11/18", text)
         self.assertNotIn("5-minute", text)
         self.assertNotIn("hourly", text)
+
+    def test_week_ending_6_november_2026_is_a_stock_level_not_a_price(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            path = folder / "crude-stocks.json"
+            eia_crude_stocks_weekly.record_eia_crude_stocks_weekly(
+                path,
+                eia_crude_stocks_weekly.EIA_STOCKS_URL,
+                LIVE_BODY,
+            )
+            stored = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["year_month"], "2026-Nov")
+            self.assertEqual(stored["week"], "11/06")
+            self.assertEqual(stored["value"], "414,417")
+            self.assertEqual(stored["unit"], "Thousand Barrels")
+            self.assertEqual(stored["kind"], "stock level")
+            self.assertNotIn("price", stored)
+            self.assertNotIn("trade", stored)
+            self.assertFalse(stored["permits_financial_use"])
+            self.assertFalse((folder / "trade.json").exists())
+            for label in ("price", "trade"):
+                rejected = folder / "rejected.json"
+                with self.assertRaises(ValueError):
+                    eia_crude_stocks_weekly.record_eia_crude_stocks_weekly(
+                        rejected,
+                        eia_crude_stocks_weekly.EIA_STOCKS_URL,
+                        LIVE_BODY,
+                        label=label,
+                    )
+                self.assertFalse(rejected.exists())
 
     def test_failed_request_or_empty_body_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

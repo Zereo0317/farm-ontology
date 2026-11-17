@@ -6,10 +6,12 @@ https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=WCESTUS1&f=W
 
 returned HTTP 200. The title prints Weekly U.S. Ending Stocks excluding
 SPR of Crude Oil (Thousand Barrels). The latest filled end date is
-11/06 in the 2026-Nov row, and that value prints 414,417. The series
-is the weekly history the page prints. It is not labeled a 5-minute
-or hourly feed. A request that fails, or a page with no value, writes
-nothing. A stock level is not invented.
+11/06 in the 2026-Nov row, and that value prints 414,417. That week
+ending is 6 November 2026. The figure is a stock level, not a price.
+Reading it does not write a trade. The series is the weekly history
+the page prints. It is not labeled a 5-minute or hourly feed. A
+request that fails, or a page with no value, writes nothing. A stock
+level is not invented.
 permits_financial_use stays false. Class C stays closed.
 """
 
@@ -32,6 +34,7 @@ FORBIDDEN_LABELS = frozenset(
         "5-min",
         "hourly",
         "trade",
+        "price",
         "settlement",
         "yield",
         "harvest",
@@ -127,6 +130,7 @@ def record_eia_crude_stocks_weekly(
         "week": week,
         "value": value,
         "unit": unit,
+        "kind": "stock level",
         "citation_url": EIA_STOCKS_URL,
         "permits_financial_use": False,
         "class_c_policy": CLASS_C_POLICY,
