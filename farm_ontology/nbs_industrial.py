@@ -9,9 +9,11 @@ sentence prints 规模以上工业的统计范围为年主营业务收入2000万
 The 2000万元 figure is the scope threshold in that sentence. It is not
 an output value. The method sentence prints
 规模以上工业企业工业生产报表按月进行全面调查（1月份数据免报）。
-The service-terms page was not opened. A bulk history file was not
-opened. No growth rate is stored. The report is not a quantity of goods
-and is not a trading right. This module is not called from a field save.
+The release page prints 版权所有: 国家统计局 and links 服务条款. That
+linked page was opened. The printed sentence about reprinting or quoting
+is stored. A bulk history file was not opened. No growth rate is stored.
+The report is not a quantity of goods and is not a trading right. This
+module is not called from a field save.
 """
 
 from __future__ import annotations
@@ -20,6 +22,11 @@ import json
 from pathlib import Path
 
 NBS_INDUSTRIAL_URL = "https://www.stats.gov.cn/sj/zxfb/202611/t20261116_1965842.html"
+TERMS_URL = "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+REPRODUCTION_SENTENCE = (
+    "转载或引用本网内容，务必在显著位置注明转自（或引自）国家统计局网站"
+    "（或中国统计信息网）字样，并标明本网网址：www.stats.gov.cn。"
+)
 
 PUBLISHER = "国家统计局"
 PRODUCT = "规模以上工业增加值"
@@ -97,6 +104,8 @@ def record_series_header(
         "permits_financial_use": False,
         "copyright_notice": COPYRIGHT_NOTICE,
         "source_line": SOURCE_LINE,
+        "terms_url": TERMS_URL,
+        "reproduction_sentence": REPRODUCTION_SENTENCE,
     }
     folder = Path(directory)
     folder.mkdir(parents=True, exist_ok=True)
