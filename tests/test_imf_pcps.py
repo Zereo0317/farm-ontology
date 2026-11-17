@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -6,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.imf_pcps import IMF_PCPS_URL, record_series_header
+from farm_ontology.policy import CLASS_C_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = IMF_PCPS_URL
@@ -118,3 +120,22 @@ class ImfPcpsTests(unittest.TestCase):
             text = (ROOT / "farm_ontology" / name).read_text(encoding="utf-8")
             self.assertNotIn("imf_pcps", text)
             self.assertNotIn("np/res/commod", text)
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_series_header(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        before = path.read_text(encoding="utf-8")
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        record = json.loads(before)
+        after = path.read_text(encoding="utf-8")
+        names_after = sorted(item.name for item in self.folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["pcps.json"])
+        self.assertIs(record["permits_financial_use"], False)
+        self.assertEqual(CLASS_C_POLICY, "closed")
+        self.assertNotIn("trade", record)
+        self.assertNotIn("value", record)
+        self.assertNotIn("price", record)
+        self.assertNotIn("index_level", record)
+        self.assertFalse((self.folder / "trade.json").exists())
