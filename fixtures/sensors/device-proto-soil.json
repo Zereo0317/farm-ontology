@@ -1,0 +1,32 @@
+{
+  "adapter": "sensors.device-json/v1",
+  "device_id": "protokit-se02-soila",
+  "vendor": "Dragino",
+  "model": "SE02-LB",
+  "firmware": "v1.2.3",
+  "device_class": "soil-vwc",
+  "value": 31.2,
+  "unit": "%",
+  "depth_cm": 10,
+  "channel": "probe-a",
+  "installation": "vertical-ridge-demo-plot",
+  "phenomenon_time": "2026-11-15T02:30:00+00:00",
+  "availability_time": "2026-11-15T02:30:40+00:00",
+  "generated_at": "2026-11-15T02:30:41+00:00",
+  "calibration_activity": "activity/proto-gravimetric-crosscheck-2026q2",
+  "recalibration_due": "2027-04-21",
+  "calibration_error": {
+    "metric": "rmse",
+    "value_fraction": 0.018,
+    "bias_fraction": 0.006,
+    "samples": 9,
+    "method": "gravimetric-3-point",
+    "reference_doc": "hardware/calibration-protocol.md",
+    "region_demo": "Hokkaido-demo-not-biratori",
+    "crop": "soybean",
+    "season": "2026"
+  },
+  "device_battery_mv": 3450,
+  "dry_run": true,
+  "note": "fictitious demonstration payload assembled for adapter tests; coordinates are intentionally absent so no real farm is implied"
+}
