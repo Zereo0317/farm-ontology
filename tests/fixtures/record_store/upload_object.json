@@ -1,0 +1,14 @@
+{
+  "kind": "storage#object",
+  "name": "field-notes/obs-20261117T010000Z.json",
+  "bucket": "farm-seges-ai-records",
+  "generation": "1700278800500000000",
+  "metageneration": "1",
+  "contentType": "application/json",
+  "storageClass": "STANDARD",
+  "size": "251",
+  "crc32c": "RECORDED-FIXTURE",
+  "etag": "RECORDED-FIXTURE",
+  "timeCreated": "2026-11-17T01:00:00.500Z",
+  "updated": "2026-11-17T01:00:00.500Z"
+}

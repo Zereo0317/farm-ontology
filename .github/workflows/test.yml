@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   unittest:
     runs-on: ubuntu-latest
@@ -12,8 +15,58 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Byte-compile every module (stdlib-only sanity)
+        run: python -m compileall -q farm_ontology tests
       - name: Unit tests
         run: python -m unittest discover -s tests -t . -v
         env:
           GCLOUD_CONFIGURATION: segescloud
           GCP_PROJECT: seges-ai
+
+  build:
+    needs: unittest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker build (no push)
+        run: docker build -t farm-seges-ai:ci .
+
+  deploy-staging:
+    needs: build
+    # Only an actual push to main deploys staging; PRs never deploy.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          # Workload identity federation for this repository; the pool and
+          # provider are created once per project (see deploy/GCP_SETUP.md).
+          workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
+          service_account: 451400509859-compute@developer.gserviceaccount.com
+          project_id: seges-ai
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy staging (source build, immutable revision)
+        run: |
+          gcloud run deploy farm-seges-ai-staging \
+            --project=seges-ai --region=asia-east1 \
+            --source . \
+            --allow-unauthenticated \
+            --set-secrets PLANET_API_KEY=Planet-labs:latest \
+            --set-env-vars GCP_PROJECT=seges-ai,EE_PROJECT=seges-ai,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records
+      - name: Pin staging traffic to the latest revision
+        run: |
+          gcloud run services update-traffic farm-seges-ai-staging \
+            --project=seges-ai --region=asia-east1 --to-latest
+          gcloud run services describe farm-seges-ai-staging \
+            --project=seges-ai --region=asia-east1 \
+            --format='value(status.traffic[0].revisionName,status.latestCreatedRevisionName)'
+
+  # Production is NOT touched by this workflow. Deploys to prod go through
+  # .github/workflows/deploy-prod-tag.yml, which is workflow_dispatch-only.
+  # Merge-to-prod without a green pipeline is therefore impossible: staging
+  # deploys (above) require green tests + green docker build.

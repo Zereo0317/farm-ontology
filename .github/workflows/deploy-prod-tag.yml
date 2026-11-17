@@ -1,0 +1,58 @@
+name: deploy-prod-tag
+
+# Manual, auditable production deploys ONLY (workflow_dispatch). Nothing here
+# runs on push; prod never moves because of a routine merge. Promote to prod
+# only after staging is verified green on the same commit.
+#
+# Runbook (human steps recorded per ship):
+#   1. Verify staging: https://farm-seges-ai-staging-451400509859.asia-east1.run.app/livez
+#   2. Run this workflow against main (or a release tag).
+#   3. It deploys to farm-seges-ai and pins traffic with --to-latest.
+#   4. Uptime checks (farm-prod-livez, farm-prod-weather) must stay green;
+#      the alert email goes to segescloud@gmail.com.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (tag or branch; default main)"
+        required: false
+        default: main
+      note:
+        description: "Why this prod deploy"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
+          service_account: 451400509859-compute@developer.gserviceaccount.com
+          project_id: seges-ai
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy production (immutable revision)
+        run: |
+          gcloud run deploy farm-seges-ai \
+            --project=seges-ai --region=asia-east1 \
+            --source . \
+            --allow-unauthenticated \
+            --set-secrets PLANET_API_KEY=Planet-labs:latest \
+            --set-env-vars GCP_PROJECT=seges-ai,EE_PROJECT=seges-ai,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records
+      - name: Pin prod traffic to the latest revision
+        run: |
+          gcloud run services update-traffic farm-seges-ai \
+            --project=seges-ai --region=asia-east1 --to-latest
+          gcloud run services describe farm-seges-ai \
+            --project=seges-ai --region=asia-east1 \
+            --format='value(status.traffic[0].revisionName,status.latestCreatedRevisionName)'

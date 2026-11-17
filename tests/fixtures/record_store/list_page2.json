@@ -1,0 +1,11 @@
+{
+  "kind": "storage#objects",
+  "totalSize": 4,
+  "items": [
+    {
+      "name": "field-notes/notes/note-feedback-20261117T010002Z.json",
+      "bucket": "farm-seges-ai-records",
+      "updated": "2026-11-17T01:00:02.900Z"
+    }
+  ]
+}
