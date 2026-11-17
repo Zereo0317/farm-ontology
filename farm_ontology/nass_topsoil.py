@@ -1,6 +1,6 @@
 """NASS topsoil moisture condition shares, copied from the live PDF.
 
-The file opened on 17 Nov 2026 is the Crop Progress report:
+The file refetched on 17 Nov 2026 is the Crop Progress report:
 
 https://release.nass.usda.gov/reports/prog4526.pdf
 
@@ -15,7 +15,8 @@ The 48 States row prints very short 11, short 23, adequate 58, surplus 8.
 The Texas row prints very short 10, short 31, adequate 52, surplus 7 for the
 same week. These percent columns are shares of cropland in each condition
 class. They are not volumetric water content, they are not m3/m3, and they
-are not a SMAP sample. They are not a completed harvest.
+are not a SMAP sample. They are not a completed harvest. The subsoil table,
+the previous-week row, and the previous-year row are not stored.
 
 permits_financial_use stays false. Class C stays closed. A missing citation
 writes nothing.
