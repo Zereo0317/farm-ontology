@@ -213,6 +213,13 @@ class StateTests(unittest.TestCase):
             "open-meteo.jma-msm": "specimen",
             "jma.hazard": "no_grant",
             "usdm.hazard": "no_grant",
+            # WS7 market-lane feeds: registered 2026-11-18, no specimen yet,
+            # so they read no_grant until real certificates land.
+            "usda.wasde": "no_grant",
+            "ams.soybean-bid": "no_grant",
+            "fao.food-price-index": "no_grant",
+            "imf.pcps": "no_grant",
+            "worldbank.pink-sheet": "no_grant",
         }
         for feed, row in state["feeds"].items():
             self.assertEqual(row["use_class"], "Screening", feed)

@@ -34,6 +34,14 @@ KNOWN_FEEDS: tuple[str, ...] = (
     "open-meteo.jma-msm",
     "jma.hazard",
     "usdm.hazard",
+    # WS7 market-lane feeds (registered 2026-11-18 after the arbitration
+    # rehearsal D-finding: the financial unlock design needs these named,
+    # not discovered as unknown_feed at rail time).
+    "usda.wasde",
+    "ams.soybean-bid",
+    "fao.food-price-index",
+    "imf.pcps",
+    "worldbank.pink-sheet",
 )
 
 #: Use vocabulary a grant may name. Case is normalised to lowercase.
