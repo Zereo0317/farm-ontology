@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -7,8 +8,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.philadelphia_fed_mbos import (
     PHILADELPHIA_FED_MBOS_URL,
+    record_printed_index,
     record_series_header,
 )
+from farm_ontology.policy import CLASS_C_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = PHILADELPHIA_FED_MBOS_URL
@@ -95,6 +98,49 @@ class PhiladelphiaFedMbosTests(unittest.TestCase):
         for label in labels:
             with self.assertRaises(ValueError):
                 record_series_header(self.folder, citation_url=URL, label=label)
+        self.assertEqual(list(self.folder.iterdir()), [])
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_printed_index(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        before = path.read_text(encoding="utf-8")
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        record = json.loads(before)
+        after = path.read_text(encoding="utf-8")
+        names_after = sorted(item.name for item in self.folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["current-general-business-activity.json"])
+        self.assertEqual(
+            record["series"],
+            "current general business activity diffusion index",
+        )
+        self.assertEqual(record["month"], "October")
+        self.assertEqual(record["value"], "20.9")
+        self.assertEqual(record["citation_url"], URL)
+        self.assertFalse(record["permits_financial_use"])
+        self.assertEqual(record["class_c_policy"], "closed")
+        self.assertEqual(record["class_c_policy"], CLASS_C_POLICY)
+        self.assertNotIn("trade", record)
+        self.assertNotIn("price", record)
+        self.assertNotIn("year", record)
+        self.assertNotIn("forecast", record)
+        for word in ("trade", "price", "national supply", "37.8", "33.0", "2026"):
+            self.assertNotIn(word, after)
+
+    def test_index_without_the_citation_or_as_a_trade_writes_nothing(self):
+        for citation in (None, "", "   ", "https://example.com/bos_dif.csv"):
+            with self.assertRaises(ValueError):
+                record_printed_index(self.folder, citation_url=citation)
+        for label in ("trade", "price", "national supply", "TRADE", "National Supply"):
+            with self.assertRaises(ValueError):
+                record_printed_index(self.folder, citation_url=URL, label=label)
+        with self.assertRaises(ValueError):
+            record_printed_index(self.folder, citation_url=URL, value="37.8")
+        with self.assertRaises(ValueError):
+            record_printed_index(self.folder, citation_url=URL, permits_financial_use=True)
+        with self.assertRaises(ValueError):
+            record_printed_index(self.folder, citation_url=URL, class_c_policy="open")
         self.assertEqual(list(self.folder.iterdir()), [])
 
     def test_field_save_does_not_ingest_the_survey(self):
