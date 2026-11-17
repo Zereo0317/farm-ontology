@@ -30,6 +30,24 @@ with `gcloud run deploy --source .`.
    `user.name`/`user.email` set (they were blank on this machine and every
    merge commit died before the author could appear).
 
+## Ops runbooks index (added 2026-11-18, WS1)
+
+Operational procedures now live in `deploy/`:
+
+| Document | What it covers |
+| --- | --- |
+| [deploy/GCP_SETUP.md](../deploy/GCP_SETUP.md) | Everything provisioned in GCP (record bucket, SA roles, uptime checks, alert policies incl. the HALT placeholder, budget, CI federation) with reproducible commands |
+| [deploy/staging-cutover.md](../deploy/staging-cutover.md) | The applied staging GCS-backend switch + verification + prod cutover procedure (documented, not yet executed) |
+| [deploy/rollback.md](../deploy/rollback.md) | Rollback + restore drill checklist (recreate instance → envs → secret mount → observations intact from GCS) |
+| [deploy/rotate-planet-key.md](../deploy/rotate-planet-key.md) | Planet key rotation runbook + the 2026-11-17 `\r\n` secret postmortem |
+| [deploy/budget.md](../deploy/budget.md) | Monthly cost guard (TWD 2,000 ≈ ¥10k on `seges-ai`), thresholds and notification path |
+| [deploy/set-traffic.sh](../deploy/set-traffic.sh) / [.ps1](../deploy/set-traffic.ps1) | Post-deploy `update-traffic --to-latest` helper (the traffic-shift gotcha) |
+| [deploy/create-observation-job.sh](../deploy/create-observation-job.sh) | Cloud Run job proving one observation round-trips through the record store |
+| [deploy/update-staging-env.sh](../deploy/update-staging-env.sh) | Point staging at the GCS record backend idempotently |
+
+Durable record storage itself: `farm_ontology/record_store.py`
+(`FARM_RECORD_BACKEND=gcs|local`); deployment notes below are unchanged.
+
 ## Secrets and roles
 
 - `gcloud secrets add-iam-policy-binding Planet-labs --member=serviceAccount:451400509859-compute@developer.gserviceaccount.com --role=roles/secretmanager.secretAccessor`

@@ -1,0 +1,22 @@
+{
+  "kind": "storage#objects",
+  "totalSize": 3,
+  "items": [
+    {
+      "name": "field-notes/notes/note-verification-20261117T010001Z.json",
+      "bucket": "farm-seges-ai-records",
+      "updated": "2026-11-17T01:00:01.100Z"
+    },
+    {
+      "name": "field-notes/obs-20261117T005900Z.json",
+      "bucket": "farm-seges-ai-records",
+      "updated": "2026-11-17T00:59:00.300Z"
+    },
+    {
+      "name": "field-notes/obs-20261117T010000Z.json",
+      "bucket": "farm-seges-ai-records",
+      "updated": "2026-11-17T01:00:00.500Z"
+    }
+  ],
+  "nextPageToken": "RECORDED-PAGE-2"
+}

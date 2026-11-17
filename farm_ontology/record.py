@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from farm_ontology.fieldkit import (
     DRY_LATITUDE,
@@ -18,10 +18,10 @@ from farm_ontology.fieldkit import (
     GRID_DEG,
     SOYBEAN_ID,
     build_observation,
-    write_observation,
 )
 from farm_ontology.manifest import load_manifest
 from farm_ontology.policy import CLASS_C_POLICY, class_c_policy
+from farm_ontology.record_store import open_backend
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAYBOOK = ROOT / "docs" / "field-playbook.md"
@@ -34,6 +34,11 @@ def record_dir() -> Path:
     path.mkdir(parents=True, exist_ok=True)
     (path / "notes").mkdir(exist_ok=True)
     return path
+
+
+def _store():
+    """Storage for the record; local directory or GCS (see record_store)."""
+    return open_backend(record_dir())
 
 
 def _now() -> datetime:
@@ -55,8 +60,9 @@ def read_sop() -> str:
 def status() -> dict:
     document = load_manifest()
     folder = record_dir()
-    observations = sorted(p.name for p in folder.glob("obs-*.json"))
-    notes = sorted(p.name for p in (folder / "notes").glob("note-*.json"))
+    store = _store()
+    observations = sorted(store.list_paths("", "obs-*.json"))
+    notes = sorted(store.list_paths("notes/", "note-*.json"))
     return {
         "crop": "soybean",
         "crop_stage": "harvest",
@@ -157,11 +163,12 @@ def record_observation(
             document["weather"] = weather
     if document["class_c_policy"] != "closed" or document["permits_financial_use"]:
         raise RuntimeError("the field record refuses an open class C or a financial use")
-    path = record_dir() / f"obs-{_stamp(moment)}.json"
-    if path.exists():
-        path = record_dir() / f"obs-{_stamp(moment)}-{path.stat().st_mtime_ns}.json"
-    write_observation(document, path)
-    return {"file": path.name, "observation": document}
+    store = _store()
+    name = f"obs-{_stamp(moment)}.json"
+    if store.exists(name):
+        name = f"obs-{_stamp(moment)}-{store.mtime_ns(name)}.json"
+    store.write(name, (json.dumps(document, indent=2) + "\n").encode("utf-8"))
+    return {"file": name, "observation": document}
 
 
 def _note_name(name: str | None) -> str | None:
@@ -185,7 +192,7 @@ def add_note(
     if not body:
         raise ValueError("note text is empty")
     target = _note_name(observation_file)
-    if target is not None and not (record_dir() / target).is_file():
+    if target is not None and not _store().exists(target):
         raise ValueError("that observation file is not in the record")
     moment = at or _now()
     note = {
@@ -197,22 +204,23 @@ def add_note(
         "permits_financial_use": False,
         "trade_signal": False,
     }
-    path = record_dir() / "notes" / f"note-{kind}-{_stamp(moment)}.json"
-    if path.exists():
-        path = record_dir() / "notes" / f"note-{kind}-{_stamp(moment)}-2.json"
-    path.write_text(json.dumps(note, indent=2) + "\n", encoding="utf-8")
-    return {"file": path.name, "note": note}
+    store = _store()
+    name = f"notes/note-{kind}-{_stamp(moment)}.json"
+    if store.exists(name):
+        name = f"notes/note-{kind}-{_stamp(moment)}-2.json"
+    store.write(name, (json.dumps(note, indent=2) + "\n").encode("utf-8"))
+    return {"file": PurePosixPath(name).name, "note": note}
 
 
 def list_notes() -> dict:
-    folder = record_dir()
+    store = _store()
     observations = []
-    for path in sorted(folder.glob("obs-*.json")):
-        document = json.loads(path.read_text(encoding="utf-8"))
+    for name in sorted(store.list_paths("", "obs-*.json")):
+        document = json.loads(store.read_text(name))
         weather = document.get("weather") or {}
         observations.append(
             {
-                "file": path.name,
+                "file": name,
                 "phenomenon_time": document.get("phenomenon_time"),
                 "crop": document.get("crop"),
                 "crop_ontology_id": document.get("crop_ontology_id"),
@@ -228,6 +236,7 @@ def list_notes() -> dict:
             }
         )
     notes = []
-    for path in sorted((folder / "notes").glob("note-*.json")):
-        notes.append({"file": path.name, **json.loads(path.read_text(encoding="utf-8"))})
+    for name in sorted(store.list_paths("notes/", "note-*.json")):
+        note_body = json.loads(store.read_text(name))
+        notes.append({"file": PurePosixPath(name).name, **note_body})
     return {"observations": observations, "notes": notes}
