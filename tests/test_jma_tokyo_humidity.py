@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,34 @@ NO_PERCENT = """
 
 
 class JmaTokyoHumidityTest(unittest.TestCase):
+    def test_records_the_printed_page_facts_without_a_humidity_number(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tokyo-page.json"
+            jma_tokyo_humidity.record_jma_tokyo_printed_facts(
+                path,
+                jma_tokyo_humidity.TOKYO_HOURLY_URL,
+                LIVE_BODY,
+            )
+            stored = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            stored,
+            {
+                "page_shown": "2026年11月17日",
+                "viewable_through": "2026年11月16日",
+                "humidity_percent_printed": False,
+                "citation_url": jma_tokyo_humidity.TOKYO_HOURLY_URL,
+                "permits_financial_use": False,
+                "class_c_policy": "closed",
+            },
+        )
+        self.assertIs(stored["permits_financial_use"], False)
+        self.assertNotIn("relative_humidity_percent", stored)
+        self.assertNotIn("hour", stored)
+        text = json.dumps(stored, ensure_ascii=False)
+        self.assertNotIn("%", text)
+        self.assertNotIn("％", text)
+
     def test_live_page_has_no_humidity_and_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tokyo-humidity.json"

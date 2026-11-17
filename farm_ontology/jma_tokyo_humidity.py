@@ -6,10 +6,9 @@ https://www.data.jma.go.jp/stats/etrn/view/hourly_s1.php?prec_no=44&block_no=476
 
 returned HTTP 200. The body prints that the 2026年11月17日 page was
 shown, and that viewable days run through yesterday, 2026年11月16日.
-It prints no humidity hour and no percent. Nothing is written. A
-relative humidity is stored only when a later body prints both. A
-relative humidity is not calculated from temperature and dewpoint.
-A request that fails, or a page with no humidity, writes nothing.
+It prints no humidity percent. Those printed facts are stored. No
+humidity number is stored. A relative humidity is not calculated from temperature and dewpoint.
+A request that fails writes nothing.
 No second station is added.
 permits_financial_use stays false. Class C stays closed.
 """
@@ -98,6 +97,58 @@ def _reading(body: str) -> dict:
         raise ValueError("the page has no humidity")
     hour, percent = found
     return {"hour": hour, "relative_humidity_percent": percent}
+
+
+def _printed_facts(body: str) -> dict:
+    shown = re.search(r"(\d{4}年\d{1,2}月\d{1,2}日)のページを表示しました", body)
+    viewable = re.search(r"閲覧可能な日は、昨日(\d{4}年\d{1,2}月\d{1,2}日)までです", body)
+    if shown is None or viewable is None:
+        raise ValueError("the page does not print those facts")
+    try:
+        _reading(body)
+    except ValueError:
+        humidity_printed = False
+    else:
+        humidity_printed = True
+    if humidity_printed:
+        raise ValueError("a humidity number is not stored")
+    return {
+        "page_shown": shown.group(1),
+        "viewable_through": viewable.group(1),
+        "humidity_percent_printed": False,
+    }
+
+
+def record_jma_tokyo_printed_facts(
+    path: Path,
+    citation_url: str | None,
+    body: str | None = None,
+    *,
+    request_failed: bool = False,
+    label: str | None = None,
+    permits_financial_use: bool | None = None,
+    class_c_policy: str | None = None,
+) -> None:
+    """Write the printed page facts, with no humidity number."""
+
+    if request_failed or citation_url is None or citation_url.strip() == "":
+        raise ValueError("the printed facts are not stored without a response")
+    if citation_url != TOKYO_HOURLY_URL:
+        raise ValueError("the printed facts are not stored for a different citation")
+    if body is None or body.strip() == "":
+        raise ValueError("the page does not print those facts")
+    if label is not None and label.strip().lower() in FORBIDDEN_LABELS:
+        raise ValueError("the printed facts are not stored for a second station")
+    if permits_financial_use not in (None, False) or class_c_policy not in (None, CLASS_C_POLICY):
+        raise ValueError("permits_financial_use stays false and Class C stays closed")
+    facts = _printed_facts(body)
+    facts["citation_url"] = TOKYO_HOURLY_URL
+    facts["permits_financial_use"] = False
+    facts["class_c_policy"] = CLASS_C_POLICY
+    path.write_text(
+        json.dumps(facts, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 def record_jma_tokyo_humidity(
