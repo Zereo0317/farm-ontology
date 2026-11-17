@@ -1,12 +1,12 @@
-"""C&SD product-line index figure.
+"""C&SD product-line base.
 
 The subject page prints one parenthetical figure on the product line:
 Index of Industrial Production for Manufacturing and Waste Management
-Sectors (Year 2015=100). The stored figure is 100. Year 2015 is printed
-next to that figure, so the period is Year 2015. No unit and no area
-are printed next to the figure, so neither is stored. The web table and
-a bulk file were not opened. An index is not a quantity of goods and
-not a trade. permits_financial_use stays false.
+Sectors (Year 2015=100). 100 is that printed base, not a current
+industrial-production index. No current index is invented. No unit and
+no area are printed next to the base, so neither is stored. The web
+table and a bulk file were not opened. An index is not a quantity of
+goods and not a trade. permits_financial_use stays false.
 permits_financial_use_test is not set. Class C stays closed. This
 module does not change the header function that rejects a figure. This
 module is not called from a field save.
@@ -35,19 +35,22 @@ FORBIDDEN_LABELS = frozenset(
         "settlement",
         "settlement price",
         "price",
+        "current index",
     }
 )
+
+
 def _plain(body: str) -> str:
     text = re.sub(r"<[^>]+>", " ", body.replace("\xa0", " "))
     return " ".join(text.split())
 
 
-def _printed_figure(body: str) -> tuple[str, str]:
+def _printed_base(body: str) -> tuple[str, str]:
     found = _FIGURE.findall(_plain(body))
     if len(found) != 1:
-        raise ValueError("the page prints no single index figure")
+        raise ValueError("the page prints no single base")
     year, figure = found[0]
-    return figure, f"Year {year}"
+    return figure, f"Year {year}={figure}"
 
 
 def record_product_figure(
@@ -62,7 +65,7 @@ def record_product_figure(
     permits_financial_use_test: bool | None = None,
     class_c_policy: str | None = None,
 ) -> None:
-    """Write the printed product-line index figure, or write nothing."""
+    """Write the printed base, or write nothing."""
 
     if request_failed or citation_url is None or citation_url.strip() == "":
         raise ValueError("a figure is not stored without the subject page")
@@ -71,7 +74,7 @@ def record_product_figure(
     if source_url not in (None, CSD_INDUSTRIAL_URL):
         raise ValueError("the web table and a bulk file are not opened")
     if body is None or body.strip() == "":
-        raise ValueError("the page prints no single index figure")
+        raise ValueError("the page prints no single base")
     if label is not None and (
         label.strip().lower() in FORBIDDEN_LABELS
         or any(character.isdigit() for character in label)
@@ -84,12 +87,13 @@ def record_product_figure(
         raise ValueError("permits_financial_use stays false and Class C stays closed")
     if permits_financial_use_test is not None:
         raise ValueError("permits_financial_use_test is not set")
-    figure, period = _printed_figure(body)
+    figure, base = _printed_base(body)
     stored = {
         "value": figure,
-        "period": period,
+        "label": "base",
+        "base": base,
         "product": PRODUCT,
-        "kind": "index",
+        "kind": "base",
         "citation_url": CSD_INDUSTRIAL_URL,
         "permits_financial_use": False,
         "class_c_policy": CLASS_C_POLICY,

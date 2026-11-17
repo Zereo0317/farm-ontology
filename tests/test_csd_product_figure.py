@@ -35,15 +35,19 @@ class CsdProductFigureTests(unittest.TestCase):
             csd_product_figure.record_product_figure(path, CSD_INDUSTRIAL_URL, PAGE)
             stored = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(stored["value"], "100")
-        self.assertEqual(stored["period"], "Year 2015")
-        self.assertEqual(stored["kind"], "index")
+        self.assertEqual(stored["label"], "base")
+        self.assertEqual(stored["base"], "Year 2015=100")
+        self.assertEqual(stored["kind"], "base")
+        self.assertNotEqual(stored["kind"], "index")
         self.assertEqual(stored["citation_url"], CSD_INDUSTRIAL_URL)
         self.assertFalse(stored["permits_financial_use"])
         self.assertEqual(stored["class_c_policy"], CLASS_C_POLICY)
         self.assertEqual(stored["class_c_policy"], "closed")
+        self.assertNotIn("period", stored)
         self.assertNotIn("unit", stored)
         self.assertNotIn("administrative_area", stored)
         self.assertNotIn("permits_financial_use_test", stored)
+        self.assertNotIn("current", json.dumps(stored))
         text = json.dumps(stored)
         for leftover in (
             "610-65001",
@@ -96,7 +100,7 @@ class CsdProductFigureTests(unittest.TestCase):
     def test_trade_or_test_switch_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "csd-product-figure.json"
-            for label in ("trade", "quantity of goods", "100"):
+            for label in ("trade", "quantity of goods", "100", "current index"):
                 with self.assertRaises(ValueError):
                     csd_product_figure.record_product_figure(
                         path,
