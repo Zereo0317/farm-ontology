@@ -10,11 +10,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from farm_ontology import ingest_core
-from farm_ontology.pipelines import hazards
+# The worker may run as a bare script inside the container (python
+# pipelines/run_worker.py) where the repo root is not on sys.path.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from farm_ontology import ingest_core  # noqa: E402
+from farm_ontology.pipelines import hazards  # noqa: E402
 
 WORKER_JOBS = (
     "weather-hourly",
