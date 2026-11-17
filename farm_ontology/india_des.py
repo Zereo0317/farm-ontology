@@ -1,11 +1,11 @@
-"""India DES rice total from the third advance estimate.
+"""India DES cells from the third advance estimate.
 
-The stored record is the rice total cell in the 2025-26 third advance
-estimate column. The unit is the unit line printed on that page. The
-page does not name a place, so the administrative area is the words
-"not printed on the page". Kharif, rabi, and summer cells are not
-stored. It does not store a yield or a trade. Class C stays closed.
-This module is not called from a field save.
+The rice record is the rice total cell. The wheat record is the one
+printed wheat cell, season Rabi, and it is not a total. The unit is the
+unit line printed on that page. The page does not name a place, so the
+administrative area is the words "not printed on the page". It does not
+store a yield or a trade. Class C stays closed. This module is not
+called from a field save.
 """
 
 from __future__ import annotations
@@ -27,6 +27,9 @@ PRODUCT = SERIES
 PERIOD = "2025-26 third advance estimates"
 UNIT = "Production in Lakh Tonnes"
 VALUE = "1540.24"
+WHEAT_SERIES = "wheat"
+WHEAT_SEASON = "Rabi"
+WHEAT_VALUE = "1206.57"
 ADMINISTRATIVE_AREA = "not printed on the page"
 KIND = "observation"
 FORBIDDEN_LABELS = frozenset({
@@ -77,4 +80,23 @@ def record_table_header(directory, *, citation_url=None, label=None) -> dict:
         json.dumps(header, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    return {"file": path.name, "header": header}
+    wheat = {
+        "publisher": PUBLISHER,
+        "series": WHEAT_SERIES,
+        "product": WHEAT_SERIES,
+        "season": WHEAT_SEASON,
+        "period": PERIOD,
+        "unit": UNIT,
+        "value": WHEAT_VALUE,
+        "administrative_area": ADMINISTRATIVE_AREA,
+        "citation_url": citation,
+        "kind": KIND,
+        "permits_financial_use": False,
+        "class_c_policy": "closed",
+    }
+    wheat_path = folder / "india-des-wheat.json"
+    wheat_path.write_text(
+        json.dumps(wheat, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return {"file": path.name, "header": header, "wheat_file": wheat_path.name, "wheat": wheat}

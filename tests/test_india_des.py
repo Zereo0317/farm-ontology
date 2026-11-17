@@ -54,9 +54,46 @@ class IndiaDesTests(unittest.TestCase):
             "all India",
             "state",
             "farm",
+            "1206.57",
+            "wheat",
         ):
             self.assertNotIn(absent, text)
-        self.assertEqual(len(list(self.folder.iterdir())), 1)
+        self.assertEqual(
+            sorted(item.name for item in self.folder.iterdir()),
+            ["india-des-estimates.json", "india-des-wheat.json"],
+        )
+
+    def test_stores_the_wheat_rabi_cell(self):
+        saved = record_table_header(self.folder, citation_url=URL)
+        wheat = saved["wheat"]
+        self.assertEqual(wheat["series"], "wheat")
+        self.assertEqual(wheat["product"], "wheat")
+        self.assertEqual(wheat["season"], "Rabi")
+        self.assertEqual(wheat["period"], "2025-26 third advance estimates")
+        self.assertEqual(wheat["value"], "1206.57")
+        self.assertEqual(wheat["unit"], "Production in Lakh Tonnes")
+        self.assertEqual(wheat["administrative_area"], "not printed on the page")
+        self.assertEqual(wheat["citation_url"], URL)
+        self.assertFalse(wheat["permits_financial_use"])
+        self.assertEqual(wheat["class_c_policy"], "closed")
+        self.assertNotIn("total", wheat)
+        self.assertEqual(saved["header"]["value"], "1540.24")
+        self.assertEqual(saved["header"]["series"], "rice total")
+        text = (self.folder / saved["wheat_file"]).read_text(encoding="utf-8")
+        for absent in (
+            "total",
+            "yield",
+            "trade",
+            "India",
+            "all India",
+            "state",
+            "1540.24",
+            "kharif",
+            "summer",
+        ):
+            self.assertNotIn(absent, text)
+        self.assertIn("Rabi", text)
+        self.assertIn("1206.57", text)
 
     def test_reading_the_stored_record_writes_no_trade(self):
         saved = record_table_header(self.folder, citation_url=URL)
@@ -80,7 +117,23 @@ class IndiaDesTests(unittest.TestCase):
             sorted(item.name for item in self.folder.iterdir()),
             names_before,
         )
-        self.assertEqual(names_before, ["india-des-estimates.json"])
+        wheat_path = self.folder / saved["wheat_file"]
+        wheat_before = wheat_path.read_text(encoding="utf-8")
+        wheat = json.loads(wheat_before)
+        wheat_read = read_stored_header(wheat)
+        self.assertEqual(wheat["value"], "1206.57")
+        self.assertEqual(wheat["season"], "Rabi")
+        self.assertNotIn("total", wheat)
+        self.assertIs(wheat["permits_financial_use"], False)
+        self.assertIs(wheat_read["permits_financial_use"], False)
+        self.assertNotIn("trade", wheat_read)
+        self.assertNotIn("yield", wheat_read)
+        self.assertNotIn("trade", wheat_before)
+        self.assertEqual(wheat_path.read_text(encoding="utf-8"), wheat_before)
+        self.assertEqual(
+            names_before,
+            ["india-des-estimates.json", "india-des-wheat.json"],
+        )
 
     def test_missing_citation_writes_nothing(self):
         for citation in (None, "", "   "):
