@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -5,7 +6,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from farm_ontology.nbs_industrial import NBS_INDUSTRIAL_URL, record_series_header
+from farm_ontology.header_schema import read_stored_header
+from farm_ontology.nbs_industrial import (
+    NBS_INDUSTRIAL_URL,
+    REPRODUCTION_SENTENCE,
+    TERMS_URL,
+    record_series_header,
+)
+from farm_ontology.policy import CLASS_C_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = NBS_INDUSTRIAL_URL
@@ -73,7 +81,9 @@ class NbsIndustrialTests(unittest.TestCase):
         self.assertIn("规模以上工业企业工业生产报表按月进行全面调查（1月份数据免报）。", flat)
         self.assertIn("not an output value", flat)
         self.assertIn("growth figure in the title was not copied", flat)
-        self.assertIn("service-terms page was not opened", flat)
+        self.assertIn("linked page was opened", flat)
+        self.assertIn("printed sentence about reprinting or quoting", flat)
+        self.assertNotIn("service-terms page was not opened", flat)
         self.assertIn("bulk history file was not opened", flat)
         self.assertEqual(len(list(self.folder.iterdir())), 1)
 
@@ -133,6 +143,34 @@ class NbsIndustrialTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 record_series_header(self.folder, citation_url=URL, **attempt)
         self.assertEqual(list(self.folder.iterdir()), [])
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_series_header(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        before = path.read_text(encoding="utf-8")
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        record = json.loads(before)
+        read = read_stored_header(record)
+        after = path.read_text(encoding="utf-8")
+        names_after = sorted(item.name for item in self.folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["nbs-industrial.json"])
+        self.assertEqual(record["reproduction_sentence"], REPRODUCTION_SENTENCE)
+        self.assertEqual(record["terms_url"], TERMS_URL)
+        self.assertEqual(record["copyright_notice"], "版权所有: 国家统计局")
+        self.assertIs(record["permits_financial_use"], False)
+        self.assertIs(read["permits_financial_use"], False)
+        self.assertEqual(CLASS_C_POLICY, "closed")
+        self.assertNotIn("trade", record)
+        self.assertNotIn("trade", read)
+        self.assertNotIn("quantity", record)
+        self.assertNotIn("growth", record)
+        self.assertNotIn("value", record)
+        self.assertNotIn("%", after)
+        self.assertNotIn("％", after)
+        self.assertNotIn("增长", after)
+        self.assertFalse((self.folder / "trade.json").exists())
 
     def test_field_save_does_not_ingest_nbs(self):
         for name in ("record.py", "page_io.py", "mcp_stdio.py"):
