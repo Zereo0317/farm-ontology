@@ -6,6 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from farm_ontology.header_schema import read_stored_header
 from farm_ontology.india_des import CITATION_URL, record_table_header
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +57,29 @@ class IndiaDesTests(unittest.TestCase):
         self.assertNotIn("production", text)
         self.assertNotIn("farm", text)
         self.assertEqual(len(list(self.folder.iterdir())), 1)
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_table_header(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        before = path.read_text(encoding="utf-8")
+        record = json.loads(before)
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        read = read_stored_header(record)
+        self.assertIs(record["permits_financial_use"], False)
+        self.assertIs(read["permits_financial_use"], False)
+        self.assertEqual(record["class_c_policy"], "closed")
+        self.assertNotIn("trade", read)
+        self.assertNotIn("value", read)
+        self.assertNotIn("yield", read)
+        self.assertNotIn("trade", before)
+        self.assertNotIn("value", record)
+        self.assertNotEqual(record["administrative_area"], "farm")
+        self.assertEqual(path.read_text(encoding="utf-8"), before)
+        self.assertEqual(
+            sorted(item.name for item in self.folder.iterdir()),
+            names_before,
+        )
+        self.assertEqual(names_before, ["india-des-estimates.json"])
 
     def test_missing_citation_writes_nothing(self):
         for citation in (None, "", "   "):
