@@ -131,7 +131,7 @@ class HttpServiceRoutingTests(unittest.TestCase):
             self.assertTrue(verdict["settlement_reason"], feed)
             self.assertIsInstance(verdict["screening_allowed"], bool)
             self.assertTrue(verdict["screening_reason"], feed)
-        self.assertIn("specimen", result["note"])
+        self.assertIn("Specimen certificates exist", result["note"])
 
     def test_licences_route_registered(self):
         status, payload, kind = handle_target("/farm/licences")
