@@ -64,6 +64,11 @@ def _rule(kind) -> str:
     text = str(kind).strip().lower()
     if text == "forecast":
         return "A forecast is not a completed harvest."
+    if text == "analysis; forecasts":
+        return (
+            "An analysis is not a quantity of goods. "
+            "A forecast is not a completed harvest."
+        )
     if text == "index":
         return "An index is not a quantity of goods."
     if any(word in text for word in ("licence", "license", "terms", "disclaimer", "methodology")):
