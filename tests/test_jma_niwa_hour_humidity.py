@@ -177,6 +177,35 @@ class JmaNiwaHourHumidityTest(unittest.TestCase):
         self.assertFalse(stored["permits_financial_use"])
         self.assertEqual(stored["class_c_policy"], "closed")
 
+    def test_hour_24_is_shinwa_and_reading_writes_no_trade(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            path = folder / "niwa-humidity.json"
+            self._record(path)
+            before = path.read_text(encoding="utf-8")
+            names_before = sorted(item.name for item in folder.iterdir())
+            header = json.loads(before)
+            after = path.read_text(encoding="utf-8")
+            names_after = sorted(item.name for item in folder.iterdir())
+
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["niwa-humidity.json"])
+        self.assertEqual(header["place"], "新和")
+        self.assertEqual(header["date"], "2026年11月16日")
+        self.assertEqual(
+            header["current_reading"],
+            {"hour": "24", "humidity_percent": 77},
+        )
+        self.assertFalse(header["permits_financial_use"])
+        text = json.dumps(header, ensure_ascii=False)
+        self.assertNotIn("平取", text)
+        self.assertNotIn("Biratori", text)
+        self.assertNotIn("trade", header)
+        self.assertNotIn("price", header)
+        self.assertNotIn("trade", after)
+        self.assertNotIn("price", after)
+
 
 if __name__ == "__main__":
     unittest.main()
