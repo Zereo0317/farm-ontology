@@ -1,0 +1,97 @@
+{
+  "collection": "MODIS/061/MOD13Q1",
+  "latitude": 42.7018152,
+  "longitude": 142.4071291,
+  "start": "2023-06-01",
+  "end": "2023-09-30",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "0",
+      "properties": {
+        "NDVI": 6997,
+        "date": "2023-06-10",
+        "image_id": "MODIS/061/MOD13Q1/2023_06_10",
+        "scale": 231.65635826395828
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "1",
+      "properties": {
+        "NDVI": 8519,
+        "date": "2023-06-26",
+        "image_id": "MODIS/061/MOD13Q1/2023_06_26",
+        "scale": 231.65635826395828
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "2",
+      "properties": {
+        "NDVI": 8365,
+        "date": "2023-07-12",
+        "image_id": "MODIS/061/MOD13Q1/2023_07_12",
+        "scale": 231.65635826395828
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "3",
+      "properties": {
+        "NDVI": 7266,
+        "date": "2023-07-28",
+        "image_id": "MODIS/061/MOD13Q1/2023_07_28",
+        "scale": 231.65635826395828
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "4",
+      "properties": {
+        "NDVI": 7224,
+        "date": "2023-08-13",
+        "image_id": "MODIS/061/MOD13Q1/2023_08_13",
+        "scale": 231.65635826395828
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "5",
+      "properties": {
+        "NDVI": 8037,
+        "date": "2023-08-29",
+        "image_id": "MODIS/061/MOD13Q1/2023_08_29",
+        "scale": 231.65635826395828
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "6",
+      "properties": {
+        "NDVI": 7779,
+        "date": "2023-09-14",
+        "image_id": "MODIS/061/MOD13Q1/2023_09_14",
+        "scale": 231.65635826395828
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "7",
+      "properties": {
+        "NDVI": 7433,
+        "date": "2023-09-30",
+        "image_id": "MODIS/061/MOD13Q1/2023_09_30",
+        "scale": 231.65635826395828
+      }
+    }
+  ]
+}
