@@ -7,6 +7,7 @@ from pathlib import Path
 
 from farm_ontology import jma_niwa_hour_humidity
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -146,6 +147,7 @@ class JmaNiwaHourHumidityTest(unittest.TestCase):
         self.assertIn("湿度(％)", source)
         self.assertNotIn("field_save", source)
 
+    @online_gate()
     def test_live_refetch_prints_hour_1_and_91_percent(self) -> None:
         request = urllib.request.Request(
             jma_niwa_hour_humidity.NIWA_URL,

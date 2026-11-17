@@ -7,6 +7,7 @@ from pathlib import Path
 
 from farm_ontology import eia_steo_forecast
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -113,6 +114,7 @@ class EiaSteoForecastTest(unittest.TestCase):
         self.assertIn("not completed supply, an observation, or a settlement", source)
         self.assertNotIn("field_save", source)
 
+    @online_gate()
     def test_live_refetch_prints_the_2026_production_forecast(self) -> None:
         request = urllib.request.Request(
             eia_steo_forecast.STEO_URL,

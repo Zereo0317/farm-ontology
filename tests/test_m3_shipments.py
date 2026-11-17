@@ -7,6 +7,7 @@ from pathlib import Path
 
 from farm_ontology import m3_shipments
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -107,6 +108,7 @@ class M3ShipmentsTest(unittest.TestCase):
         self.assertIn("not a price and not a trade", source)
         self.assertNotIn("field_save", source)
 
+    @online_gate()
     def test_live_refetch_prints_the_september_shipments(self) -> None:
         request = urllib.request.Request(
             m3_shipments.M3_URL,

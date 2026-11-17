@@ -18,6 +18,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 from farm_ontology.smap_l1a_orbit import (
     ORBIT_END,
     ORBIT_END_NAME,
@@ -41,6 +42,7 @@ class SmapL1aOrbitTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
+    @online_gate()
     def test_live_refetch_stores_the_printed_orbit_times(self):
         saved = record_orbit_times(self.folder, citation_url=URL)
         header = saved["header"]

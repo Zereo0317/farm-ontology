@@ -24,6 +24,7 @@ from farm_ontology.planet_visual_cog import (
     record_visual_cog,
 )
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = PLANET_VISUAL_COG_URL
@@ -42,6 +43,7 @@ class PlanetVisualCogTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
+    @online_gate()
     def test_live_refetch_stores_the_response_header(self):
         saved = record_visual_cog(self.folder, citation_url=URL)
         header = saved["header"]

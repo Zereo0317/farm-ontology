@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.jma_two_week import JMA_TWO_WEEK_URL, PRODUCT, record_series_header
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,6 +35,7 @@ class JmaTwoWeekRefetchTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
+    @online_gate()
     def test_live_refetch_still_prints_the_stored_product_title(self):
         saved = record_series_header(self.folder, citation_url=JMA_TWO_WEEK_URL)
         header = saved["header"]

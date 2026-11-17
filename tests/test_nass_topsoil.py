@@ -7,6 +7,7 @@ from pathlib import Path
 
 from farm_ontology import nass_topsoil
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -178,6 +179,7 @@ class NassTopsoilTest(unittest.TestCase):
         self.assertIn("weighted based on cropland acreage", source)
         self.assertNotIn("field_save", source)
 
+    @online_gate()
     def test_live_refetch_prints_the_topsoil_table(self) -> None:
         request = urllib.request.Request(
             nass_topsoil.NASS_TOPSOIL_URL,

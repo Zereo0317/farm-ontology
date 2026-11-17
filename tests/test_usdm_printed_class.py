@@ -6,6 +6,7 @@ from pathlib import Path
 
 from farm_ontology import usdm_printed_class
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 PRINTED = (
     "the introduction of moderate drought across "
@@ -92,6 +93,7 @@ class UsdmPrintedClassTest(unittest.TestCase):
         self.assertIn("not soil moisture, a yield, or a trade", source)
         self.assertNotIn("field_save", source)
 
+    @online_gate()
     def test_live_refetch_prints_the_class_and_area(self) -> None:
         request = urllib.request.Request(
             usdm_printed_class.USDM_URL,

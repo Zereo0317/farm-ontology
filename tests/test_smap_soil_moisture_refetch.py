@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 from farm_ontology.smap_soil_moisture import (
     PRODUCT,
     SMAP_SOIL_MOISTURE_URL,
@@ -38,6 +39,7 @@ class SmapSoilMoistureRefetchTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
+    @online_gate()
     def test_live_refetch_still_prints_the_stored_product_title(self):
         saved = record_series_header(self.folder, citation_url=SMAP_SOIL_MOISTURE_URL)
         header = saved["header"]

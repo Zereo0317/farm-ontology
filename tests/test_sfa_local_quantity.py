@@ -6,6 +6,7 @@ from pathlib import Path
 
 from farm_ontology import sfa_local_quantity
 from farm_ontology.policy import CLASS_C_POLICY
+from farm_ontology.testing import online_gate
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -90,6 +91,7 @@ class SfaLocalQuantityTest(unittest.TestCase):
         self.assertIn("It is not a trade", source)
         self.assertNotIn("field_save", source)
 
+    @online_gate()
     def test_live_refetch_is_the_redirect_target_pdf(self) -> None:
         request = urllib.request.Request(
             sfa_local_quantity.SFA_URL,
