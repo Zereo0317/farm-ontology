@@ -45,6 +45,36 @@ class FaoFfpiCurrentTest(unittest.TestCase):
         self.assertNotIn("trade", text)
         self.assertNotIn("traded price", text)
 
+    def test_october_2026_index_is_not_a_traded_price(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            path = folder / "ffpi.json"
+            fao_ffpi_current.record_fao_ffpi_current(
+                path,
+                fao_ffpi_current.FAO_FFPI_URL,
+                LIVE_BODY,
+            )
+            stored = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["index"], "FAO Food Price Index")
+            self.assertEqual(stored["month"], "October 2026")
+            self.assertEqual(stored["value"], 133.9)
+            self.assertEqual(stored["unit"], "points")
+            self.assertNotIn("price", stored)
+            self.assertNotIn("trade", stored)
+            self.assertFalse(stored["permits_financial_use"])
+            self.assertFalse((folder / "trade.json").exists())
+            self.assertEqual([item.name for item in folder.iterdir()], ["ffpi.json"])
+            for label in ("traded price", "trade"):
+                rejected = folder / "rejected.json"
+                with self.assertRaises(ValueError):
+                    fao_ffpi_current.record_fao_ffpi_current(
+                        rejected,
+                        fao_ffpi_current.FAO_FFPI_URL,
+                        LIVE_BODY,
+                        label=label,
+                    )
+                self.assertFalse(rejected.exists())
+
     def test_failed_request_or_empty_body_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "ffpi.json"
