@@ -1,0 +1,116 @@
+{
+  "_provenance": "projection rows mirroring fixtures/sensors/device-proto-soil.json with explicit parcel links ADDED (the ingest adapter never asserts them); coverage_area_ha present only where a sensor itself would declare an area; captured_live=false",
+  "captured_live": false,
+  "rows": [
+    {
+      "sensor_iri": "sensor/protokit-se02-soila",
+      "parcel_iri": "observation/boundary/demo-not-a-real-farm",
+      "device_class": "soil-vwc",
+      "value": 24.8,
+      "depth_cm": 10,
+      "probe_radius_m": 2.0,
+      "phenomenon_end": "2026-08-10T03:30:00+00:00",
+      "calibration_activity": "activity/proto-gravimetric-crosscheck-2026q2",
+      "recalibration_due": "2027-04-21",
+      "calibration_error": {
+        "metric": "rmse",
+        "value_fraction": 0.018,
+        "bias_fraction": 0.006,
+        "samples": 9,
+        "method": "gravimetric-3-point",
+        "reference_doc": "hardware/calibration-protocol.md",
+        "region_demo": "Hokkaido-demo-not-biratori",
+        "crop": "soybean",
+        "season": "2026"
+      }
+    },
+    {
+      "sensor_iri": "sensor/protokit-se02-expired",
+      "parcel_iri": "observation/boundary/demo-not-a-real-farm",
+      "device_class": "soil-vwc",
+      "value": 24.8,
+      "depth_cm": 10,
+      "probe_radius_m": 2.0,
+      "phenomenon_end": "2026-08-10T03:30:00+00:00",
+      "calibration_activity": "activity/proto-gravimetric-crosscheck-2026q2",
+      "recalibration_due": "2026-08-01",
+      "calibration_error": {
+        "metric": "rmse",
+        "value_fraction": 0.018,
+        "bias_fraction": 0.006,
+        "samples": 9,
+        "method": "gravimetric-3-point",
+        "reference_doc": "hardware/calibration-protocol.md",
+        "region_demo": "Hokkaido-demo-not-biratori",
+        "crop": "soybean",
+        "season": "2026"
+      }
+    },
+    {
+      "sensor_iri": "sensor/protokit-se02-uncertified",
+      "parcel_iri": "observation/boundary/demo-not-a-real-farm",
+      "device_class": "soil-vwc",
+      "value": 24.8,
+      "depth_cm": 10,
+      "probe_radius_m": 2.0,
+      "phenomenon_end": "2026-08-10T03:30:00+00:00",
+      "recalibration_due": "2027-04-21",
+      "calibration_error": {
+        "metric": "rmse",
+        "value_fraction": 0.018,
+        "bias_fraction": 0.006,
+        "samples": 9,
+        "method": "gravimetric-3-point",
+        "reference_doc": "hardware/calibration-protocol.md",
+        "region_demo": "Hokkaido-demo-not-biratori",
+        "crop": "soybean",
+        "season": "2026"
+      }
+    },
+    {
+      "sensor_iri": "sensor/protokit-scan-array-01",
+      "parcel_iri": "observation/boundary/demo-not-a-real-farm",
+      "device_class": "soil-vwc",
+      "value": 24.8,
+      "depth_cm": 10,
+      "probe_radius_m": 2.0,
+      "phenomenon_end": "2026-08-10T03:30:00+00:00",
+      "calibration_activity": "activity/proto-gravimetric-crosscheck-2026q2",
+      "recalibration_due": "2027-04-21",
+      "calibration_error": {
+        "metric": "rmse",
+        "value_fraction": 0.018,
+        "bias_fraction": 0.006,
+        "samples": 9,
+        "method": "gravimetric-3-point",
+        "reference_doc": "hardware/calibration-protocol.md",
+        "region_demo": "Hokkaido-demo-not-biratori",
+        "crop": "soybean",
+        "season": "2026"
+      },
+      "coverage_area_ha": 0.4
+    },
+    {
+      "sensor_iri": "sensor/protokit-se02-other-parcel",
+      "parcel_iri": "observation/boundary/someone-elses-field",
+      "device_class": "soil-vwc",
+      "value": 24.8,
+      "depth_cm": 10,
+      "probe_radius_m": 2.0,
+      "phenomenon_end": "2026-08-10T03:30:00+00:00",
+      "calibration_activity": "activity/proto-gravimetric-crosscheck-2026q2",
+      "recalibration_due": "2027-04-21",
+      "calibration_error": {
+        "metric": "rmse",
+        "value_fraction": 0.018,
+        "bias_fraction": 0.006,
+        "samples": 9,
+        "method": "gravimetric-3-point",
+        "reference_doc": "hardware/calibration-protocol.md",
+        "region_demo": "Hokkaido-demo-not-biratori",
+        "crop": "soybean",
+        "season": "2026"
+      }
+    }
+  ]
+}
