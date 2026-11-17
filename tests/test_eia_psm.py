@@ -5,7 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from farm_ontology.eia_psm import EIA_PSM_URL, record_series_header
+from farm_ontology.eia_psm import EIA_PSM_URL, read_stored_record, record_series_header
+from farm_ontology.policy import class_c_policy
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = EIA_PSM_URL
@@ -100,6 +101,28 @@ class EiaPsmTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 record_series_header(self.folder, citation_url=URL, label=label)
         self.assertEqual(list(self.folder.iterdir()), [])
+
+    def test_reading_the_stored_record_writes_no_trade(self):
+        saved = record_series_header(self.folder, citation_url=URL)
+        path = self.folder / saved["file"]
+        before = path.read_text(encoding="utf-8")
+        names_before = sorted(item.name for item in self.folder.iterdir())
+        header = read_stored_record(self.folder)
+        after = path.read_text(encoding="utf-8")
+        names_after = sorted(item.name for item in self.folder.iterdir())
+        self.assertEqual(after, before)
+        self.assertEqual(names_after, names_before)
+        self.assertEqual(names_after, ["petroleum-supply-monthly.json"])
+        self.assertIs(header["permits_financial_use"], False)
+        self.assertEqual(class_c_policy(), "closed")
+        self.assertNotIn("trade", header)
+        self.assertNotIn("value", header)
+        self.assertNotIn("quantity", header)
+        self.assertNotIn("series", header)
+        self.assertNotIn("trade", after)
+        self.assertEqual(header["kind"], "report")
+        self.assertNotEqual(header["kind"], "forecast")
+        self.assertNotEqual(header["kind"], "trade")
 
     def test_field_save_does_not_ingest_the_psm(self):
         for name in ("record.py", "page_io.py", "mcp_stdio.py"):
