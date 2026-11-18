@@ -105,23 +105,61 @@ def safe_name(text: str) -> str:
 def open_pipe_backend():
     """Pipeline backend from the environment, mirroring record_store.
 
-    ``FARM_RECORD_BACKEND=gcs`` reuses the durable record bucket with the
-    dedicated ``pipelines`` prefix, so run rows and alerts enjoy the same
-    durability as observations. Local default root: ``~/.farm-ontology``
-    with the ``pipelines`` subtree; rel paths are IDENTICAL under both
-    backends (``run-log/...``, ``alerts/...``, ``state/...``).
+    Resolution order (task-9 lesson: a HALF-configured env must not
+    silently read an empty shadow store — that is exactly how prod
+    revision 00054 reported every job as ``no ingest-run row exists``
+    while the workers were correctly filling the bucket):
+
+    - ``FARM_RECORD_BACKEND=gcs`` → GCS bucket ``FARM_RECORD_BUCKET``
+      (required) under the ``pipelines`` prefix;
+    - ``FARM_RECORD_BACKEND=local`` WITH ``FARM_RECORD_BUCKET`` set →
+      REFUSED loudly: the env declares a durable bucket but asks for a
+      local store, and the resulting blindness (empty local read) is the
+      failure mode this module exists to prevent — unset one of the two;
+    - ``FARM_RECORD_BACKEND=local`` alone → local, root preference:
+      ``FARM_PIPE_ROOT`` → ``FARM_RECORD_DIR/pipelines`` (ride the same
+      record-directory seam the services and Dockerfile configure;
+      Dockerfile sets ``FARM_RECORD_DIR=/tmp/farm-records``, which beats
+      the useless ``/nonexistent`` home of the container's system user);
+    - backend UNSET but ``FARM_RECORD_BUCKET`` set → GCS: the bucket var
+      IS the durability declaration;
+    - both unset → local at ``~/.farm-ontology/pipelines`` (laptop).
+
+    Rel paths are IDENTICAL under both backends (``run-log/...``,
+    ``alerts/...``, ``state/...``).
     """
-    name = os.environ.get("FARM_RECORD_BACKEND", "").strip().lower() or "local"
-    if name == "local":
-        root = os.environ.get("FARM_PIPE_ROOT", "").strip()
-        base = Path(root) if root else Path.home() / ".farm-ontology"
-        return LocalBackend(base / PIPE_SEGMENT)
-    if name == "gcs":
-        bucket = os.environ.get("FARM_RECORD_BUCKET", "").strip()
+    backend_name = os.environ.get("FARM_RECORD_BACKEND", "").strip().lower()
+    bucket = os.environ.get("FARM_RECORD_BUCKET", "").strip()
+    if backend_name == "gcs":
         if not bucket:
             raise ValueError("FARM_RECORD_BACKEND=gcs requires FARM_RECORD_BUCKET")
         return GcsBackend(bucket, PIPE_SEGMENT)
-    raise ValueError(f"FARM_RECORD_BACKEND must be local or gcs, got {name!r}")
+    if backend_name == "local":
+        if bucket:
+            raise ValueError(
+                "FARM_RECORD_BACKEND=local contradicts FARM_RECORD_BUCKET="
+                f"{bucket}: the env declares a durable record bucket, so a "
+                "local pipeline store would silently read empty. Unset "
+                "FARM_RECORD_BUCKET or set FARM_RECORD_BACKEND=gcs."
+            )
+        return LocalBackend(_local_pipe_root())
+    if backend_name == "":
+        if bucket:
+            return GcsBackend(bucket, PIPE_SEGMENT)
+        return LocalBackend(_local_pipe_root())
+    raise ValueError(f"FARM_RECORD_BACKEND must be local or gcs, got {backend_name!r}")
+
+
+def _local_pipe_root() -> Path:
+    """Where the local pipelines subtree lives: FARM_PIPE_ROOT, else the
+    record dir seam (FARM_RECORD_DIR), else home."""
+    explicit = os.environ.get("FARM_PIPE_ROOT", "").strip()
+    if explicit:
+        return Path(explicit) / PIPE_SEGMENT
+    record_dir = os.environ.get("FARM_RECORD_DIR", "").strip()
+    if record_dir:
+        return Path(record_dir) / PIPE_SEGMENT
+    return Path.home() / ".farm-ontology" / PIPE_SEGMENT
 
 
 def local_pipe_backend(root: Path) -> LocalBackend:

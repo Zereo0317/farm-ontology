@@ -355,7 +355,13 @@ STATUS_JSON = {
 
 
 def _ingest_status_snapshot() -> dict:
-    """WS2 ingest observability read through the record backend (gap-honest)."""
+    """WS2 ingest observability read through the record backend (gap-honest).
+
+    Carries ``backend`` + ``env_seen`` so a misconfigured deployment names
+    itself: prod rev 00054 reported every job as an empty-store gap purely
+    because its env lacked the record-backend vars; the payload must be
+    able to show that at a glance instead of hiding behind the gaps.
+    """
     from datetime import datetime, timezone as _tz
 
     from farm_ontology import ingest_core
@@ -365,7 +371,14 @@ def _ingest_status_snapshot() -> dict:
     try:
         backend = ingest_core.open_pipe_backend()
         status = ingest_status(backend, now=now)
-        return {**status, "backend": ingest_core.describe_backend(backend)}
+        return {
+            **status,
+            "backend": ingest_core.describe_backend(backend),
+            "env_seen": {
+                "FARM_RECORD_BACKEND": bool(os.environ.get("FARM_RECORD_BACKEND", "").strip()),
+                "FARM_RECORD_BUCKET": bool(os.environ.get("FARM_RECORD_BUCKET", "").strip()),
+            },
+        }
     except (OSError, ValueError, RuntimeError) as error:
         return {"gap": f"ingest-status unreadable: {str(error)[:160]}"}
 
