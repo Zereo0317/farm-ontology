@@ -178,7 +178,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     invTrustTitle: "為什麼敢信這些數字",
     invTrustLead: "不是口號，是可以自己點開驗的機制與計數。",
     invSpine: [
-      { num: "1,592", label: "項自動化測試持續綠燈（本版倉庫全量套件）" },
+      { num: "1,597", label: "項自動化測試持續綠燈（本版倉庫全量套件，2026-11-18）" },
       { num: "3 時戳", label: "每筆數字的出生證明：issue / valid / availability" },
       { num: "hash 鏈", label: "帳本防竄改：任何人改一列都會被對出來" },
       { num: "point-in-time", label: "重放：任何歷史決策能用當時已知資料原樣重演" },
@@ -305,7 +305,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     invTrustTitle: "なぜこの数字を信じてよいか",
     invTrustLead: "スローガンではなく、自分で開いて検算できる仕組みと計数です。",
     invSpine: [
-      { num: "1,592", label: "自動テストが常にグリーン（本版リポジトリ全量）" },
+      { num: "1,597", label: "自動テストが常にグリーン（本版リポジトリ全量、2026-11-18）" },
       { num: "3時刻", label: "全数値の出生証明：issue / valid / availability" },
       { num: "ハッシュ鎖", label: "台帳は改ざん耐性。一列いじれば対照で弾く" },
       { num: "point-in-time", label: "リプレイ：過去の判断を当時既知のデータだけで再現" },

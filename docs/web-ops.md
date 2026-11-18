@@ -206,10 +206,44 @@ Earlier revisions (proof of iteration, all serving→replaced):
 
 <!-- DEPLOY-PROOF-END -->
 
-## 8. Testing discipline
+## 8. Report v2 addendum (2026-11-18 late, task-8 v2 extension)
 
-* The Python suite (1068 tests) is untouched: this workstream adds only
-  `web/`, `Dockerfile.web`, `web/tools/web-image-build.ps1` and this doc.
+The public bilingual field report moved to a two-audience format at
+[`/report/biratori-1119`](../web/app/report/biratori-1119/page.tsx)
+(founder work-order v2): farmer tab (playbook grade cards + pure-SVG evidence
+charts + satellite thumbnail + honest soil-gap card) and investor tab
+(staged-pricing framework, transparent ROI arithmetic, trust spine,
+source/licence list). Implementation notes for the next operator:
+
+* Prose lives in `web/lib/report-copy.ts` (zh-TW + ja; type shape accepts
+  zh-CN/en/th later). Guarded by `ReportCopyGuardTests` in
+  `tests/test_i18n_schema.py` (structural parity, farmer-voice jargon ban,
+  no hardcoded report strings in the page).
+* Evidence charts are hand-rolled server SVG (`charts.tsx`) over
+  `web/lib/report-1119-data.ts` — zero chart dependencies.
+* `GET /api/scene-thumb` proxies the Planet Data-API thumbnail server-side
+  (`PLANET_API_KEY`, the same `Planet-labs` Secret Manager secret the
+  backend mounts — added to THIS service via `--set-secrets`, so the web
+  service now carries TWO secrets). Cache `s-maxage=3600`; failures return a
+  labelled inline-SVG gap placeholder, never a broken image.
+* Middleware public prefixes now include `/report`, `/api/scene-thumb`,
+  `/reports` (source-report copies shipped in `web/public/`, which the
+  runner image copies explicitly — standalone output does NOT include
+  `public/`), and `/icon.svg`.
+* Serving image lineage: `report-v2` → `report-v2b` (public/ + whitelist) →
+  `report-v2c` (favicon) → `report-v2d` (icon whitelist) →
+  **`report-v2-final` (digest `d5b50c0c…`, revision `00017-hvq`, trust-count
+  synced to the suite's real 1,597 OK)**. Python suite: **Ran 1597 · OK
+  (skipped=14)** at ship. Screenshots: workspace
+  `ws8-report-farmer-mobile.png` (375 px farmer tab) and
+  `ws8-report-investor-desktop.png` (1280 px investor tab).
+
+## 9. Testing discipline
+
+* The Python suite is untouched by deploys: this workstream only ever added
+  `web/` files, `Dockerfile.web`, `web/tools/web-image-build.ps1`, this doc,
+  and the report-copy guard TEST in `tests/test_i18n_schema.py` (suite grew
+  1592 → 1597, all green).
 * Web checks are the Next.js pipeline itself: strict TypeScript + ESLint run
   inside `next build` (the `npm run build` step of the Dockerfile is the CI
   gate). A future CI job can wrap `web/tools/web-image-build.ps1` the same way
