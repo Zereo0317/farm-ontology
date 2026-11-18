@@ -7,8 +7,7 @@ export function ReportPage() {
   const report = copy.report;
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 md:py-16">
-      <p className="text-xs tracking-stamp text-accent uppercase">{copy.measuredLabel} · 2026-11-18</p>
-      <h1 className="text-hero mt-4 max-w-4xl font-display">{report.title}</h1>
+      <h1 className="text-hero max-w-4xl font-display text-balance">{report.title}</h1>
       <p className="mt-4 max-w-2xl text-lg leading-relaxed">{report.lede}</p>
 
       <div className="mt-10 grid border border-line bg-line sm:grid-cols-2">
@@ -22,25 +21,39 @@ export function ReportPage() {
         </article>
       </div>
 
-      <div className="mt-8 grid gap-3">
-        {report.districts.map((district) => (
-          <article key={district.name} className="grid gap-2 border border-line p-4 sm:grid-cols-4 sm:items-baseline sm:p-5">
-            <h2 className="font-display text-2xl">{district.name}</h2>
-            <p>
-              <span className="block text-xs text-muted">{report.colRegion}</span>
-              {district.region}
-            </p>
-            <p>
-              <span className="block text-xs text-muted">{report.colRole}</span>
-              {report.included}
-            </p>
-            <p>
-              <span className="block text-xs text-muted">{report.colMaturity}</span>
-              {district.band === "within" ? report.within : report.gapNote}
-            </p>
-          </article>
-        ))}
-      </div>
+      {(() => {
+        // One row per DISTINCT verdict. Identical rows repeat noise; the
+        // honest collapse names every district once, per its own band.
+        const byBand = new Map<string, string[]>();
+        for (const district of report.districts) {
+          byBand.set(district.band, [...(byBand.get(district.band) ?? []), district.name]);
+        }
+        return (
+          <div className="mt-8 grid gap-3">
+            {[...byBand.entries()].map(([band, names]) => (
+              <article
+                key={band}
+                className="grid gap-2 border border-line p-4 sm:grid-cols-[auto_1fr] sm:items-baseline sm:gap-x-8 sm:p-5"
+              >
+                <h2 className="font-display text-2xl leading-snug">{names.join("・")}</h2>
+                <p className="text-sm leading-relaxed">
+                  {band === "within" ? (
+                    <>
+                      <span className="block text-xs text-muted">{report.colRegion} · {report.colRole}</span>
+                      {report.included} · {report.within}
+                    </>
+                  ) : (
+                    <>
+                      <span className="block text-xs text-muted">{report.colRegion} · {report.colRole}</span>
+                      {report.gapNote}
+                    </>
+                  )}
+                </p>
+              </article>
+            ))}
+          </div>
+        );
+      })()}
 
       <p className="mt-8 max-w-3xl leading-relaxed">{report.biratori}</p>
       <p className="mt-3 max-w-3xl text-sm text-muted">{report.caveat}</p>

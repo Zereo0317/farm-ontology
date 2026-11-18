@@ -57,7 +57,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
               );
             })}
           </div>
-          <h1 className="text-hero mt-6 max-w-xl font-display">{title}</h1>
+          <h1 className="text-hero mt-6 max-w-xl font-display text-balance">{title}</h1>
           <p className="mt-4 max-w-md text-lg leading-relaxed">{deck}</p>
           <div id="hero-cta" className="mt-6">
             <ButtonLink to="/$locale/start" params={{ locale }}>
@@ -77,9 +77,6 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
               }`}
             />
           ))}
-          <figcaption className="absolute inset-x-0 bottom-0 bg-ink px-4 py-3 text-xs text-on-ink">
-            {vision.notThisPlot}
-          </figcaption>
         </figure>
       </section>
 
@@ -121,7 +118,6 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
             </article>
           </div>
           <p className="mt-4 text-xs text-muted">2026-11-18 · {copy.trust.lede}</p>
-          <p className="mt-2 text-xs text-muted">{vision.credit}</p>
         </div>
       </section>
 

@@ -112,8 +112,7 @@ export function StartFlow() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 md:py-16">
-      <p className="text-xs tracking-stamp text-accent uppercase">{copy.measuredLabel} · 2026-11-18</p>
-      <h1 className="text-hero mt-4 font-display">{copy.start.title}</h1>
+      <h1 className="text-hero font-display text-balance">{copy.start.title}</h1>
       <p className="mt-4 max-w-2xl text-lg leading-relaxed">{copy.start.lede}</p>
 
       <ol className="mt-8 flex gap-2" aria-label={copy.start.title}>

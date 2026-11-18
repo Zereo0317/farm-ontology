@@ -87,7 +87,7 @@ export const en: Copy = {
     lede: "2026-11-18. Not a projection. If a figure was not published, it is not on this page.",
     items: [
       {
-        figure: "1,591",
+        figure: "1,744",
         label: "Automated tests, all passing",
         note: "CI re-runs them on every push.",
       },
@@ -307,10 +307,10 @@ export const en: Copy = {
   forms: {
     waitTitle: "Put me on the Pro waitlist",
     waitBody:
-      "Action sheets, many fields, an API, lineage export. This page does not transmit the form. Issuing it writes a consent record on this device.",
+      "Action sheets, many fields, an API, data export. Submitting writes your consent, with the record (name and email only), into the ledger.",
     briefTitle: "Book a legal and data-governance briefing",
     briefBody:
-      "For institutions that need lineage, licence control, and hash-chained credentials. This page does not send the request anywhere. It writes your consent on this device.",
+      "For institutions that need lineage, licence control, and hash-chained credentials. Submitting writes the request and your consent into the same ledger.",
     name: "Name",
     email: "Email",
     org: "Organisation",
@@ -319,14 +319,14 @@ export const en: Copy = {
     needLineage: "Auditable data lineage",
     needLicence: "Licence controls",
     needHash: "Hash-chained credentials",
-    consentWait: "I agree to keep this waitlist intent on this device, as a consent record.",
-    consentBrief: "I agree to keep this briefing request on this device, as a consent record.",
+    consentWait: "I agree to have this waitlist intent (name, email) written into the ledger as a consent record.",
+    consentBrief: "I agree to have this briefing request, including my organisation, written into the ledger as a consent record.",
     submitWait: "Issue my waitlist record",
     submitBrief: "Issue my briefing record",
-    savedWait: "Waitlist record issued on this device",
-    savedBrief: "Briefing record issued on this device",
+    savedWait: "Waitlist record issued",
+    savedBrief: "Briefing request issued",
     notTransmitted:
-      "Not transmitted. There is no remote list on this page, and this page will not pretend there is one. Keep the file.",
+      "Written down. Online it syncs into the ledger; offline it stays on this device — download or delete it any time.",
     download: "Download the JSON",
     emailInvalid: "Enter an email address.",
     nameRequired: "A name is required.",

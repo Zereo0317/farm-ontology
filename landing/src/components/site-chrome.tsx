@@ -66,7 +66,7 @@ export function SiteHeader() {
                   search={home ? audienceSearch : undefined}
                   hrefLang={HTML_LANG[next]}
                   aria-current={current ? "true" : undefined}
-                  className={`inline-flex min-h-11 items-center px-1.5 text-xs sm:px-2 ${
+                  className={`inline-flex min-h-11 items-center whitespace-nowrap px-1.5 text-xs leading-5 sm:px-2 ${
                     current ? "font-semibold text-ink underline decoration-accent underline-offset-4" : "text-muted"
                   }`}
                 >
@@ -89,11 +89,19 @@ export function SiteHeader() {
         <div className="border-t border-line">
           <nav className="mx-auto flex w-full max-w-6xl gap-4 overflow-x-auto px-4 py-2 sm:px-6" aria-label="Farm Ontology">
             {links.map((item) => (
-              <a key={item.hash} href={`#${item.hash}`} className="shrink-0 py-2 text-sm text-muted hover:text-ink">
+              <a
+                key={item.hash}
+                href={`#${item.hash}`}
+                className="shrink-0 py-2 text-sm text-muted underline decoration-transparent underline-offset-8 transition-[color,text-decoration-color] duration-150 hover:text-ink hover:decoration-accent"
+              >
                 {item.label}
               </a>
             ))}
-            <Link to="/$locale/report" params={{ locale }} className="shrink-0 py-2 text-sm text-muted hover:text-ink">
+            <Link
+              to="/$locale/report"
+              params={{ locale }}
+              className="shrink-0 py-2 text-sm text-muted underline decoration-transparent underline-offset-8 transition-[color,text-decoration-color] duration-150 hover:text-ink hover:decoration-accent"
+            >
               {copy.nav.report}
             </Link>
           </nav>
@@ -122,6 +130,7 @@ export function SiteFooter() {
           </Link>
         </div>
         <p className="font-display text-sm">Farm Ontology · 2026-11-18</p>
+        <p className="text-xs text-muted">{VISION[locale].credit}</p>
       </div>
     </footer>
   );

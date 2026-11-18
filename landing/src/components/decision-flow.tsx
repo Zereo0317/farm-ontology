@@ -76,11 +76,6 @@ export function DecisionFlow({ audience }: { audience: Audience }) {
           </article>
         ))}
       </div>
-      <p className="mt-4 text-xs text-muted">{vision.shapeNote}</p>
-      <p className="mt-8 max-w-3xl font-display text-2xl leading-snug sm:text-3xl">
-        {audience === "farmer" ? vision.farmerEnd : vision.hungerEnd}
-      </p>
-      <p className="mt-3 max-w-2xl text-sm text-muted">{vision.gate}</p>
     </div>
   );
 }
