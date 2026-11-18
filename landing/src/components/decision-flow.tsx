@@ -69,7 +69,7 @@ export function DecisionFlow({ audience }: { audience: Audience }) {
           <span className="ont-bead ont-bead-b" />
         </div>
         {cells.map((cell) => (
-          <article key={cell.key} className={`ont-cell ${cell.key === "03" ? "ont-gate" : ""}`} data-on={cell.on}>
+          <article key={cell.key} className={`ont-cell rise rise-${Number(cell.key) + 1} ${cell.key === "03" ? "ont-gate" : ""}`} data-on={cell.on}>
             <p className="font-display text-sm tabular-nums text-accent">{cell.key}</p>
             <h3 className="mt-2 font-display text-xl">{cell.title}</h3>
             {cell.body}

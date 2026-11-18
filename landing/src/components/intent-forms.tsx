@@ -115,6 +115,7 @@ export function WaitlistForm() {
           />
           <p className="mt-2 text-xs text-muted">
             {saved.transmission === "landed" ? "✔ 已收進田間帳本（GCS）" : "⚠ 帳本連線未成——記錄已存此機"}
+            {" · "}{copy.forms.savedNext}
           </p>
         </div>
       ) : (
@@ -208,6 +209,7 @@ export function BriefingForm() {
           />
           <p className="mt-2 text-xs text-muted">
             {saved.transmission === "landed" ? "✔ Received into the field ledger (GCS)" : "⚠ Ledger unreachable — the record stays on this device"}
+            {" · "}{copy.forms.savedNext}
           </p>
         </div>
       ) : (

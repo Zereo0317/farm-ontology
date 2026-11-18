@@ -255,7 +255,7 @@ export const ja: Copy = {
     fatalFigure: "0",
     fatal: "致命的欠陥",
     maturityFigure: "±15%",
-    maturity: "北海道の四産地。公開品種暦との比較",
+    maturity: "四つの北海道産地を公開品種暦と照合——±15% は一致の範囲",
     included: "この回に含む",
     within: "±15% 以内",
     gapNote: "欠損 — その成熟度の記述にある北海道四産地には入らない",
@@ -276,7 +276,7 @@ export const ja: Copy = {
     ],
   },
   forms: {
-    waitTitle: "Pro の待機リストに入れる",
+    waitTitle: "正式版の順番待ちに登録",
     waitBody:
       "行動提案、複数ほ場、API、データ書き出し。送信すると、同意（氏名とメールのみ）が記録と一緒に台帳に書き込まれます。",
     briefTitle: "法務とデータガバナンスの説明を予約",
@@ -296,6 +296,7 @@ export const ja: Copy = {
     submitBrief: "説明依頼の記録を発行",
     savedWait: "ウェイティングリスト記録を発行しました",
     savedBrief: "ブリーフィング請求を発行しました",
+    savedNext: "次のステップ：アクセスコードをこのメールに送ります。急ぎなら Instagram の @seges にDMを。",
     notTransmitted: "記録しました。オンラインなら台帳に同期し、オフラインならこの端末に残ります。いつでもダウンロード・削除できます。",
     download: "JSON をダウンロード",
     emailInvalid: "メールアドレスを入力してください。",

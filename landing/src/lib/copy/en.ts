@@ -283,7 +283,7 @@ export const en: Copy = {
     fatalFigure: "0",
     fatal: "Fatal defects",
     maturityFigure: "±15%",
-    maturity: "Four Hokkaido districts, against the public variety calendar",
+    maturity: "Four Hokkaido districts against public cultivar calendars — ±15% is the agreement radius",
     included: "Included",
     within: "Within ±15%",
     gapNote: "gap — not one of the four Hokkaido areas in that maturity statement",
@@ -305,7 +305,7 @@ export const en: Copy = {
     ],
   },
   forms: {
-    waitTitle: "Put me on the Pro waitlist",
+    waitTitle: "Join the release waitlist",
     waitBody:
       "Action sheets, many fields, an API, data export. Submitting writes your consent, with the record (name and email only), into the ledger.",
     briefTitle: "Book a legal and data-governance briefing",
@@ -325,6 +325,7 @@ export const en: Copy = {
     submitBrief: "Issue my briefing record",
     savedWait: "Waitlist record issued",
     savedBrief: "Briefing request issued",
+    savedNext: "Next: the access code arrives at this email. In a hurry, message @seges on Instagram.",
     notTransmitted:
       "Written down. Online it syncs into the ledger; offline it stays on this device — download or delete it any time.",
     download: "Download the JSON",

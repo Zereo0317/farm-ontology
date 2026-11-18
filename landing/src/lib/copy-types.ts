@@ -198,6 +198,7 @@ export type Copy = {
     submitBrief: string;
     savedWait: string;
     savedBrief: string;
+    savedNext: string;
     notTransmitted: string;
     download: string;
     emailInvalid: string;

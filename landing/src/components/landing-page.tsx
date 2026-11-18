@@ -103,21 +103,28 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
 
       <section id="proof" className="scroll-mt-nav border-t border-line">
         <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-20">
-          <div className="grid border border-line bg-line sm:grid-cols-3">
-            <article className="bg-paper p-5">
+          <div className="grid grid-cols-3 border border-line bg-line">
+            <article className="bg-paper p-3 sm:p-5">
               <p className="text-stat font-display tabular-nums">{copy.trust.items[0].figure}</p>
               <h2 className="mt-3 text-sm">{copy.trust.items[0].label}</h2>
             </article>
-            <article className="bg-paper p-5">
+            <article className="bg-paper p-3 sm:p-5">
               <p className="text-stat font-display tabular-nums">{copy.report.fatalFigure}</p>
               <h2 className="mt-3 text-sm">{copy.report.fatal}</h2>
             </article>
-            <article className="bg-paper p-5">
+            <article className="bg-paper p-3 sm:p-5">
               <p className="text-stat font-display">{vision.falseLabel}</p>
               <h2 className="mt-3 text-sm">{vision.falseNote}</h2>
             </article>
           </div>
           <p className="mt-4 text-xs text-muted">{copy.trust.lede}</p>
+          <p className="mt-3 text-sm">
+            {audience === "farmer" ? (
+              <a href="https://farm-seges-ai-web-451400509859.asia-east1.run.app/report/biratori-1119" target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-4 hover:decoration-accent">{vision.openLedger}</a>
+            ) : (
+              <a href="https://farm-seges-ai-web-451400509859.asia-east1.run.app/pitch/reliable" target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-4 hover:decoration-accent">{vision.proofPitch}</a>
+            )}
+          </p>
         </div>
       </section>
 
@@ -146,7 +153,6 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
           <ButtonLink to="/$locale/start" params={{ locale }} variant="inverse">
             {cta}
           </ButtonLink>
-          <p className="max-w-xl text-sm text-on-ink-muted">{vision.gate}</p>
         </div>
       </section>
 
