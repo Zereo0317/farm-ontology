@@ -240,3 +240,155 @@ def list_notes() -> dict:
         note_body = json.loads(store.read_text(name))
         notes.append({"file": PurePosixPath(name).name, **note_body})
     return {"observations": observations, "notes": notes}
+
+
+# ---------------------------------------------------------------------------
+# Boundary walk (2026-11-19): corners pinned on site become the record's
+# first parcel polygons. A walk = one field, ordered corners + optional
+# centre; accuracy travels verbatim per pin (never averaged); tenure stays
+# unknown until a human sources it. Points are recorded as OBSERVATIONS
+# (reuse of the governed obs pipeline), the assembled polygon is a separate
+# boundary-walk document — one walk, one file, replay-safe by content.
+
+
+def record_boundary_walk(
+    *,
+    parcel_name: str,
+    crop: str = "soybean",
+    corners: list[dict],
+    centre: dict | None = None,
+    note: str = "",
+    operator: str | None = None,
+    dry_run: bool = False,
+    at: datetime | None = None,
+) -> dict:
+    """Turn ordered corner pins into a governed boundary-walk record.
+
+    Each corner: ``{"corner": "NW"|"NE"|"SE"|"SW", "lat": float,
+    "lon": float, "accuracy_m": float|None}``. Accuracy is REQUIRED from
+    the device screen (it exists on every phone); a walk whose pins all
+    lack metres is refused — "unknown" only ever applies to a pin that
+    declares it saw no figure, and a polygon built entirely of those is
+    an unknown-accuracy polygon, which this record prints as such rather
+    than averaging into fairy metres.
+    """
+    name = parcel_name.strip()
+    if not name:
+        raise ValueError("parcel name is empty")
+    if len(corners) < 3:
+        raise ValueError("a boundary walk needs at least three corners")
+    moment = at or _now()
+    seen_corners = []
+    points = []
+    for index, corner in enumerate(corners):
+        label = str(corner.get("corner") or "").strip().upper()
+        if label not in {"NW", "NE", "SE", "SW"}:
+            raise ValueError(f"corner {index}: corner must be one of NW/NE/SE/SW, got {label!r}")
+        if label in seen_corners:
+            raise ValueError(f"corner {index}: {label} appears twice")
+        seen_corners.append(label)
+        lat = corner.get("lat")
+        lon = corner.get("lon")
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            raise ValueError(f"corner {index}: numeric lat/lon required")
+        if not (-90 <= float(lat) <= 90) or not (-180 <= float(lon) <= 180):
+            raise ValueError(f"corner {index}: lat/lon out of range")
+        accuracy = corner.get("accuracy_m")
+        accuracy_state = "unknown"
+        accuracy_value = None
+        if isinstance(accuracy, (int, float)) and not isinstance(accuracy, bool) and accuracy > 0:
+            accuracy_state = "metres"
+            accuracy_value = round(float(accuracy), 2)
+        points.append(
+            {
+                "corner": label,
+                "latitude": float(lat),
+                "longitude": float(lon),
+                "gps_accuracy": accuracy_state,
+                "gps_accuracy_m": accuracy_value,
+            }
+        )
+
+    centre_point = None
+    if centre is not None:
+        clat, clon = centre.get("lat"), centre.get("lon")
+        if not isinstance(clat, (int, float)) or not isinstance(clon, (int, float)):
+            raise ValueError("centre: numeric lat/lon required")
+        c_acc = centre.get("accuracy_m")
+        centre_point = {
+            "corner": "CENTRE",
+            "latitude": float(clat),
+            "longitude": float(clon),
+            "gps_accuracy": "metres" if isinstance(c_acc, (int, float)) and not isinstance(c_acc, bool) and c_acc > 0 else "unknown",
+            "gps_accuracy_m": round(float(c_acc), 2) if isinstance(c_acc, (int, float)) and not isinstance(c_acc, bool) and c_acc > 0 else None,
+        }
+
+    # a rough area estimate ONLY when all four corners pin metred accuracy:
+    # shoelace on the square-ish order NW/NE/SE/SW, printed as an ESTIMATE
+    # at the pins' support, never as a surveyed cadastral figure. (The
+    # centre pin is welcome but not required — it does not gate the maths.)
+    area_estimate_ha = None
+    accuracy_note = "mixed or unknown pin accuracy"
+    if len(points) == 4:
+        accuracies = [p["gps_accuracy_m"] for p in points]
+        if all(a is not None for a in accuracies):
+            order = {c: i for i, c in enumerate(("NW", "NE", "SE", "SW"))}
+            ring = sorted(points, key=lambda p: order[p["corner"]])
+            lat_mid = sum(p["latitude"] for p in ring) / 4
+            metres_per_deg_lat = 111_132.0
+            metres_per_deg_lon = 111_320.0 * __import__("math").cos(__import__("math").radians(lat_mid))
+            area = 0.0
+            for i in range(4):
+                a, b = ring[i], ring[(i + 1) % 4]
+                area += (a["longitude"] * metres_per_deg_lon) * (b["latitude"] * metres_per_deg_lat)
+                area -= (b["longitude"] * metres_per_deg_lon) * (a["latitude"] * metres_per_deg_lat)
+            area_estimate_ha = round(abs(area) / 2 / 10_000, 4)
+            worst = max(accuracies)
+            accuracy_note = f"closed quadrilateral; worst pin accuracy {worst:g} m"
+
+    document = {
+        "record_type": "boundary-walk",
+        "parcel_name": name,
+        "crop": crop,
+        "pinned_at": moment.astimezone(timezone.utc).isoformat(),
+        "pinned_by": operator or "field-operator",
+        "dry_run": bool(dry_run),
+        "points": points,
+        "centre": centre_point,
+        "corner_count": len(points),
+        "area_estimate_ha": area_estimate_ha,
+        "area_estimate_basis": "shoelace on the four ordered pins; ESTIMATE at pin support" if area_estimate_ha is not None else None,
+        "accuracy_note": accuracy_note,
+        "tenure": "unknown",
+        "note": note.strip(),
+        "use_class": "Screening",
+        "class_c_policy": CLASS_C_POLICY,
+        "permits_financial_use": False,
+        "trade_signal": False,
+    }
+    store = _store()
+    name_ = f"boundary/walk-{_stamp(moment)}-{abs(hash(name)) % 10000:04d}.json"
+    if store.exists(name_):
+        name_ = name_.replace(".json", "-2.json")
+    if not dry_run:
+        store.write(name_, (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+    return {"file": PurePosixPath(name_).name, "walk": document}
+
+
+def list_boundary_walks() -> dict:
+    store = _store()
+    walks = []
+    for name in sorted(store.list_paths("boundary/", "walk-*.json")):
+        body = json.loads(store.read_text(name))
+        walks.append(
+            {
+                "file": PurePosixPath(name).name,
+                "parcel_name": body.get("parcel_name"),
+                "pinned_at": body.get("pinned_at"),
+                "corner_count": body.get("corner_count"),
+                "area_estimate_ha": body.get("area_estimate_ha"),
+                "accuracy_note": body.get("accuracy_note"),
+                "dry_run": body.get("dry_run"),
+            }
+        )
+    return {"walks": walks}

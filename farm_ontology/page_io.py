@@ -10,7 +10,14 @@ import json
 import sys
 
 from farm_ontology.header_schema import PAGE_API_SCHEMA, read_stored_header
-from farm_ontology.record import add_note, list_notes, record_observation, status
+from farm_ontology.record import (
+    add_note,
+    list_boundary_walks,
+    list_notes,
+    record_boundary_walk,
+    record_observation,
+    status,
+)
 
 
 def dispatch(req: dict) -> dict:
@@ -38,6 +45,18 @@ def dispatch(req: dict) -> dict:
             text=str(req.get("text") or ""),
             observation_file=req.get("observation_file") or None,
         )
+    if op == "boundary_walk":
+        return record_boundary_walk(
+            parcel_name=str(req.get("parcel_name") or ""),
+            crop=str(req.get("crop") or "soybean"),
+            corners=list(req.get("corners") or []),
+            centre=req.get("centre"),
+            note=str(req.get("note") or ""),
+            operator=req.get("operator") or None,
+            dry_run=bool(req.get("dry_run")),
+        )
+    if op == "list_walks":
+        return list_boundary_walks()
     if op == "schema":
         return PAGE_API_SCHEMA
     if op == "read_header":
