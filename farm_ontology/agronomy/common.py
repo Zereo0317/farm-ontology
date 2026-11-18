@@ -28,7 +28,10 @@ from typing import Sequence
 #: Version of the engine's compiled configuration (rule tables + constants).
 #: Every recommendation carries it so a replayed decision can be tied to the
 #: exact rule set that produced it. Bump on ANY rule/threshold change.
-CONFIG_VERSION = "agronomy-engine-v0-config-1"
+#: config-2: D-ENGINE-1 cultivar GDD profiles (hokkaido-short default) and
+#: D-ENGINE-2 per-day running-Kcb (both recalibrated after the 2026
+#: multi-site field campaign, reports/fieldtest-multisite-REPORT.md).
+CONFIG_VERSION = "agronomy-engine-v0-config-2"
 
 #: Issuer of every draft recommendation (WS3.5 issuance chain).
 DRAFTED_BY = "agronomy-engine"

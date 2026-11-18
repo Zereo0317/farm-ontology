@@ -53,7 +53,10 @@ from farm_ontology.agronomy.common import (
     AgronomyGap,
     SupportDeclaration,
 )
-from farm_ontology.agronomy.phenology import GDD_THRESHOLDS
+from farm_ontology.agronomy.phenology import (
+    DEFAULT_CULTIVAR_PROFILE,
+    daily_gdd_contribution,
+)
 from farm_ontology.model import Observation
 from farm_ontology.timeutil import ensure_utc
 
@@ -90,28 +93,73 @@ class IrrigationCfg:
     kc_max: float = 1.20                 # clip ceiling for Kcb + Ke
     kc_min: float = 0.15                 # bare-soil basal floor
     initial_surface_depletion_mm: float | None = None  # None ⇒ dry start (TEW)
-    # Piecewise-linear Kcb anchors over CUMULATIVE GDD (matches the
-    # phenology threshold table). VERIFY [FAO-56-TC12]: soybean single-Kc
-    # 0.40 / ~1.15 mid / 0.50 end decomposed to a basal curve.
-    kcb_anchors: tuple[tuple[float, float], ...] = (
+
+
+# ---------------------------------------------------------------------------
+# Running-Kcb anchor tables (D-ENGINE-2, 2026-11-18 recalibration).
+#
+# Piecewise-linear Kcb over the DAY's RUNNING cumulative GDD — NOT the
+# season-final reading's value. This is the fix for the campaign's
+# `kcb-static-across-season` artefact (the v0 balance tariffed vegetative
+# weeks at the final stage's water use; see the finder's report §4).
+#
+# Anchor VALUES from FAO-56 Table 17 soybean basal coefficients
+# (Kcb_ini ≈ 0.15, Kcb_mid ≈ 1.15, Kcb_end ≈ 0.50; VERIFY [FAO-56-T17]),
+# placed on the GDD axis at each profile's stage thresholds (the profile
+# is the thing that carries calendar validity; see phenology.py).
+# The senescence tail flattens to 0.35 at R8 (harvest-dry canopy).
+
+#: Kcb (gdd_from_sowing, kcb) anchors per cultivar profile.
+KCB_ANCHOR_PROFILES: dict[str, tuple[tuple[float, float], ...]] = {
+    "hokkaido-short": (
         (0.0, 0.15),
-        (GDD_THRESHOLDS[0][1], 0.30),    # VE 90
-        (GDD_THRESHOLDS[7][1], 1.10),    # R1 830
-        (GDD_THRESHOLDS[8][1], 1.15),    # R3 1060
-        (GDD_THRESHOLDS[10][1], 1.00),   # R6 1560
-        (GDD_THRESHOLDS[11][1], 0.60),   # R7 1850
-        (GDD_THRESHOLDS[12][1], 0.30),   # R8 2100
-    )
+        (90.0, 0.20),    # VE: soil still largely bare
+        (395.0, 1.00),   # R1: canopy closing through bloom
+        (505.0, 1.15),   # R3: peak — FAO mid
+        (715.0, 1.15),   # R5: plateau through beginning seed
+        (825.0, 1.05),   # R6: full seed, canopy aging
+        (950.0, 0.60),   # R7: beginning maturity, senescing
+        (1050.0, 0.35),  # R8: harvest-dry remainder
+    ),
+    "generic-extension": (
+        (0.0, 0.15),
+        (90.0, 0.30),
+        (830.0, 1.10),   # R1
+        (1060.0, 1.15),  # R3
+        (1560.0, 1.00),  # R6
+        (1850.0, 0.60),  # R7
+        (2100.0, 0.30),  # R8
+    ),
+}
+
+KCB_ANCHORS_SOURCE_NOTE = (
+    "VERIFY [FAO-56-T17]: anchor values are the soybean basal coefficients "
+    "(0.15 ini / 1.15 mid / 0.50 end) placed per cultivar profile's stage "
+    "GDD thresholds; running per-day interpolation replaces the v0 "
+    "season-static Kcb (fieldtest defect kcb-static-across-season, 2026-11-18)."
+)
+
+
+def kcb_anchors_for(profile_id: str | None) -> tuple[tuple[float, float], ...]:
+    """Registry lookup for the Kcb anchor curve (loud KeyError on unknown)."""
+    resolved = profile_id if profile_id is not None else DEFAULT_CULTIVAR_PROFILE
+    if resolved not in KCB_ANCHOR_PROFILES:
+        raise KeyError(
+            f"no Kcb anchor curve for profile {resolved!r}; known: "
+            f"{sorted(KCB_ANCHOR_PROFILES)}"
+        )
+    return KCB_ANCHOR_PROFILES[resolved]
 
 
 DEFAULT_IRRIGATION_CONFIG = IrrigationCfg()
 
 IRRIGATION_CONFIG_SOURCE_NOTE = (
     "VERIFY [FAO-56]: structure per Allen et al. 1998 (dual Kc, Tables 12/22); "
-    "Kcb anchors are the soybean single-Kc values decomposed to a basal curve "
-    "over the engine's coarse GDD table; fc≈Kcb/Kc_max and flat 20% runoff are "
-    "declared v0 simplifications; soil parameters are generic loam, not a "
-    "measured Hokkaido profile. Recalibrate all of these before reliance."
+    "Kcb is a per-day RUNNING curve from FAO-56 T17 anchors placed on the "
+    "cultivar profile's GDD thresholds (v0's season-static artefact fixed "
+    "2026-11-18); fc≈Kcb/Kc_max and flat 20% runoff are declared v0 "
+    "simplifications; soil parameters are generic loam, not a measured "
+    "Hokkaido profile. Recalibrate all of these before reliance."
 )
 
 #: A soil-moisture row older than this is stale for irrigation purposes.
@@ -348,8 +396,10 @@ def has_calibrated_coverage(
 # The water balance.
 
 
-def _kcb_for_cumulative(cumulative_gdd: float, cfg: IrrigationCfg) -> float:
-    anchors = cfg.kcb_anchors
+def _kcb_for_running(
+    cumulative_gdd: float, anchors: tuple[tuple[float, float], ...]
+) -> float:
+    """Piecewise-linear basal coefficient at the day's RUNNING GDD total."""
     if cumulative_gdd <= anchors[0][0]:
         return anchors[0][1]
     for (x0, y0), (x1, y1) in zip(anchors, anchors[1:]):
@@ -402,6 +452,12 @@ def irrigation_advisory(
         )
     support = _grid_support(daily_rows)
 
+    # The basal curve walks the DAY's running cumulative GDD (D-ENGINE-2):
+    # the reading supplies the cultivar profile that selects the anchor
+    # table, not a single season-frozen coefficient.
+    profile_id = getattr(reading, "cultivar_profile", None)
+    anchors = kcb_anchors_for(profile_id if profile_id else None)
+
     initial_root = (
         cfg.initial_root_depletion_mm
         if cfg.initial_root_depletion_mm is not None
@@ -413,12 +469,30 @@ def irrigation_advisory(
         else cfg.tew_mm
     )
     root = float(initial_root)
+    cumulative = 0.0  # running GDD through THIS trace only
 
     trace: list[dict] = []
     for index, row in enumerate(daily_rows):
         day = row.get("date")
         eto = _number(row.get("eto_mm"))
         rain = _number(row.get("rain_mm"))
+        # Daily-mean temperature: taken from t_mean_c when the row carries
+        # it; else derived as (t_max_c + t_min_c)/2 — the textbook daily
+        # mean, computed from the SAME row's publisher values, never from
+        # neighbouring rows or a climatology. The basis used is DECLARED
+        # on every trace row; absent both, the day contributes zero GDD
+        # (published in the trace, never interpolated).
+        t_mean = _number(row.get("t_mean_c"))
+        t_mean_basis = "given" if t_mean is not None else None
+        if t_mean is None:
+            t_max = _number(row.get("t_max_c"))
+            t_min = _number(row.get("t_min_c"))
+            if t_max is not None and t_min is not None:
+                t_mean = (t_max + t_min) / 2.0
+                t_mean_basis = "max-min-average"
+        t_contrib = (
+            daily_gdd_contribution(t_mean) if t_mean is not None else None
+        )
         missing = [
             name
             for name, value in (
@@ -442,17 +516,28 @@ def irrigation_advisory(
         denominator = cfg.tew_mm - cfg.rew_mm
         if denominator > 0:
             kr = min(1.0, max(0.0, (cfg.tew_mm - surface_after_wetting) / denominator))
-        kcb = _kcb_for_cumulative(reading.cumulative_gdd, cfg)
+        # RUNNING cumulative GDD drives today's basal coefficient (the
+        # stage reading remains the announcement authority; this running
+        # walk is the WATER-BOOK's development clock).
+        kcb = _kcb_for_running(cumulative, anchors)
         ke = min(kr * max(0.0, cfg.kc_max - kcb), cfg.kc_max)
         ke = max(0.0, ke)
         etc_adj = (kcb + ke) * eto
         surface = surface_after_wetting + ke * eto
         root = max(0.0, root - effective_rain + etc_adj)
+        if t_contrib is not None:
+            cumulative += t_contrib
         trace.append(
             {
                 "date": day,
                 "eto_mm": eto,
                 "rain_mm": rain,
+                "t_mean_c": (round(t_mean, 2) if t_mean is not None else None),
+                "t_mean_basis": t_mean_basis,
+                "gdd_contribution": (
+                    round(t_contrib, 2) if t_contrib is not None else None
+                ),
+                "running_gdd": round(cumulative, 1),
                 "effective_rain_mm": round(effective_rain, 2),
                 "kcb": round(kcb, 4),
                 "ke": round(ke, 4),
@@ -581,6 +666,9 @@ class IrrigationAdvice:
 __all__ = [
     "DEFAULT_IRRIGATION_CONFIG",
     "IRRIGATION_CONFIG_SOURCE_NOTE",
+    "KCB_ANCHOR_PROFILES",
+    "KCB_ANCHORS_SOURCE_NOTE",
+    "kcb_anchors_for",
     "SENSOR_FRESHNESS",
     "DEFAULT_PROBE_DEPTH_CM",
     "CoverageLevel",

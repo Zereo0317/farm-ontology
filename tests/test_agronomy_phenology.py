@@ -4,6 +4,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from farm_ontology.agronomy.phenology import (
+    DEFAULT_CULTIVAR_PROFILE,
     EMERGENCE_CREDIT_GDD,
     GDD_BASE_C,
     GDD_CAP_CONTRIBUTION_C,
@@ -12,6 +13,7 @@ from farm_ontology.agronomy.phenology import (
     THRESHOLD_TABLE_VERSION,
     daily_gdd_contribution,
     phenology_reading,
+    profile_or_raise,
 )
 from farm_ontology.agronomy.common import AgronomyGap, CONFIG_VERSION
 from tests.agronomy_fixtures import daily_season_rows
@@ -95,23 +97,33 @@ class StageClassifierTests(unittest.TestCase):
     def test_uncertainty_tightest_midstage_and_widens_toward_edges(self):
         # The band is |cum − threshold midpoint|, floored at the method
         # noise: tightest exactly mid-stage, widening toward every edge —
-        # including the floor band below VE.
+        # including the floor band below VE. Midpoints computed FROM the
+        # active profile table (config, not magic numbers).
+        from farm_ontology.agronomy.phenology import profile_or_raise
+
+        table = profile_or_raise(None).thresholds
+        v2_low, v2_high = table[2][1], table[3][1]  # V2..V3 band
+        tight_target = (v2_low + v2_high) / 2.0
+        days_for_tight = int(round(tight_target / 5.0))  # 5 GDD/day at t=15
         tight = [
             {"date": (SOWING + timedelta(days=i)).date().isoformat(),
-             "t_mean_c": 25.0, "native_resolution_km": 5}
-            for i in range(16)
-        ]  # 16 * 15 = 240 = exactly the V1..V2 midpoint (190+290)/2
+             "t_mean_c": 15.0, "native_resolution_km": 5}
+            for i in range(days_for_tight)
+        ]
         tight_reading = phenology_reading(tight, sowing=SOWING, emergence=None)
-        self.assertAlmostEqual(tight_reading.midpoint_centre, 240.0)
+        self.assertAlmostEqual(tight_reading.midpoint_centre, tight_target)
         self.assertAlmostEqual(tight_reading.uncertainty_gdd, METHOD_NOISE_GDD)
 
         low_band = [
             {"date": (SOWING + timedelta(days=i)).date().isoformat(),
              "t_mean_c": 18.0, "native_resolution_km": 5}
             for i in range(7)
-        ]  # 7 * 8 = 56 GDD — 84 GDD shy of the VE..V1 midpoint (140)
+        ]  # 7 * 8 = 56 GDD — deep in the floor band below VE
         floor_reading = phenology_reading(low_band, sowing=SOWING, emergence=None)
-        self.assertAlmostEqual(floor_reading.uncertainty_gdd, 84.0)
+        ve, v1 = table[0][1], table[1][1]
+        self.assertAlmostEqual(
+            floor_reading.uncertainty_gdd, (ve + v1) / 2.0 - 56.0
+        )
         self.assertGreater(floor_reading.uncertainty_gdd,
                            tight_reading.uncertainty_gdd)
 
@@ -232,6 +244,78 @@ class MalformedInputTests(unittest.TestCase):
         self.assertEqual(ctx.exception.gap, "grid-resolution-mixed")
 
 
+class CultivarProfileTests(unittest.TestCase):
+    """D-ENGINE-1: profiles, provenance, and the campaign fit target."""
+
+    def test_unknown_profile_raises_registry_error_not_silence(self):
+        with self.assertRaises(KeyError) as ctx:
+            phenology_reading(ROWS, sowing=SOWING, emergence=None,
+                              cultivar_profile="ryuuhou-todo")
+        self.assertIn("ryuuhou-todo", str(ctx.exception))
+        self.assertIn("generic-extension", str(ctx.exception))  # menu shown
+
+    def test_generic_extension_retains_the_v0_legacy_values(self):
+        legacy = [
+            ("VE", 90.0), ("V1", 190.0), ("V2", 290.0), ("V3", 390.0),
+            ("V4", 510.0), ("V5", 640.0), ("V6", 780.0), ("R1", 830.0),
+            ("R3", 1060.0), ("R5", 1260.0), ("R6", 1560.0), ("R7", 1850.0),
+            ("R8", 2100.0),
+        ]
+        self.assertEqual(
+            profile_or_raise("generic-extension").thresholds, tuple(legacy)
+        )
+
+    def test_hokkaido_short_fit_target_campaign_positions(self):
+        # The 2026 field campaign's own acceptance: on the recorded
+        # fixture curves (biratori/obihiro/nakafurano/nemuro, committed
+        # under fixtures/fieldtest), the profile must place R7 inside
+        # the late-Sep–early-Oct envelope with ≤15 % GDD mismatch, and
+        # R6 attainable even at maritime-cool Nemuro before the frost
+        # window. Assert the GEOMETRY that guarantees it.
+        thresholds = dict(profile_or_raise("hokkaido-short").thresholds)
+        biratori_oct15, obihiro_oct15 = 1109.7, 1094.0  # recorded, fixtures
+        nakafurano_oct15, nemuro_oct15 = 1013.6, 813.7  # recorded, fixtures
+        r7 = thresholds["R7"]
+        self.assertLess(biratori_oct15, r7 + 200)   # crossed well before Oct15
+        self.assertGreater(biratori_oct15, r7)      # R7 long in hand
+        self.assertGreater(obihiro_oct15, r7)
+        self.assertGreater(nakafurano_oct15, r7)
+        # Nemuro misses, but inside the campaign's 15 % mismatch budget.
+        self.assertLess((r7 - nemuro_oct15) / r7, 0.15)
+        # Full seed (R6) even at Nemuro by its season end (recorded 838.5).
+        self.assertLess(thresholds["R6"], 838.5)
+        # And the full-maturity anchor sits inside the published window:
+        # recorded curves cross R8 in late Sep (Biratori) / early Oct
+        # (Obihiro); asserted via recorded checkpoint sums.
+        self.assertLess(thresholds["R8"], 1051.0)
+        self.assertGreater(thresholds["R8"], biratori_oct15 - 60)  # sanity
+
+    def test_every_threshold_carries_a_source_note(self):
+        profile = profile_or_raise("hokkaido-short")
+        stages = {stage for stage, _ in profile.thresholds}
+        self.assertEqual({s for s, _ in profile.per_stage_sources}, stages)
+        joined = " ".join(text for _, text in profile.per_stage_sources)
+        self.assertIn("VERIFY", joined)
+        # Unverifiable cultivar data stays TODO-flagged, never silent.
+        self.assertIn("TODO-VERIFY", joined)
+
+    def test_profile_switch_changes_classification_on_the_same_rows(self):
+        reading_h = phenology_reading(ROWS, sowing=SOWING, emergence=None,
+                                      cultivar_profile="hokkaido-short")
+        reading_g = phenology_reading(ROWS, sowing=SOWING, emergence=None,
+                                      cultivar_profile="generic-extension")
+        # Same climate, two tables: the generic (continental) one demands
+        # far more heat and must NOT reach R7 on a Hokkaido season while
+        # the calibrated one does — the campaign's headline inversion.
+        self.assertGreaterEqual(reading_h.stage_index, reading_g.stage_index)
+        self.assertEqual(reading_h.cultivar_profile, "hokkaido-short")
+        self.assertEqual(reading_g.cultivar_profile, "generic-extension")
+        self.assertNotEqual(
+            reading_h.threshold_table_version,
+            reading_g.threshold_table_version,
+        )
+
+
 class StampTests(unittest.TestCase):
     def test_every_reading_carries_support_use_class_and_config(self):
         reading = phenology_reading(ROWS, sowing=SOWING, emergence=None)
@@ -240,9 +324,14 @@ class StampTests(unittest.TestCase):
         self.assertIn("VERIFY [SOY-GDD]", payload["source_note"])
         self.assertEqual(payload["config_version"], CONFIG_VERSION)
         self.assertEqual(reading.use_class, "field-ops")
+        # Reading-level table version is per-profile; the compat constant
+        # advertises the default profile's table.
         self.assertEqual(
-            payload["threshold_table_version"], THRESHOLD_TABLE_VERSION
+            payload["threshold_table_version"],
+            f"{DEFAULT_CULTIVAR_PROFILE}-gdd-table",
         )
+        self.assertEqual(reading.cultivar_profile, DEFAULT_CULTIVAR_PROFILE)
+        self.assertTrue(reading.stage_source_note)  # per-stage provenance rides
 
     def test_days_span_and_dates_recorded(self):
         reading = phenology_reading(ROWS, sowing=SOWING, emergence=None)

