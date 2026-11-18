@@ -1,4 +1,4 @@
-export const locales = ["zh-TW", "zh-CN", "en", "ja"] as const;
+export const locales = ["zh-TW", "zh-CN", "en", "ja", "th"] as const;
 
 export type Locale = (typeof locales)[number];
 
@@ -7,6 +7,16 @@ export const localeLabels: Record<Locale, string> = {
   "zh-CN": "简体",
   en: "EN",
   ja: "日本語",
+  th: "ไทย",
+};
+
+/** BCP-47 tags for <html lang> and document lang reflections. */
+export const localeHtmlLang: Record<Locale, string> = {
+  "zh-TW": "zh-Hant-TW",
+  "zh-CN": "zh-Hans-CN",
+  en: "en",
+  ja: "ja",
+  th: "th",
 };
 
 type Copy = {
@@ -53,6 +63,182 @@ type Copy = {
   needCoords: string;
   notANumber: string;
   closed: string;
+};
+
+/** WS8 advisories-panel copy (server component consumes via AdvisoryCopy). */
+export type AdvisoryCopy = {
+  advisoriesKicker: string;
+  advisoriesTitle: string;
+  advisoriesSubtitle: string;
+  loadingLine: string;
+  weatherHeading: string;
+  supportGridChip: string;
+  tempLabel: string;
+  rhLabel: string;
+  precipLabel: string;
+  windLabel: string;
+  windDirLabel: string;
+  gridCaption: string;
+  planetHeading: string;
+  planetHeaderChip: string;
+  planetEmpty: string;
+  cloudWord: string;
+  planetCaption: (matched: string) => string;
+  licencesHeading: string;
+  licenceChip: string;
+  licenceRegistryEmpty: string;
+  commercialBadge: string;
+  screeningBadge: string;
+  licenceCaption: string;
+  noInventionFooter: string;
+  gapWord: string;
+};
+
+export const advisoryCopy: Record<Locale, AdvisoryCopy> = {
+  "zh-TW": {
+    advisoriesKicker: "諮詢",
+    advisoriesTitle: "後端送來的現況",
+    advisoriesSubtitle: "伺服器端載入",
+    loadingLine: "後端資料載入中…",
+    weatherHeading: "即時氣象",
+    supportGridChip: "support: grid",
+    tempLabel: "溫度",
+    rhLabel: "相對濕度",
+    precipLabel: "降水",
+    windLabel: "風速",
+    windDirLabel: "風向",
+    gridCaption: "格網支援：JMA MSM 0.05° 格網胞 —— 值屬於格網胞，不屬於植株。",
+    planetHeading: "最新衛星場景",
+    planetHeaderChip: "support: grid · header",
+    planetEmpty: "上游沒有回傳場景。",
+    cloudWord: "雲量",
+    planetCaption: (matched) => `只引用場景表頭，不下載像素 · 符合 ${matched}`,
+    licencesHeading: "授權判定",
+    licenceChip: "support: licence ledger",
+    licenceRegistryEmpty: "登記簿是空的。",
+    commercialBadge: "商用",
+    screeningBadge: "篩查",
+    licenceCaption: "specimen 不解鎖，失效即降級；授權登記簿 fail closed",
+    noInventionFooter:
+      "「support: grid」＝值屬於格網胞或拍攝航帶，不屬於個別植株。「support: parcel」只可能來自此頁親手記下的觀測（裝置 GPS）。未讀到的值留白、上游故障顯示 gap——這裡不發明任何數字。",
+    gapWord: "缺口",
+  },
+  "zh-CN": {
+    advisoriesKicker: "咨询",
+    advisoriesTitle: "后端送来的现况",
+    advisoriesSubtitle: "服务器端载入",
+    loadingLine: "后端数据载入中…",
+    weatherHeading: "即时气象",
+    supportGridChip: "support: grid",
+    tempLabel: "温度",
+    rhLabel: "相对湿度",
+    precipLabel: "降水",
+    windLabel: "风速",
+    windDirLabel: "风向",
+    gridCaption: "格网支援：JMA MSM 0.05° 格网胞 —— 值属于格网胞，不属于植株。",
+    planetHeading: "最新卫星场景",
+    planetHeaderChip: "support: grid · header",
+    planetEmpty: "上游没有返回场景。",
+    cloudWord: "云量",
+    planetCaption: (matched) => `只引用场景表头，不下载像素 · 符合 ${matched}`,
+    licencesHeading: "授权判定",
+    licenceChip: "support: licence ledger",
+    licenceRegistryEmpty: "登记簿是空的。",
+    commercialBadge: "商用",
+    screeningBadge: "筛查",
+    licenceCaption: "specimen 不解锁，失效即降级；授权登记簿 fail closed",
+    noInventionFooter:
+      "「support: grid」＝值属于格网胞或拍摄航带，不属于个别植株。「support: parcel」只可能来自此页亲手记下的观测（装置 GPS）。未读到的值留白、上游故障显示 gap——这里不发明任何数字。",
+    gapWord: "缺口",
+  },
+  en: {
+    advisoriesKicker: "Advisories",
+    advisoriesTitle: "Current conditions from the backend",
+    advisoriesSubtitle: "fetched server-side",
+    loadingLine: "loading advisories…",
+    weatherHeading: "Live weather",
+    supportGridChip: "support: grid",
+    tempLabel: "Temp",
+    rhLabel: "RH",
+    precipLabel: "Precip",
+    windLabel: "Wind",
+    windDirLabel: "Dir",
+    gridCaption:
+      "Grid support: the JMA MSM 0.05° cell — the value belongs to the grid cell, never to the plant.",
+    planetHeading: "Latest Planet scenes",
+    planetHeaderChip: "support: grid · header",
+    planetEmpty: "No scenes returned upstream.",
+    cloudWord: "cloud",
+    planetCaption: (matched) =>
+      `Headers only, no pixels · matched ${matched}`,
+    licencesHeading: "Licence verdicts",
+    licenceChip: "support: licence ledger",
+    licenceRegistryEmpty: "The registry is empty.",
+    commercialBadge: "Commercial",
+    screeningBadge: "Screening",
+    licenceCaption: "Specimens never unlock; grants fail closed",
+    noInventionFooter:
+      "\"support: grid\" = the value belongs to a grid cell or an imaging strip, not to the plant. \"support: parcel\" can only come from an observation recorded on this page (device GPS). Missing values stay blank; upstream failures surface as gaps — nothing here is invented.",
+    gapWord: "gap",
+  },
+  ja: {
+    advisoriesKicker: "劝告",
+    advisoriesTitle: "バックエンドからの現況",
+    advisoriesSubtitle: "サーバー側で取得",
+    loadingLine: "勧告を読み込んでいます…",
+    weatherHeading: "即時気象",
+    supportGridChip: "support: grid",
+    tempLabel: "気温",
+    rhLabel: "相対湿度",
+    precipLabel: "降水",
+    windLabel: "風速",
+    windDirLabel: "風向",
+    gridCaption:
+      "格子支援：JMA MSM 0.05° の格子セル —— 値は格子セルのもので、株のものではない。",
+    planetHeading: "最新のPlanetシーン",
+    planetHeaderChip: "support: grid · header",
+    planetEmpty: "上流はシーンを返しませんでした。",
+    cloudWord: "雲量",
+    planetCaption: (matched) => `ヘッダのみ、ピクセルは取得しない · 一致 ${matched}`,
+    licencesHeading: "ライセンス判定",
+    licenceChip: "support: licence ledger",
+    licenceRegistryEmpty: "登録簿は空です。",
+    commercialBadge: "商用",
+    screeningBadge: "スクリーニング",
+    licenceCaption: "見本は解き放たず、失効すれば格下げ。判定はフェイルクローズド",
+    noInventionFooter:
+      "「support: grid」＝値は格子セルや撮影ストリップのもので、個々の株のものではない。「support: parcel」はこのページで手記された観測（端末GPS）からしか生まれない。読めなかった値は空白、上流障害は gap —— ここでは何も発明しない。",
+    gapWord: "ギャップ",
+  },
+  th: {
+    advisoriesKicker: "คำแนะนำ",
+    advisoriesTitle: "สถานะปัจจุบันจากแบ็กเอนด์",
+    advisoriesSubtitle: "ดึงข้อมูลฝั่งเซิร์ฟเวอร์",
+    loadingLine: "กำลังโหลดคำแนะนำ…",
+    weatherHeading: "อากาศเรียลไทม์",
+    supportGridChip: "support: grid",
+    tempLabel: "อุณหภูมิ",
+    rhLabel: "ความชื้นสัมพัทธ์",
+    precipLabel: "ฝน",
+    windLabel: "ลม",
+    windDirLabel: "ทิศลม",
+    gridCaption:
+      "การสนับสนุนระดับกริด: เซลล์ JMA MSM 0.05° —— ค่านี้เป็นของเซลล์กริด ไม่ใช่ของต้นไม้แต่ละต้น",
+    planetHeading: "ซีนดาวเทียมล่าสุด",
+    planetHeaderChip: "support: grid · header",
+    planetEmpty: "ต้นทางไม่ได้ส่งซีนกลับมา",
+    cloudWord: "เมฆ",
+    planetCaption: (matched) => `อ้างเฉพาะเฮดเดอร์ ไม่ดาวน์โหลดพิกเซล · ตรงกัน ${matched}`,
+    licencesHeading: "ผลการพิจารณาใบอนุญาต",
+    licenceChip: "support: licence ledger",
+    licenceRegistryEmpty: "ทะเบียนยังว่าง",
+    commercialBadge: "เชิงพาณิชย์",
+    screeningBadge: "คัดกรอง",
+    licenceCaption: "ตัวอย่าง (specimen) ไม่ปลดล็อก หมดอายุแล้วลดระดับ ทะเบียน fail closed",
+    noInventionFooter:
+      "「support: grid」＝ค่าเป็นของเซลล์กริดหรือแถบถ่ายภาพ ไม่ใช่ของต้นแต่ละต้น 「support: parcel」เกิดได้จากการบันทึกในหน้านี้เท่านั้น (GPS อุปกรณ์) ค่าที่อ่านไม่ได้เว้นว่าง ปัญหาอัปสตรีมแสดงเป็น gap —— ที่นี่ไม่แต่งตัวเลขขึ้นมา",
+    gapWord: "ช่องว่าง",
+  },
 };
 
 export const copy: Record<Locale, Copy> = {
@@ -267,5 +453,59 @@ export const copy: Record<Locale, Copy> = {
     needCoords: "緯度と経度を入れるか、ドライランに印を付ける。",
     notANumber: "数字の欄が数字ではない。",
     closed: "閉じている",
+  },
+  th: {
+    cropName: "ถั่วเหลือง",
+    cropMark: "CO_336",
+    classLine: (policy) => `คลาสซี ${policy}`,
+    moneyLine: "ไม่ใช้เพื่อการเงิน",
+    gridLine: (grid) => `กริด ${grid}° ไม่ย่อลงมาที่ต้น`,
+    countLine: (observations, notes) =>
+      `บันทึก ${observations} รายการ โน้ต ${notes} รายการ`,
+    place:
+      "การเดินครั้งนี้คือแปลงถั่วเหลืองของฮิโระกิ โทะมิยะสุที่ฮอกไกโด ซึ่งอยู่ในช่วงเก็บเกี่ยว พิกัดกรอกที่ไซต์ หน้านี้ไม่มีพิกัดในตัว เว้นช่องไว้เมื่อไม่ได้วัด อย่ากรอกผลผลิต ราคาฟิวเจอร์ส หรือพิกัดที่ไม่ได้อ่าน ไฟล์นี้ไม่ใช่การซื้อ ขาย ฮิจจัง หรือทริกเกอร์ และไม่ใช่การทำนายผลผลิต",
+    stepsTitle: "ขั้นตอนในแปลง",
+    steps: [
+      "อ่านสถานะด้านบนก่อน คลาสซีปิดอยู่ ไม่ใช้เพื่อการเงิน ถั่วเหลืองคือ Crop Ontology CO_336",
+      "ยืนข้างตัวอย่าง แล้วกรอกละติจูดและลองจิจูดจากโทรศัพท์หรือเครื่องมือ",
+      "กรอกรหัสตัวอย่าง ใส่พาธภาพถ่าย หน่วยเก็บเกี่ยว หรือความชื้น เฉพาะเมื่อมี",
+      "กรอกเมตรเฉพาะเมื่อเครื่องมือแสดงเมตร ไม่เช่นนั้นความแม่นยำยังไม่ทราบ",
+      "กดปุ่มบันทึกเพียงปุ่มเดียว ไฟล์จะถูกเขียนลง field-notes/ บนเครื่องนี้",
+      "หลังดูแถวแล้ว จึงเพิ่มบันทึกการตรวจสอบหรือความคิดเห็น",
+    ],
+    lat: "ละติจูด",
+    lon: "ลองจิจูด",
+    sample: "แถวหรือรหัสตัวอย่าง",
+    fieldNote: "โน้ต",
+    metres: "เมตร (เฉพาะเมื่อเครื่องมือแสดง)",
+    moisture: "ความชื้น (เฉพาะเมื่อได้วัด)",
+    photo: "พาธภาพถ่าย",
+    unit: "หน่วยเก็บเกี่ยว",
+    dry: "ดรายรัน ไม่ใช่แปลงนี้",
+    more: "อื่น ๆ",
+    eyebrow: "บันทึกแปลง",
+    locate: "ใช้ตำแหน่งนี้",
+    locating: "กำลังอ่านตำแหน่งจากอุปกรณ์…",
+    locateRefused: "เบราว์เซอร์ไม่ได้ส่งตำแหน่งมา ช่องจะว่างไว้",
+    locateMissing: "อุปกรณ์นี้ไม่มีตำแหน่ง ช่องจะว่างไว้",
+    save: "บันทึกแถวนี้",
+    saving: "กำลังบันทึก…",
+    saved: (file) => `บันทึกแล้ว ${file}`,
+    feedbackTitle: "การตรวจสอบหรือความคิดเห็น",
+    kind: "ประเภท",
+    verification: "การตรวจสอบ",
+    feedback: "ความคิดเห็น",
+    file: "ไฟล์บันทึก (ว่างได้)",
+    text: "โน้ต",
+    saveNote: "บันทึกโน้ต",
+    noteSaved: (file) => `บันทึกโน้ตแล้ว ${file}`,
+    listTitle: "ไฟล์ที่บันทึกไว้แล้ว",
+    none: "ยังไม่มี",
+    observations: "การบันทึก",
+    notes: "โน้ต",
+    refresh: "โหลดใหม่",
+    needCoords: "กรอกละติจูดและลองจิจูด หรือทำเครื่องหมายดรายรัน",
+    notANumber: "ช่องตัวเลขไม่ใช่ตัวเลข",
+    closed: "ปิด",
   },
 };

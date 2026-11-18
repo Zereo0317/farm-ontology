@@ -87,9 +87,11 @@ class PageIoTests(unittest.TestCase):
         self.assertIn("farm_api_base", text)
         # honesty caption ships with the advisory panel (grid vs parcel)
         self.assertIn("support: grid", text)
+        # founder directive 2026-11-18: five first-class locales
+        self.assertIn("th", text)
+        self.assertIn('"ja"', text)
         self.assertIn("zh-tw", text)
         self.assertIn("zh-cn", text)
-        self.assertIn('"ja"', text)
         self.assertIn("geolocation", text)
 
     def test_mcp_and_fieldkit_write_the_same_coordinates(self):

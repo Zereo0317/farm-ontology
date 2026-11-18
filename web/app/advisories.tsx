@@ -8,6 +8,7 @@ import {
   type PlanetDocument,
   type WeatherDocument,
 } from "@/lib/backend";
+import { advisoryCopy, type Locale } from "@/lib/copy";
 
 const UNKNOWN = "—";
 
@@ -15,47 +16,54 @@ function unit(value: number | null, suffix: string): string {
   return value === null ? UNKNOWN : `${value}${suffix}`;
 }
 
-function WeatherCard({ weather }: { weather: AdvisoryFeed<WeatherDocument> }) {
+function WeatherCard({
+  weather,
+  copy,
+}: {
+  weather: AdvisoryFeed<WeatherDocument>;
+  copy: (typeof advisoryCopy)[Locale];
+}) {
   return (
     <article className="card">
       <h3>
-        即時氣象 Live weather
-        <span className="chip">support: grid</span>
+        {copy.weatherHeading}
+        <span className="chip">{copy.supportGridChip}</span>
       </h3>
       {weather.gap ? (
         <p className="gap">
-          gap · {weather.reason}
+          {copy.gapWord} · {weather.reason}
           {weather.upstream_status !== null ? ` (HTTP ${weather.upstream_status})` : ""}
         </p>
       ) : (
         <>
           <ul className="rows">
             <li>
-              <span>溫度 Temp</span>
+              <span>{copy.tempLabel}</span>
               <strong>{unit(weather.data.returned.temperature_2m, " °C")}</strong>
             </li>
             <li>
-              <span>相對濕度 RH</span>
+              <span>{copy.rhLabel}</span>
               <strong>{unit(weather.data.returned.relative_humidity_2m, " %")}</strong>
             </li>
             <li>
-              <span>降水 Precip</span>
+              <span>{copy.precipLabel}</span>
               <strong>{unit(weather.data.returned.precipitation, " mm")}</strong>
             </li>
             <li>
-              <span>風速 Wind</span>
+              <span>{copy.windLabel}</span>
               <strong>{unit(weather.data.returned.wind_speed_10m, " m/s")}</strong>
             </li>
             <li>
-              <span>風向 Dir</span>
+              <span>{copy.windDirLabel}</span>
               <strong>{unit(weather.data.returned.wind_direction_10m, " °")}</strong>
             </li>
           </ul>
           <p className="caption">
-            格網支援 grid support: JMA MSM 0.05° cell —— 值屬於格網胞，不屬於植株。
-            use_class {weather.data.use_class} · permits_financial_use{" "}
-            {weather.data.permits_financial_use === null ? UNKNOWN : String(weather.data.permits_financial_use)}
-            {weather.data.retrieved_at ? ` · backend 取得 ${weather.data.retrieved_at} UTC` : ""}
+            {copy.gridCaption}
+            {weather.data.use_class ? ` · use_class ${weather.data.use_class}` : ""}
+            {weather.data.permits_financial_use === null
+              ? ""
+              : ` · permits_financial_use ${String(weather.data.permits_financial_use)}`}
           </p>
         </>
       )}
@@ -63,30 +71,36 @@ function WeatherCard({ weather }: { weather: AdvisoryFeed<WeatherDocument> }) {
   );
 }
 
-function PlanetCard({ planet }: { planet: AdvisoryFeed<PlanetDocument> }) {
+function PlanetCard({
+  planet,
+  copy,
+}: {
+  planet: AdvisoryFeed<PlanetDocument>;
+  copy: (typeof advisoryCopy)[Locale];
+}) {
   const scenes = planet.gap ? [] : planet.data.scenes.slice(0, 5);
   return (
     <article className="card">
       <h3>
-        最新衛星最新場景 Latest Planet scenes
-        <span className="chip">support: grid · header</span>
+        {copy.planetHeading}
+        <span className="chip">{copy.planetHeaderChip}</span>
       </h3>
       {planet.gap ? (
         <p className="gap">
-          gap · {planet.reason}
+          {copy.gapWord} · {planet.reason}
           {planet.upstream_status !== null ? ` (HTTP ${planet.upstream_status})` : ""}
         </p>
       ) : (
         <>
           {scenes.length === 0 ? (
-            <p className="caption">上游沒有回傳場景。No scenes returned upstream.</p>
+            <p className="caption">{copy.planetEmpty}</p>
           ) : (
             <ol className="scenes">
               {scenes.map((scene) => (
                 <li key={scene.id}>
                   {scene.id}
                   <br />
-                  {scene.acquired} · 雲 cloud{" "}
+                  {scene.acquired} · {copy.cloudWord}{" "}
                   {scene.cloud_cover === null
                     ? UNKNOWN
                     : `${Math.round(scene.cloud_cover * 100)}%`}
@@ -96,10 +110,9 @@ function PlanetCard({ planet }: { planet: AdvisoryFeed<PlanetDocument> }) {
             </ol>
           )}
           <p className="caption">
-            只引用場景表頭，不下載像素 Headers only, no pixels · matched{" "}
-            {planet.data.matched === null ? UNKNOWN : planet.data.matched} · use_class{" "}
-            {planet.data.use_class}
-            {planet.data.retrieved_at ? ` · ${planet.data.retrieved_at} UTC` : ""}
+            {copy.planetCaption(
+              planet.data.matched === null ? UNKNOWN : String(planet.data.matched),
+            )}
           </p>
         </>
       )}
@@ -107,23 +120,31 @@ function PlanetCard({ planet }: { planet: AdvisoryFeed<PlanetDocument> }) {
   );
 }
 
-function LicencesCard({ licences }: { licences: AdvisoryFeed<LicencesDocument> }) {
-  const feeds = licences.gap ? [] : Object.entries(licences.data.feeds).sort(([a], [b]) => a.localeCompare(b));
+function LicencesCard({
+  licences,
+  copy,
+}: {
+  licences: AdvisoryFeed<LicencesDocument>;
+  copy: (typeof advisoryCopy)[Locale];
+}) {
+  const feeds = licences.gap
+    ? []
+    : Object.entries(licences.data.feeds).sort(([a], [b]) => a.localeCompare(b));
   return (
     <article className="card">
       <h3>
-        授權判定 Licence verdicts
-        <span className="chip">support: licence ledger</span>
+        {copy.licencesHeading}
+        <span className="chip">{copy.licenceChip}</span>
       </h3>
       {licences.gap ? (
         <p className="gap">
-          gap · {licences.reason}
+          {copy.gapWord} · {licences.reason}
           {licences.upstream_status !== null ? ` (HTTP ${licences.upstream_status})` : ""}
         </p>
       ) : (
         <>
           {feeds.length === 0 ? (
-            <p className="caption">登記簿是空的。The registry is empty.</p>
+            <p className="caption">{copy.licenceRegistryEmpty}</p>
           ) : (
             <ul className="chips">
               {feeds.map(([name, state]) => (
@@ -133,15 +154,15 @@ function LicencesCard({ licences }: { licences: AdvisoryFeed<LicencesDocument> }
                     className={`chip ${state.settlement_allowed ? "badge-open" : "badge-screening"}`}
                     title={`settlement_reason: ${state.settlement_reason} · screening_reason: ${state.screening_reason}`}
                   >
-                    {state.settlement_allowed ? "Commercial" : "Screening"}
+                    {state.settlement_allowed ? copy.commercialBadge : copy.screeningBadge}
                   </span>
                 </li>
               ))}
             </ul>
           )}
           <p className="caption">
-            specimen 不解鎖，失效即降級 Specimens never unlock; grants fail closed
-            {licences.data.evaluated_at ? ` · 判定 evaluated ${licences.data.evaluated_at} UTC` : ""}
+            {copy.licenceCaption}
+            {licences.data.evaluated_at ? ` · ${licences.data.evaluated_at} UTC` : ""}
           </p>
         </>
       )}
@@ -149,7 +170,8 @@ function LicencesCard({ licences }: { licences: AdvisoryFeed<LicencesDocument> }
   );
 }
 
-export async function Advisories() {
+export async function Advisories({ locale = "en" }: { locale?: Locale }) {
+  const copy = advisoryCopy[locale];
   const [weather, planet, licences] = await Promise.all([
     fetchWeatherFeed(),
     fetchPlanetFeed(),
@@ -158,21 +180,17 @@ export async function Advisories() {
 
   return (
     <section className="advisories" aria-labelledby="advisories-title">
-      <p className="kicker">諮詢 Advisories</p>
+      <p className="kicker">{copy.advisoriesKicker}</p>
       <h2 id="advisories-title">
-        後端送來的現況 Current conditions
-        <span>fetched server-side · revalidate {FEED_REVALIDATE_SECONDS}s</span>
+        {copy.advisoriesTitle}
+        <span>
+          {copy.advisoriesSubtitle} · revalidate {FEED_REVALIDATE_SECONDS}s
+        </span>
       </h2>
-      <WeatherCard weather={weather} />
-      <PlanetCard planet={planet} />
-      <LicencesCard licences={licences} />
-      <p className="caption">
-        「support: grid」＝值屬於格網胞或拍攝航帶，不屬於個別植株。「support:
-        parcel」只可能來自此頁親手記下的觀測（裝置 GPS）。未讀到的值留白、上游故障顯示
-        gap——這裡不發明任何數字。 Parcel-level claims may only come from
-        observations recorded on this page; missing values stay blank and upstream
-        failures surface as gaps. Nothing here is invented.
-      </p>
+      <WeatherCard weather={weather} copy={copy} />
+      <PlanetCard planet={planet} copy={copy} />
+      <LicencesCard licences={licences} copy={copy} />
+      <p className="caption">{copy.noInventionFooter}</p>
     </section>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { copy, localeLabels, locales, type Locale } from "@/lib/copy";
+import { copy, localeHtmlLang, localeLabels, locales, type Locale } from "@/lib/copy";
 
 type Status = {
   class_c_policy: string;
@@ -45,14 +45,16 @@ export function FieldSheet({ initialLat = "", initialLon = "" }: FieldSheetProps
 
   useEffect(() => {
     const saved = window.localStorage.getItem("farm-locale");
-    if (saved === "zh-TW" || saved === "zh-CN" || saved === "en" || saved === "ja") {
-      setLocale(saved);
+    if ((locales as readonly string[]).includes(saved ?? "")) {
+      setLocale(saved as Locale);
     }
   }, []);
 
   useEffect(() => {
-    document.documentElement.lang = locale;
+    document.documentElement.lang = localeHtmlLang[locale];
     window.localStorage.setItem("farm-locale", locale);
+    // mirror the choice for the server-rendered advisories panel
+    document.cookie = `farm-locale=${encodeURIComponent(locale)}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
   }, [locale]);
 
   async function load() {
