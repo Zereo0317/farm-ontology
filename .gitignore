@@ -25,11 +25,29 @@ web/node_modules/
 web/.next/
 web/out/
 
-# ── Local build / audit / load-test artefacts ─────────────────────────────
-# Staged Cloud Build context produced by web/tools/web-image-build.ps1:
+# ── Landing app build & deps (reproducible via landing/package-lock.json) ──
+# The vendored TanStack Start marketing site. node_modules NEVER enters git
+# (a 32,451-line vendor commit happened once — amended out in 70b3605a; the
+# .gitignore is the second fence so it cannot happen twice).
+landing/node_modules/
+landing/.output/
+landing/.vercel/
+landing/.tanstack/
+landing/out.log
+landing/err.log
+landing/server.pid
+landing/.grok/
+
+# ── Local Cloud Build staging contexts ────────────────────────────────────
+# Staged Cloud Build contexts: web/tools/web-image-build.ps1 writes
+# .dockerbuild-web/; the Lead's landing pipeline writes .landingbuild/.
 .dockerbuild-web/
-# Browser audit scratch (Playwright CLI sessions):
+.landingbuild/
+
+# ── Local build / audit / load-test artefacts ─────────────────────────────
+# Browser audit scratch (Playwright CLI sessions + audit screenshots):
 .playwright-cli/
+.playwright-mcp/
 # perf/run-load-test.ps1 regenerates these fixed-name files on every run
 # (machine output). Deliberately tracked evidence — the dated
 # k6-metrics-*.json / after-/baseline- / verdict-k6.json snapshots behind
@@ -51,3 +69,8 @@ Thumbs.db
 desktop.ini
 .idea/
 .vscode/
+
+# ── Local server scratch (nitro preview runs, one-off logs) ───────────────
+*.pid
+out.log
+err.log

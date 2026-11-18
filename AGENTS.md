@@ -5,7 +5,7 @@ record with per-workstream scope) and the ops docs you are about to touch
 (`docs/backend-live.md`, `docs/web-ops.md`, `deploy/`). Board tasks carry
 the detailed spec per sprint; this file is the standing handbook.
 
-## 0. Environment facts (verified live 2026-11-18)
+## 0. Environment facts (verified live 2026-11-19)
 
 ```pwsh
 gcloud config get-value account   # segescloud@gmail.com
@@ -17,10 +17,12 @@ gh auth status                    # Zereo0317
 - **The project is shared.** `seges-ai` hosts 20+ Cloud Run services and
   hundreds of jobs from sibling products (noesis-\*, seges-\*, kairos, …).
   Touch **only** `farm-seges-ai*` resources; never "clean up" anything else.
-- Farm footprint: services `farm-seges-ai` (prod), `-staging`, `-web`;
-  jobs `farm-ingest-{workers,planet,ndvi,hazard}`, `farm-nightly-export`,
-  plus drill/probe jobs; 5 schedulers `farm-sched-*`; bucket
-  `gs://farm-seges-ai-records`; secrets `Planet-labs`, `web-access-token`.
+- Farm footprint: services `farm-seges-ai` (prod), `-staging`, `-web`,
+  `-landing`; jobs `farm-ingest-{workers,planet,ndvi,hazard}`,
+  `farm-nightly-export`, plus drill/probe jobs; 5 schedulers `farm-sched-*`;
+  bucket `gs://farm-seges-ai-records`; secrets `Planet-labs`,
+  `web-access-token`; apex `seges.ai` on Cloudflare (account
+  `segescloud` → zone under Hyuchen869, worker `seges-site-worker`).
 - Python ≥ 3.11, **stdlib-only** (`pyproject.toml` declares zero deps).
 - The repository is private; `main` is the single source of truth.
 
@@ -36,6 +38,7 @@ gh auth status                    # Zereo0317
 | `farm_ontology/licences/`, `grants/`, `docs/legal/` | licences (WS6) |
 | `farm_ontology/markets/` | markets (WS7) |
 | `web/`, `Dockerfile.web` | web (WS8) |
+| `landing/`, `Dockerfile.landing` | marketing site + funnel (WS8/Sprint-K lineage; Lead-reviewed — it fronts the apex) |
 | `Dockerfile`, `.gcloudignore`, `.github/workflows/`, `deploy/` | infra (WS1) |
 | `perf/` | QA sprints (Sprint-E lineage) |
 | `README.md`, `AGENTS.md`, `.gitignore` | hygiene sprints |
@@ -109,7 +112,7 @@ gcloud run services update-traffic farm-seges-ai-staging --region asia-east1 --t
   green tests+build deploy **staging** on main pushes. Prod deploys are a
   separate manual workflow — merge-to-prod without green is impossible.
 - Rule: every defect fix ships with a producer test that fails on the old
-  code. Suite size 2026-11-18: **1686 tests** (14 opt-in skips) — keep it
+  code. Suite size 2026-11-19: **1744 tests** (14 opt-in skips) — keep it
   green, grow it honestly.
 
 ## 6. Known pitfalls ledger (paid for in incidents; never re-learn these)
@@ -126,6 +129,27 @@ gcloud run services update-traffic farm-seges-ai-staging --region asia-east1 --t
 | `/healthz` is reserved | the run.app edge keeps it; health endpoints are **`/livez`** on both services |
 | Digests, not tags | Cloud Run rollbacks pin **explicit image digests**; tags can go stale |
 | Windows pipelines vs stdout | DSH sandbox/confined shells can't capture spawned-process stdio (`EPERM`) — inherit or restructure |
+| node_modules sneaks into vendor commits | landing vendor commit hit 32,451 lines → `git rm -r --cached landing/node_modules` + amend + `.gitignore` fence (`70b3605a`). ALWAYS check `git status --short \| Measure-Object` before committing a vendored tree |
+| PowerShell flattens single-element JSON arrays | `@{versions=@(@{…})} \| ConvertTo-Json` collapses to an object → CF deploy API "invalid versions []". Hand-build the JSON string when nesting matters (`'{"versions":[{"version_id":"…","percentage":100}]}'`) |
+| CF worker secret cannot keep-by-name on PUT | script PUT requires secret VALUES; use the **Versions API** (`POST …/versions`, metadata `keep_bindings:["secret_text"]` — TYPE names, not binding names) then `POST …/deployments` `{"versions":[{"version_id":"…","percentage":100}]}` |
+| `npm ci` vs drifted lockfile | Cloud Build fails on "Missing: X from lock file" → for the vendored landing, `npm install` in the Dockerfile (tolerates drift), or regenerate the lock first. Local `npm install --package-lock-only` can fail behind proxies on optional wasm packages (`@tailwindcss/oxide-wasm32-wasi`) |
+| `gcloud builds submit --dockerfile` | flag does not exist on this gcloud → stage a context where `Dockerfile` IS the landing Dockerfile (`.landingbuild/`) |
+| Worker path overrides short-circuit locale | `seges-site-worker` `/farm` `/api` `/tools` overrides must run BEFORE `planLocaleAction`, or the locale redirect eats them (`docs/seges-apex-switchover.md`) |
+| Landing npm scripts spawn `vite` bare | `npm run build` fails with spawn ENOENT outside the Grok sandbox → run `npx vite build` with `NITRO_PRESET=node-server` directly; the db:migrate step is intentionally skipped (no database) |
+| Local `list_paths` sees files only | directories are filtered by `p.is_file()` — two-level stores (leads/YYYYMMDD/) must glob `**/*.json` from the base, not list dirs then descend |
+
+## 6b. Design law (taste-skill + impeccable, enforced in review)
+
+The landing and every report surface follow the fetched design skills
+(`~/.dsh/skills-design/`): **no captions under any image** (licence credits
+live in one footer line), **no kicker above a heading** (ban), one section
+per screen, equal edges, 60–80 words a screen, hover micro-motion only
+(2px lift / press / underline-draw — no tilt, no carousels), identical data
+rows collapse (repeating the same verdict five times hides the one
+different district), real UI as evidence (the decision flow IS the
+product's logic), no gradient text, no emoji-as-icon, no monospace costume.
+Before any UI edit, run the craft-floor checks on a real render at
+1440/1024/768/390 and batch the fixes.
 
 ## 7. The four human cards (nothing else blocks the roadmap)
 
@@ -167,6 +191,7 @@ Agents prepare baskets, quotes, memos, and drafts; humans sign.
   `docs/alpha-fairness-doctrine.md` · Defect history:
   `docs/final-verification-report.md` · Closed switches Q1–Q21:
   `docs/decision-log.md` · Live-service records: `docs/backend-live.md`,
-  `docs/web-ops.md` · GCP provisioning: `deploy/GCP_SETUP.md` · Commercial
-  gates: `grants/punchlist.yaml` → `docs/legal/commercial-punchlist.md`.
-- Current suite badge: 1686 tests OK (14 opt-in skips) @ `main` 2026-11-18.
+  `docs/web-ops.md`, `docs/seges-apex-switchover.md` · GCP provisioning:
+  `deploy/GCP_SETUP.md` · Commercial gates: `grants/punchlist.yaml` →
+  `docs/legal/commercial-punchlist.md`.
+- Current suite badge: 1744 tests OK (14 opt-in skips) @ `main` 2026-11-19.
