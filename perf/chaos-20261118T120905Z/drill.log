@@ -1,0 +1,20 @@
+[2026-11-18T12:09:05.948Z][setup] artifact dir: C:\Users\user\Documents\deepseek-harness\default-workspace\farm-ont-ws-resilience\perf\chaos-20261118T120905Z
+[2026-11-18T12:09:08.754Z][preflight] account=segescloud@gmail.com project=seges-ai expected-ok=True
+[2026-11-18T12:09:11.707Z][snapshot] {"url":"https://farm-seges-ai-staging-kadpjlgt4q-de.a.run.app","latest_created":"farm-seges-ai-staging-00109-lhs","latest_ready":"farm-seges-ai-staging-00109-lhs","traffic":"farm-seges-ai-staging-00109-lhs=100%","min_scale":null,"max_scale":"3"}
+[2026-11-18T12:09:24.848Z][min-instances] update ok=True minScale-now=
+[2026-11-18T12:09:25.025Z][ledger] built ok=True :: {"command_id": "739eb4e818921e21134494811cb86853", "records": 3, "file": "C:\\Users\\user\\Documents\\deepseek-harness\\default-workspace\\farm-ont-ws-resilience\\perf\\chaos-20261118T120905Z\\ledger-20261118T120905Z.jsonl"}
+[2026-11-18T12:09:34.542Z][ledger-upload] ok=True :: Copying file://C:\Users\user\Documents\deepseek-harness\default-workspace\farm-ont-ws-resilience\perf\chaos-20261118T120905Z\ledger-20261118T120905Z.jsonl to gs://farm-seges-ai-records/chaos-drills/ledger-20261118T120905Z.jsonl |    | .... |
+[2026-11-18T12:09:54.229Z][observation-job] exit=0
+[2026-11-18T12:09:57.300Z][ledger-ack] ok=True :: {"command_id": "739eb4e818921e21134494811cb86853", "state": "acknowledged", "records": 4}
+[2026-11-18T12:10:11.227Z][ledger-upload-final] ok=True
+[2026-11-18T12:10:23.990Z][recycle] env-bump ok=True new-revision=farm-seges-ai-staging-00112-7j6
+[2026-11-18T12:10:33.230Z][recycle] revision ready after 5s
+[2026-11-18T12:10:36.462Z][cold-hit] hit=1 ttfb_ms=3218 status=200
+[2026-11-18T12:10:38.913Z][cold-hit] hit=2 ttfb_ms=432 status=200
+[2026-11-18T12:10:42.280Z][cold-hit] hit=3 ttfb_ms=1356 status=200
+[2026-11-18T12:10:46.573Z][cold-hit] hit=4 ttfb_ms=2284 status=200
+[2026-11-18T12:10:49.864Z][readability] /farm/ingest-status: status=200 ms=1283 body_bytes=5002
+[2026-11-18T12:10:55.703Z][readability] latest-obs=gs://farm-seges-ai-records/field-notes/obs-20261118T120948Z.json readable(with stamps)=True
+[2026-11-18T12:11:05.590Z][restore] pulled ledger ok=True -> C:\Users\user\AppData\Local\Temp\farm-restore-20261118T120905Z
+[2026-11-18T12:11:05.809Z][ledger-verify] ok=True :: {"verify_ok": true, "records": 4, "problems": [], "snapshot": {"739eb4e818921e21134494811cb86853": "acknowledged"}}
+[2026-11-18T12:11:05.829Z][verdict] {"drill_ok":true,"min_instances_zero":true,"observation_written":true,"observation_readable":true,"ledger_uploaded":true,"ledger_ack_appended":true,"ledger_restored_chain_ok":true,"restored_snapshot":{"739eb4e818921e21134494811cb86853":"acknowledged"},"cold_start_measured":[3218.0,432.0,1356.0,2284.0],"cold_start_note":"hit1 = cold boot of the fresh minScale-0 revision; hits 2-4 warm","revision_recycled":"farm-seges-ai-staging-00112-7j6"}

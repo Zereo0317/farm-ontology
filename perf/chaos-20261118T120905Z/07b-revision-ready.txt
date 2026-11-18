@@ -1,0 +1,148 @@
+{
+  "apiVersion": "serving.knative.dev/v1",
+  "kind": "Revision",
+  "metadata": {
+    "annotations": {
+      "autoscaling.knative.dev/maxScale": "3",
+      "run.googleapis.com/build-source-location": "{\"farm-seges-ai-staging-1\":\"gs://run-sources-seges-ai-asia-east1/services/farm-seges-ai-staging/1795003743.396638-92973467b2d748d5ac50bf9ad9364f3e.zip#1795003744636324\"}",
+      "run.googleapis.com/client-name": "gcloud",
+      "run.googleapis.com/client-version": "570.0.0",
+      "run.googleapis.com/operation-id": "c4f09f52-ebb2-4c30-a2f7-e039156ceead",
+      "run.googleapis.com/startup-cpu-boost": "true",
+      "serving.knative.dev/creator": "segescloud@gmail.com"
+    },
+    "creationTimestamp": "2026-11-18T12:10:14.916659Z",
+    "generation": 1,
+    "labels": {
+      "client.knative.dev/nonce": "snjbwsneju",
+      "cloud.googleapis.com/location": "asia-east1",
+      "run.googleapis.com/startupProbeType": "Default",
+      "serving.knative.dev/configuration": "farm-seges-ai-staging",
+      "serving.knative.dev/configurationGeneration": "112",
+      "serving.knative.dev/route": "farm-seges-ai-staging",
+      "serving.knative.dev/service": "farm-seges-ai-staging",
+      "serving.knative.dev/serviceUid": "a0892ed2-d709-42d4-8b84-f34b14263eb6"
+    },
+    "name": "farm-seges-ai-staging-00112-7j6",
+    "namespace": "451400509859",
+    "ownerReferences": [
+      {
+        "apiVersion": "serving.knative.dev/v1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "Configuration",
+        "name": "farm-seges-ai-staging",
+        "uid": "7cf357ae-cc6c-41c7-9799-a67db530c3c5"
+      }
+    ],
+    "resourceVersion": "AAZgi+ULn/s",
+    "selfLink": "/apis/serving.knative.dev/v1/namespaces/451400509859/revisions/farm-seges-ai-staging-00112-7j6",
+    "uid": "2cccd70a-3ffa-4584-9033-6a6c0a767592"
+  },
+  "spec": {
+    "containerConcurrency": 80,
+    "containers": [
+      {
+        "env": [
+          {
+            "name": "GCP_PROJECT",
+            "value": "seges-ai"
+          },
+          {
+            "name": "EE_PROJECT",
+            "value": "seges-ai"
+          },
+          {
+            "name": "FARM_RECORD_BACKEND",
+            "value": "gcs"
+          },
+          {
+            "name": "FARM_RECORD_BUCKET",
+            "value": "farm-seges-ai-records"
+          },
+          {
+            "name": "PLANET_API_KEY",
+            "valueFrom": {
+              "secretKeyRef": {
+                "key": "latest",
+                "name": "Planet-labs"
+              }
+            }
+          },
+          {
+            "name": "DRILL_STAMP",
+            "value": "20261118T120905Z"
+          }
+        ],
+        "image": "asia-east1-docker.pkg.dev/seges-ai/cloud-run-source-deploy/farm-seges-ai-staging@sha256:ad3bb887ab23f0d5159859c0bedc8e4a19cfe27b3c70fb28ea0150ba766617e8",
+        "name": "farm-seges-ai-staging-1",
+        "ports": [
+          {
+            "containerPort": 8080,
+            "name": "http1"
+          }
+        ],
+        "resources": {
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          }
+        },
+        "startupProbe": {
+          "failureThreshold": 1,
+          "periodSeconds": 240,
+          "tcpSocket": {
+            "port": 8080
+          },
+          "timeoutSeconds": 240
+        }
+      }
+    ],
+    "serviceAccountName": "451400509859-compute@developer.gserviceaccount.com",
+    "timeoutSeconds": 300
+  },
+  "status": {
+    "conditions": [
+      {
+        "lastTransitionTime": "2026-11-18T12:10:18.292784Z",
+        "message": "Deploying revision succeeded in 3.38s.",
+        "status": "True",
+        "type": "Ready"
+      },
+      {
+        "lastTransitionTime": "2026-11-18T12:10:18.458483Z",
+        "severity": "Info",
+        "status": "True",
+        "type": "Active"
+      },
+      {
+        "lastTransitionTime": "2026-11-18T12:10:18.210420Z",
+        "message": "Containers became healthy.",
+        "status": "True",
+        "type": "ContainerHealthy"
+      },
+      {
+        "lastTransitionTime": "2026-11-18T12:10:15.608300Z",
+        "message": "Container image import completed.",
+        "status": "True",
+        "type": "ContainerReady"
+      },
+      {
+        "lastTransitionTime": "2026-11-18T12:10:17.270736Z",
+        "message": "Provisioning imported containers completed in 1.66s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+        "status": "True",
+        "type": "ResourcesAvailable"
+      }
+    ],
+    "containerStatuses": [
+      {
+        "imageDigest": "asia-east1-docker.pkg.dev/seges-ai/cloud-run-source-deploy/farm-seges-ai-staging@sha256:ad3bb887ab23f0d5159859c0bedc8e4a19cfe27b3c70fb28ea0150ba766617e8",
+        "name": "farm-seges-ai-staging-1"
+      }
+    ],
+    "imageDigest": "asia-east1-docker.pkg.dev/seges-ai/cloud-run-source-deploy/farm-seges-ai-staging@sha256:ad3bb887ab23f0d5159859c0bedc8e4a19cfe27b3c70fb28ea0150ba766617e8",
+    "logUrl": "https://console.cloud.google.com/logs/viewer?project=seges-ai&resource=cloud_run_revision/service_name/farm-seges-ai-staging/revision_name/farm-seges-ai-staging-00112-7j6&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22farm-seges-ai-staging%22%0Aresource.labels.revision_name%3D%22farm-seges-ai-staging-00112-7j6%22",
+    "observedGeneration": 1
+  }
+}
+

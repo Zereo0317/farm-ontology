@@ -1,0 +1,33 @@
+{
+  "base_url": "https://farm-seges-ai-451400509859.asia-east1.run.app",
+  "generated_at": "2026-11-18T12:19:10.644Z",
+  "p50_ms": 665,
+  "p95_ms": 1832,
+  "p99_ms": null,
+  "http_requests": 9759,
+  "checks_passed": 9759,
+  "checks_failed": 0,
+  "error_rate_pct": 0,
+  "honest_bar": {
+    "p95_lt_400ms": false,
+    "errors_lt_05pct": true,
+    "breaching": true
+  },
+  "per_route": {
+    "livez": {
+      "p50_ms": 181,
+      "p95_ms": 1013,
+      "p99_ms": null
+    },
+    "ingest-status": {
+      "p50_ms": 925,
+      "p95_ms": 3783,
+      "p99_ms": null
+    },
+    "farm-weather": {
+      "p50_ms": 596,
+      "p95_ms": 1504,
+      "p99_ms": null
+    }
+  }
+}
