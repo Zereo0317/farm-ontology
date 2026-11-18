@@ -28,15 +28,31 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 # 1. Dockerfile: the .web file renamed to the canonical name inside the context.
 Copy-Item (Join-Path $repo "Dockerfile.web") (Join-Path $stage "Dockerfile")
 
-# 2. web/ without node_modules, .next, build logs.
-robocopy (Join-Path $repo "web") (Join-Path $stage "web") /E `
-  /XD node_modules .next /XF "*.log" /NFL /NDL /NJH /NJS | Out-Null
-if ($LASTEXITCODE -ge 8) { throw "robocopy failed with code $LASTEXITCODE" }
+# 2. Portably mirror web/ (minus node_modules/.next/logs) — robocopy is
+# Windows-only and CI runners are Ubuntu; Copy-Tree keeps ONE recipe for both.
+$script:skipDirs = @("node_modules", ".next", "__pycache__", ".pytest_cache", ".venv", "venv")
+
+function Copy-Tree([string]$Src, [string]$Dst, [string]$ExtFilter = "") {
+  New-Item -ItemType Directory -Force -Path $Dst | Out-Null
+  foreach ($item in (Get-ChildItem -LiteralPath $Src -Force)) {
+    if ($item.PSIsContainer) {
+      if ($script:skipDirs -notcontains $item.Name) {
+        Copy-Tree -Src $item.FullName -Dst (Join-Path $Dst $item.Name) -ExtFilter $ExtFilter
+      }
+    }
+    elseif ($ExtFilter -eq "" -or $item.Extension -eq $ExtFilter) {
+      Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $Dst $item.Name) -Force
+    }
+  }
+}
+
+Copy-Tree -Src (Join-Path $repo "web") -Dst (Join-Path $stage "web")
+Get-ChildItem (Join-Path $stage "web") -Filter *.log -Recurse -File -ErrorAction SilentlyContinue |
+  Remove-Item -Force
 
 # Record bridge needs the stdlib-only farm_ontology package + its manifest.
-robocopy (Join-Path $repo "farm_ontology") (Join-Path $stage "farm_ontology") *.py /XF "__pycache__" /S /NFL /NDL /NJH /NJS | Out-Null
-if ($LASTEXITCODE -ge 8) { throw "farm_ontology copy failed" }
-Copy-Item (Join-Path $repo "vocabulary-manifest.json") $stage
+Copy-Tree -Src (Join-Path $repo "farm_ontology") -Dst (Join-Path $stage "farm_ontology") -ExtFilter ".py"
+Copy-Item (Join-Path $repo "vocabulary-manifest.json") $stage -Force
 
 # 3. Explicit ignore file: gcloud would otherwise derive one from the repo
 # .gitignore and could strip files the Dockerfile needs.
