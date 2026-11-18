@@ -1,0 +1,384 @@
+{
+  "summary": {
+    "spots": 62,
+    "planner_ok": 0,
+    "refusals": 62,
+    "universal_missing_analyte": "om_percent (organic matter not present in the Airtable source)",
+    "sampled_at_presumption": "{sampling_year}-07-01Z mid-year marker; day-precision is not in the source",
+    "stale_2023_spots_expected": 16
+  },
+  "spots": [
+    {
+      "analysis_name": "豊糠-ハウス #1",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-ハウス #2",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-ハウス #3",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-白ハウス",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-相田へ #1",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-相田へ #2",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "むかわ-flat",
+      "area": "鵡川",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "むかわ-ロン #1",
+      "area": "鵡川",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "むかわ-ロン #2",
+      "area": "鵡川",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "むかわ-家東",
+      "area": "鵡川",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "むかわ-家裏",
+      "area": "鵡川",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "むかわ-国道",
+      "area": "鵡川",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-若菜横",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-相田向 #1",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-相田向 #2",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "豊糠-相田前2",
+      "area": "豊糠",
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2026｜ハウス横ハウス3",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2026｜相田向3_北東ハウス",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜01北連棟_東畝間",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜02中連棟_西マルチ",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜02中連棟_東マルチ",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜01北連棟_西マルチ",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜02中連棟_東畝間",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜01北連棟_東マルチ",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜02中連棟_西畝間",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜01北連棟_西畝間",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜03南連棟_東畝間",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜604B",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜604北B",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜03南連棟_東マルチ",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2025｜03南連棟_西マルチ",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜604東",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜604A",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜604北A",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜604の北西とまり",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: om_percent) (remedy: supply lab rows for om_percent)"
+    },
+    {
+      "analysis_name": "2025｜03南連棟_西畝間",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜牧場うら604B",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: om_percent) (remedy: supply lab rows for om_percent)"
+    },
+    {
+      "analysis_name": "2024｜相田向-3（南）",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜牛屋向-2（西）",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜619-1（北）",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜635",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: om_percent) (remedy: supply lab rows for om_percent)"
+    },
+    {
+      "analysis_name": "2024｜牧場うら604A",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: om_percent) (remedy: supply lab rows for om_percent)"
+    },
+    {
+      "analysis_name": "2024｜635-2",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜学校裏-3（南）",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜604北西",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: n_available, om_percent) (remedy: supply lab rows for n_availabl"
+    },
+    {
+      "analysis_name": "2024｜家裏ベリー",
+      "area": null,
+      "ok": false,
+      "error": "[gap:needs-soil-chemistry] the fertility planner requires the full chemistry set before it interprets anything; a partial set invites half-truths (missing: om_percent) (remedy: supply lab rows for om_percent)"
+    },
+    {
+      "analysis_name": "2023｜汚土-2",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜むかわ3",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜学校裏-1(北西)",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜むかわ2",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜ビニールハウス横",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜サイロ下",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜汚土-3",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜学校裏-2(北東)",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜むかわ1",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜牛屋向-1(東)",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜橋前-1(東)",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜橋向こう-3(北)",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜若菜横",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜橋向こう-2(南東)",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜石谷横-1(西)",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    },
+    {
+      "analysis_name": "2023｜相田前-2",
+      "area": null,
+      "ok": false,
+      "error": "[gap:soil-chemistry-stale] soil row 0 (ph) was sampled 2023-07-01, beyond the 3-year staleness window"
+    }
+  ]
+}
