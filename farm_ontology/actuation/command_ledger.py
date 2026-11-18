@@ -646,11 +646,9 @@ class CommandLedger:
         cid = event.get("command_id")
         if not isinstance(cid, str) or not cid:
             return [f"command_id missing at record {index}"]
+        name = event.get("name")
         current = command_state.get(cid)
-        expected_from = "start" if event.get("name") == "propose" else _TRANSITION_FROM[
-            event["name"]
-        ]
-        if event["name"] == "propose":
+        if name == "propose":
             if current is not None:
                 return [
                     f"duplicate proposal at record {index}: command {cid!r} "
@@ -658,11 +656,23 @@ class CommandLedger:
                 ]
             command_state[cid] = "proposed"
             return []
-        if event["name"] == "void":
+        if name == "void":
+            # (D9 fix, ws/fix/actuation-ledger) void is decided HERE, before
+            # any from-state lookup: _TRANSITION_FROM has no "void" key and
+            # consulting it for a legal void event used to raise KeyError,
+            # killing verify_chain on any chain that contained voiding.
+            if current is None:
+                return [
+                    f"void for unproposed command {cid!r} at record {index} "
+                    "(forged or reordered history)"
+                ]
             if current == "voided":
                 return [f"illegal transition at record {index}: voided -> voided"]
             command_state[cid] = "voided"
             return []
+        expected_from = _TRANSITION_FROM.get(name)
+        if expected_from is None:
+            return [f"unknown event name at record {index}: {name!r}"]
         if current != expected_from:
             return [
                 f"illegal transition at record {index}: "

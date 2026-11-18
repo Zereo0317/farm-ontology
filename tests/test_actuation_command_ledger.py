@@ -446,5 +446,129 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(ledger.state_of(ledger.records[0]["event"]["command_id"]), "proposed")
 
 
+class VoidReplayRegressionTests(unittest.TestCase):
+    """D9 regressions (ws/fix/actuation-ledger): verify_chain used to raise
+    KeyError 'void' on any chain containing a legal void event."""
+
+    def test_minimal_void_chain_verifies_clean(self):
+        """The literal D9 repro: propose -> void -> verify_chain clean."""
+        ledger, cid = _new_ledger()
+        ledger.void(cid, reason="storm inbound", actor=_HUMAN, at=_elapsed(300))
+        self.assertEqual(ledger.state_of(cid), "voided")
+        report = ledger.verify_chain()
+        self.assertTrue(report["ok"], report["problems"])
+        self.assertEqual(report["records"], 2)
+
+    def test_full_lifecycle_with_mid_halt_void_verifies_clean(self):
+        """Full lifecycle across a HALT window with a void inside it."""
+        ledger = CommandLedger()
+        first = ledger.propose(
+            prescription=dict(_PRESCRIPTION),
+            actor=_SERVICE,
+            at=_T0,
+            polygon_ref=_POLYGON,
+        )
+        cid_a = first["event"]["command_id"]
+        ledger.halt(reason="typhoon w12 inbound", actor=_HUMAN, at=_elapsed(30))
+        ledger.void(cid_a, reason="abort during storm window", actor=_HUMAN, at=_elapsed(60))
+        ledger.lift_halt(reason="storm passed", actor=_HUMAN, at=_elapsed(90))
+        second = ledger.propose(
+            prescription={**_PRESCRIPTION, "dose_mm": 9.0},
+            actor=_SERVICE,
+            at=_elapsed(120),
+            polygon_ref=_POLYGON,
+        )
+        cid_b = second["event"]["command_id"]
+        # drive manually past the storm window: _drive_to_acknowledged's fixed
+        # offsets collide with this scenario's later timeline
+        ledger.approve(cid_b, approver=_HUMAN, at=_elapsed(240))
+        ledger.dispatch(cid_b, actor=_SERVICE, receipt={"t": 1}, at=_elapsed(300))
+        ledger.acknowledge(cid_b, actor=_OPERATOR, receipt={"a": 1}, at=_elapsed(360))
+        report = ledger.verify_chain()
+        self.assertTrue(report["ok"], report["problems"])
+        self.assertEqual(
+            ledger.snapshot(), {cid_a: "voided", cid_b: "acknowledged"}
+        )
+        # cid_a: propose + void (halt/lift are their own record type, not
+        # command events); cid_b: the full 4-event lifecycle
+        self.assertEqual(len(ledger.events_of(cid_a)), 2)
+        self.assertEqual(len(ledger.events_of(cid_b)), 4)
+
+    def test_mid_halt_void_lifecycle_survives_disk_roundtrip(self):
+        ledger = CommandLedger()
+        first = ledger.propose(
+            prescription=dict(_PRESCRIPTION), actor=_SERVICE, at=_T0
+        )
+        cid_a = first["event"]["command_id"]
+        ledger.halt(reason="hail", actor=_HUMAN, at=_elapsed(30))
+        ledger.void(cid_a, reason="abort during hail", actor=_HUMAN, at=_elapsed(60))
+        ledger.lift_halt(reason="cleared", actor=_HUMAN, at=_elapsed(90))
+        second = ledger.propose(
+            prescription={**_PRESCRIPTION, "dose_mm": 4.0},
+            actor=_SERVICE,
+            at=_elapsed(120),
+        )
+        cid_b = second["event"]["command_id"]
+        ledger.approve(cid_b, approver=_HUMAN, at=_elapsed(180))
+        ledger.dispatch(cid_b, actor=_SERVICE, receipt={"t": 1}, at=_elapsed(240))
+        ledger.acknowledge(cid_b, actor=_OPERATOR, receipt={"a": 1}, at=_elapsed(300))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "commands-with-void.jsonl"
+            ledger.save(path)
+            reloaded = CommandLedger.from_path(path)
+            report = reloaded.verify_chain()
+            self.assertTrue(report["ok"], report["problems"])
+            self.assertEqual(
+                reloaded.snapshot(), {cid_a: "voided", cid_b: "acknowledged"}
+            )
+
+    def _reforge(self, records: list[dict]) -> list[dict]:
+        """Rebuild a syntactically valid chain over the given records."""
+        forged = []
+        prev = GENESIS_HASH
+        for index, record in enumerate(records, start=1):
+            record = copy.deepcopy(record)
+            record["seq"] = index
+            record["prev"] = prev
+            body = {"type": record["type"], "ts": record["ts"], "event": record["event"]}
+            record["hash"] = sha256(prev.encode("ascii") + canonical_json(body)).hexdigest()
+            prev = record["hash"]
+            forged.append(record)
+        return forged
+
+    def test_forged_void_for_unproposed_command_dies_via_report(self):
+        ledger = CommandLedger()
+        ledger.propose(prescription=dict(_PRESCRIPTION), actor=_SERVICE, at=_T0)
+        ghost_void = {
+            "seq": 99,
+            "type": "command_event",
+            "ts": _elapsed(400).isoformat(),
+            "prev": "",
+            "event": {
+                "name": "void",
+                "command_id": "ghost-command-never-proposed",
+                "from_state": "acknowledged",
+                "to_state": "voided",
+                "actor": _HUMAN,
+                "reason": "inserted by a forger",
+            },
+            "hash": "",
+        }
+        report = CommandLedger(self._reforge(list(ledger.records) + [ghost_void])).verify_chain()
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("void for unproposed command" in p for p in report["problems"]))
+        # and it must be a REPORTED problem, not an exception
+        self.assertIsInstance(report["problems"], list)
+
+    def test_forged_double_void_dies_via_report(self):
+        ledger, cid = _new_ledger()
+        ledger.void(cid, reason="first real void", actor=_HUMAN, at=_elapsed(300))
+        double = dict(copy.deepcopy(ledger.records[-1]))
+        double["event"]["reason"] = "second void, never legal"
+        report = CommandLedger(self._reforge(list(ledger.records) + [double])).verify_chain()
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("voided -> voided" in p for p in report["problems"]))
+
+
 if __name__ == "__main__":
     unittest.main()
