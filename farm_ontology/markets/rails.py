@@ -34,6 +34,7 @@ advises. No autonomous order exists on any path.
 
 from __future__ import annotations
 
+import enum
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Mapping, Sequence
@@ -92,8 +93,31 @@ RAIL_2_UPSIDE_SHARE = "R2"
 RAIL_3_TICKET = "R3"
 RAIL_4_CONSENT_FLOW = "R4"
 RAIL_5_TRUTHFULNESS = "R5"
+#: Premium-budget cap rail (fix-sprint D5): the uncertainty-state premium
+#: budget has its own id so cap audits have a catalogue anchor.
+RAIL_6_PREMIUM_CAP = "R6"
 
-RAIL_IDS = (RAIL_1_DISCLOSURE, RAIL_2_UPSIDE_SHARE, RAIL_3_TICKET, RAIL_4_CONSENT_FLOW, RAIL_5_TRUTHFULNESS)
+RAIL_IDS = (
+    RAIL_1_DISCLOSURE,
+    RAIL_2_UPSIDE_SHARE,
+    RAIL_3_TICKET,
+    RAIL_4_CONSENT_FLOW,
+    RAIL_5_TRUTHFULNESS,
+    RAIL_6_PREMIUM_CAP,
+)
+
+
+class Beneficiary(enum.Enum):
+    """Who the doctrine §4.2 upside share accrues to (fix-sprint D4).
+
+    Typed instead of a free string so the rail can SEE the beneficiary's
+    nature: ``FARMER_*`` variants tie the term to a farmer relationship;
+    ``OUR_BOOK`` marks the (rare) self-directed artefact.
+    """
+
+    OUR_BOOK = "our-book"
+    FARMER_CONTRACTED = "farmer-contracted"
+    FARMER_TRIAL = "farmer-trial"
 
 @dataclass(frozen=True)
 class Scenario:
@@ -176,6 +200,16 @@ class GrantRef:
     booleans default to False and only a recorded written grant sets
     them true. Expiry is an ISO-8601 string with an offset; an
     unparseable expiry fails closed (:func:`grant_state_at`).
+
+    Provenance (fix-sprint D1): ``fingerprint`` is the sha256 canonical
+    payload of the certificate this ref descends from — for bridged refs
+    it is the licences ``Grant.fingerprint`` verbatim, and rails admits a
+    ref only when that fingerprint sits on the CURRENT registry
+    attestation (:class:`~farm_ontology.markets.registry.RegisteredGrants`).
+    ``state_detail`` carries the ORIGINAL licences verdict reason
+    verbatim (D2: ``specimen`` / ``no_grant`` / ``use_not_granted`` /
+    ``expired`` / ``ok``) — it is never flattened away. ``speciment``-flagged
+    refs never unlock anything, whoever signs them.
     """
 
     name: str
@@ -188,10 +222,21 @@ class GrantRef:
     evidence_url: str
     permits_financial_use: bool = False
     permits_market_data_use: bool = False
+    specimen: bool = False
+    state_detail: str = ""
+    fingerprint: str = ""
 
     def __post_init__(self) -> None:
         if not self.name or not self.issuer or not self.evidence_url:
             raise ValueError("a grant names itself, its issuer, and its evidence")
+        if self.fingerprint and (
+            len(self.fingerprint) != 64
+            or any(char not in "0123456789abcdef" for char in self.fingerprint)
+        ):
+            raise ValueError(
+                "GrantRef.fingerprint must be a 64-hex sha256 (empty = "
+                "no provenance; provenance is the registry join key)"
+            )
 
     @property
     def state(self) -> str:
@@ -203,6 +248,9 @@ GRANT_VALID = "valid"
 GRANT_EXPIRED = "expired"
 GRANT_UNPARSEABLE = "unparseable-expiry"
 GRANT_CLOSED = "closed"
+#: Distinct closed-reason (fix-sprint D2/D1): a SPECIMEN grant never
+#: unlocks, whoever presents it and however valid it looks.
+GRANT_SPECIMEN = "specimen"
 
 
 def grant_state_at(
@@ -213,12 +261,21 @@ def grant_state_at(
     ``as_of=None`` judges against the current clock. States:
     ``GRANT_VALID`` only when every condition provably holds; expiry
     parity means already expired (a grant is not valid at the instant
-    it dies); a missing grant object is ``GRANT_CLOSED`` outright.
+    it dies); a missing grant object is ``GRANT_CLOSED`` outright; a
+    specimen-flagged grant is ``GRANT_SPECIMEN`` no matter what its
+    permits booleans claim.
     """
     if grant is None:
         return GRANT_CLOSED, "no grant object is recorded"
+    if grant.specimen:
+        detail = grant.state_detail or "unspecified"
+        return (
+            GRANT_SPECIMEN,
+            f"specimen grant never unlocks (licences verdict: {detail})",
+        )
     if not grant.permits_financial_use or not grant.permits_market_data_use:
-        return GRANT_CLOSED, "the recorded grant does not permit this use"
+        suffix = f" (licences verdict: {grant.state_detail})" if grant.state_detail else ""
+        return GRANT_CLOSED, "the recorded grant does not permit this use" + suffix
     try:
         expiry = parse_time(grant.expiry)
     except (TypeError, ValueError):
@@ -315,25 +372,61 @@ class RailViolation:
     detail: str
 
 
+class RailError(Exception):
+    """Raised (rather than returned) for ordering violations, D7.
+
+    Carries the offending timestamp and the constraint violated, so the
+    refusal says WHY and WHAT — not merely that the call died.
+    """
+
+    def __init__(self, rail: str, detail: str, observed: str, constraint: str) -> None:
+        self.rail = rail
+        self.detail = detail
+        self.observed = observed
+        self.constraint = constraint
+        super().__init__(
+            f"[{rail}] {detail} (observed: {observed}; constraint: {constraint})"
+        )
+
+    @classmethod
+    def for_time(cls, observed: str, constraint: str) -> "RailError":
+        return cls(
+            "R5-times",
+            "a contradiction artefact cannot be validated",
+            observed,
+            constraint,
+        )
+
+
 @dataclass(frozen=True)
 class UpsideShareTerm:
-    """Rail 2: the negotiated upside-sharing term on a gain artefact."""
+    """Rail 2: the negotiated upside-sharing term on a gain artefact.
+
+    ``beneficiary`` is TYPED (:class:`Beneficiary`): the rail can see
+    whether the share accrues to a contracted farmer, a trial farmer, or
+    our own book (fix-sprint D4).
+    """
 
     agreed_share_fraction: float
-    beneficiary: str
+    beneficiary: Beneficiary
     negotiated_by: str
     contract_reference: str
 
     def __post_init__(self) -> None:
+        if not isinstance(self.beneficiary, Beneficiary):
+            raise ValueError(
+                "beneficiary must be a Beneficiary member (OUR_BOOK | "
+                "FARMER_CONTRACTED | FARMER_TRIAL); free strings hid who "
+                "the share accrued to"
+            )
         if not (0.0 < float(self.agreed_share_fraction) < 1.0):
             raise ValueError(
                 "the negotiated share is a fraction in (0, 1); the "
                 "doctrine rejects pure asymmetry and 100-percent giving"
             )
-        if not self.beneficiary or not self.negotiated_by or not self.contract_reference:
+        if not self.negotiated_by or not self.contract_reference:
             raise ValueError(
-                "an upside term names the beneficiary, the negotiator, "
-                "and the contract"
+                "an upside term names the negotiator and the contract"
             )
 
 
@@ -361,16 +454,20 @@ class HedgeTicket:
 
 @dataclass(frozen=True)
 class PremiumBudget:
-    """The uncertainty-state premium budget, human-set quarterly.
+    """The uncertainty-state premium budget, human-set quarterly (D6).
 
     The doctrine sets the CAP quarterly by a human; the engine only
-    checks the term is recorded and respected.
+    checks the term is recorded, respected, and BOUND to the signed
+    quarterly cap sheet: ``cap_sheet_hash`` is the sha256 (canonical
+    JSON) of that sheet's file content, and a missing or unmatchable
+    hash fails the budget at validation with the rail named.
     """
 
     premium_percent_of_notional: float
     cap_percent_of_notional: float
     quarter: str
     cap_set_by: str
+    cap_sheet_hash: str = ""
 
     def __post_init__(self) -> None:
         if not self.quarter:
@@ -384,6 +481,15 @@ class PremiumBudget:
         if self.premium_percent_of_notional >= self.cap_percent_of_notional:
             raise ValueError(
                 "the planned premium must sit strictly under the human-set cap"
+            )
+        if (
+            len(self.cap_sheet_hash) != 64
+            or any(char not in "0123456789abcdef" for char in self.cap_sheet_hash)
+        ):
+            raise ValueError(
+                "cap_sheet_hash must be the 64-hex sha256 of the signed "
+                "quarterly cap sheet; a budget without provenance is "
+                "self-authorable and D6 taught us better"
             )
 
 
@@ -410,12 +516,19 @@ class ConsentGrant:
 
 @dataclass(frozen=True)
 class Contribution:
-    """Rail 5: the licence/support/error triple for one cited feed."""
+    """Rail 5: the licence/support/error triple for one cited feed.
+
+    ``contribution_time`` (optional) is the instant the contribution was
+    made knowable; when set and LATER than the validation ``as_of`` the
+    validation raises :class:`RailError` (a citation cannot postdate its
+    own citation — fix-sprint D7, better exceptions).
+    """
 
     feed: str
     licence_attribution: str
     support_statement: str
     error_statement: str
+    contribution_time: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -442,6 +555,9 @@ class PlaybookArtefact:
     carries_farmer_level_data: bool = False
     consent: ConsentGrant | None = None
     conduct_attestations: Mapping[str, bool] = field(default_factory=dict)
+    carries_farmer_contract: bool = False
+    grant_registry: object | None = None
+    cap_sheet_registry: object | None = None
 
     def __post_init__(self) -> None:
         if not self.artefact_id:
@@ -454,6 +570,62 @@ class PlaybookArtefact:
 
 
 # ---- rail validators (each returns violations; empty list = pass) ----- #
+
+
+def provenance_check(
+    artefact: "PlaybookArtefact", as_of: datetime
+) -> list[RailViolation]:
+    """Fix-sprint D1: grants must PROVE their fingerprints registered.
+
+    Every referenced grant with a ``fingerprint`` must have it on the
+    artefact's CURRENT registry attestation; a ref quoting a fingerprint
+    absent from the registry dies with ``fingerprint-not-in-registry`` —
+    a forged-but-valid-LOOKING ref thereby dies even though its booleans
+    and expiry are impeccable. Provisional refs WITHOUT a fingerprint
+    also die when a registry is present (provenance or it didn't
+    happen); specimen-flagged refs die as specimens; expired ones as
+    expired.
+    """
+    violations: list[RailViolation] = []
+    registry = artefact.grant_registry
+    if registry is None:
+        return violations
+    if not hasattr(registry, "contains"):
+        violations.append(
+            RailViolation(
+                "R5-provenance",
+                "grant_registry lacks the registry interface (contains/"
+                "fingerprints); a registry is an attestation object, not "
+                "a decoration",
+            )
+        )
+        return violations
+    for feed in sorted(artefact.grants_by_feed):
+        grant = artefact.grants_by_feed.get(feed)
+        if grant is None:
+            continue
+        if not grant.fingerprint:
+            violations.append(
+                RailViolation(
+                    "R5-provenance",
+                    f"feed {feed}: grant {grant.name!r} quotes no "
+                    "fingerprint while a registry attestation is present; "
+                    "provenance is the join key (forged refs die with "
+                    "'fingerprint-not-in-registry')",
+                )
+            )
+            continue
+        if not registry.contains(grant.fingerprint):
+            violations.append(
+                RailViolation(
+                    "R5-provenance",
+                    f"feed {feed}: fingerprint-not-in-registry — grant "
+                    f"{grant.name!r} quotes fingerprint {grant.fingerprint[:12]}… "
+                    f"which the current attestation ({getattr(registry, 'source', '?')}) "
+                    "does not list; forged or stale refs die here",
+                )
+            )
+    return violations
 
 
 def rail_1_concurrent_position_disclosure(text: str) -> list[RailViolation]:
@@ -481,6 +653,14 @@ def rail_2_upside_share(
                 RAIL_2_UPSIDE_SHARE,
                 "a confident-gain artefact must carry the negotiated "
                 "upside-share term; the doctrine rejects pure asymmetry",
+            )
+        ]
+    if not isinstance(term.beneficiary, Beneficiary):
+        return [
+            RailViolation(
+                RAIL_2_UPSIDE_SHARE,
+                "the upside term's beneficiary is untyped; the rail must "
+                "see who accrues the share",
             )
         ]
     if not 0.0 < term.agreed_share_fraction < 1.0:
@@ -598,6 +778,11 @@ def rail_5_truthfulness_gate(
     unparseable expiry, or unrecorded grant each fail closed. This is
     the lead's explicit invariant: expiry flips the verdict, it does not
     freeze the last good answer.
+
+    Fix-sprint D7: validating an artefact whose contribution-postdates
+    its as-of raises :class:`RailError` naming the observed instant and
+    the constraint — an ordering contradiction is refused loudly, not
+    silently judged.
     """
     violations: list[RailViolation] = []
     cited = set(artefact.market_decisive_feeds)
@@ -615,6 +800,17 @@ def rail_5_truthfulness_gate(
                 )
             )
             continue
+        if (
+            contribution.contribution_time is not None
+            and contribution.contribution_time > as_of
+        ):
+            raise RailError.for_time(
+                f"feed {feed} contribution_time "
+                f"{contribution.contribution_time.isoformat()} > as_of "
+                f"{ensure_utc(as_of, 'as_of').isoformat()}",
+                "a contribution must be known at or before the validation "
+                "moment (a citation cannot postdate its own citation)",
+            )
         missing = [
             label
             for label, text in (
@@ -707,20 +903,81 @@ def conduct_checks(
     return violations
 
 
-def premium_budget_check(artefact: PlaybookArtefact) -> list[RailViolation]:
-    """Uncertainty-state artefacts carry a written premium budget."""
+def premium_budget_check(artefact: "PlaybookArtefact") -> list[RailViolation]:
+    """Uncertainty-state artefacts carry a registry-bound premium budget.
+
+    Fix-sprint D6: the budget must quote the sha256 of the SIGNED
+    quarterly cap sheet and that hash must sit on the artefact's cap-sheet
+    registry; the shipped default registry holds the SPECIMEN sheet only,
+    so today every budget is refused WITH the rail named — real caps wait
+    for the human's signature, and the refusal says so precisely.
+    """
     scenario = SCENARIOS[artefact.state]
     if not scenario.premium_budget_required:
         return []
     if artefact.premium_budget is None:
         return [
             RailViolation(
-                RAIL_3_TICKET,
+                RAIL_6_PREMIUM_CAP,
                 "an uncertainty artefact must carry the written premium "
-                "budget with the human-set quarterly cap",
+                "budget with the human-set quarterly cap (cap_sheet_hash "
+                "bound to the signed quarterly sheet)",
             )
         ]
-    return []
+    violations: list[RailViolation] = []
+    registry = artefact.cap_sheet_registry
+    budget = artefact.premium_budget
+    if registry is None:
+        violations.append(
+            RailViolation(
+                RAIL_6_PREMIUM_CAP,
+                "no cap-sheet registry attestation is present; the "
+                "budget's cap_sheet_hash cannot be bound to a signed "
+                "quarterly sheet (human-set quarterly caps)",
+            )
+        )
+    elif not hasattr(registry, "entry"):
+        violations.append(
+            RailViolation(
+                RAIL_6_PREMIUM_CAP,
+                "cap_sheet_registry lacks the registry interface "
+                "(entry/quarters); an attestation is an object, not a formality",
+            )
+        )
+    else:
+        entry = registry.entry(budget.quarter)
+        if entry is None:
+            violations.append(
+                RailViolation(
+                    RAIL_6_PREMIUM_CAP,
+                    f"quarter {budget.quarter!r} has no cap sheet on the "
+                    "registry; the human-set quarterly caps are missing "
+                    "for that quarter",
+                )
+            )
+        else:
+            sheet_hash, specimen = entry
+            if budget.cap_sheet_hash != sheet_hash:
+                violations.append(
+                    RailViolation(
+                        RAIL_6_PREMIUM_CAP,
+                        f"the budget's cap_sheet_hash does not match the "
+                        f"registered sheet for {budget.quarter!r}; a "
+                        "mismatched hash is a different (possibly edited) "
+                        "sheet",
+                    )
+                )
+            elif specimen:
+                violations.append(
+                    RailViolation(
+                        RAIL_6_PREMIUM_CAP,
+                        f"the registered cap sheet for {budget.quarter!r} "
+                        "is a SPECIMEN: it proves the mechanics and never "
+                        "unlocks real caps; the human risk owner must sign "
+                        "a real quarterly sheet first",
+                    )
+                )
+    return violations
 
 
 # --------------------- the artefact validator -------------------------- #
@@ -748,17 +1005,25 @@ def validate_playbook_artefact(
             )
         )
     required = set(scenario.rails_required)
+    # Fix-sprint D3: the doctrine §4.1 clause binds ANY farmer-facing
+    # CONTRACT in ANY state — the state table alone under-enforced it.
+    if artefact.carries_farmer_contract:
+        violations.extend(rail_1_concurrent_position_disclosure(artefact.text))
     if RAIL_1_DISCLOSURE in required:
         violations.extend(rail_1_concurrent_position_disclosure(artefact.text))
     if RAIL_2_UPSIDE_SHARE in required:
         violations.extend(rail_2_upside_share(artefact.state, artefact.upside_term))
     if RAIL_3_TICKET in required:
         violations.extend(rail_3_hedge_ticket_filed(artefact))
+    # Fix-sprint D6: the premium cap is its own rail with its own id.
+    if artefact.state == STATE_UNCERTAIN:
         violations.extend(premium_budget_check(artefact))
     if RAIL_4_CONSENT_FLOW in required or artefact.carries_farmer_level_data:
         violations.extend(rail_4_consent_first_upward_flow(artefact, as_of))
     if RAIL_5_TRUTHFULNESS in required:
         violations.extend(rail_5_truthfulness_gate(artefact, as_of))
+    # Fix-sprint D1: provenance walls behind the truthfulness gate.
+    violations.extend(provenance_check(artefact, as_of))
     if scenario.conduct_attestations_required:
         violations.extend(conduct_checks(artefact.conduct_attestations))
     return tuple(sorted(violations, key=lambda item: (item.rail, item.detail)))
@@ -770,15 +1035,19 @@ __all__ = [
     "SCENARIOS",
     "PERMITTED_FAMILIES",
     "RAIL_IDS",
+    "RAIL_6_PREMIUM_CAP",
     "GRANT_VALID",
     "GRANT_EXPIRED",
     "GRANT_UNPARSEABLE",
     "GRANT_CLOSED",
+    "GRANT_SPECIMEN",
     "CONDUCT_ATTESTATION_IDS",
     "CONDUCT_ATTESTATION_MEANINGS",
+    "Beneficiary",
     "Scenario",
     "GrantRef",
     "RailViolation",
+    "RailError",
     "UpsideShareTerm",
     "HedgeTicket",
     "PremiumBudget",
@@ -787,6 +1056,7 @@ __all__ = [
     "PlaybookArtefact",
     "grant_state_at",
     "grant_ref_from_v2_like",
+    "provenance_check",
     "rail_1_concurrent_position_disclosure",
     "rail_2_upside_share",
     "rail_3_hedge_ticket_filed",
