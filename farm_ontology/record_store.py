@@ -96,6 +96,9 @@ class LocalBackend:
     def read_text(self, rel: str) -> str:
         return self._path(rel).read_text(encoding="utf-8")
 
+    def read_bytes(self, rel: str) -> bytes:
+        return self._path(rel).read_bytes()
+
     def list_paths(self, sub: str, pattern: str) -> list[str]:
         base = self.root.joinpath(*PurePosixPath(sub).parts) if sub.strip("/") else self.root
         found = [
@@ -259,7 +262,8 @@ class GcsBackend:
         )
         self._expect(status, body, "write", object_name)
 
-    def read_text(self, rel: str) -> str:
+    def read_bytes(self, rel: str) -> bytes:
+        """Binary read (archives are not text); 404 still raises FileNotFoundError."""
         object_name = self.object_name(rel)
         status, _, body = self._request_fn(
             "GET",
@@ -270,6 +274,11 @@ class GcsBackend:
         if status == 404:
             raise FileNotFoundError(errno.ENOENT, "no such object", object_name)
         self._expect(status, body, "read", object_name)
+        return body
+
+    def read_text(self, rel: str) -> str:
+        object_name = self.object_name(rel)
+        body = self.read_bytes(rel)
         try:
             return body.decode("utf-8")
         except UnicodeDecodeError as error:
