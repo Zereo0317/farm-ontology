@@ -94,7 +94,7 @@ function normalizeWeather(data: unknown): WeatherDocument {
   const doc = recordOf(data);
   const frame = recordOf(doc.returned);
   return {
-    source: stringOf(doc.source, "open-meteo"),
+    source: stringOf(doc.source, "unknown"),
     stored_spatial_support: stringOf(doc.stored_spatial_support, "grid-cell"),
     native_support_note: stringOf(
       doc.native_support_note,

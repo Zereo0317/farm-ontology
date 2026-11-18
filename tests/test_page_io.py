@@ -71,14 +71,19 @@ class PageIoTests(unittest.TestCase):
             if "node_modules" in path.parts or ".next" in path.parts:
                 continue
             parts.append(path.read_text(encoding="utf-8"))
-        text = "\n".join(parts).lower()
         # WS8 architecture (2026-11-18): the browser never talks to third-party
         # weather/map vendors directly — every advisory value flows through OUR
         # decision backend (FARM_API_BASE proxies), which stamps native support
-        # and licence verdicts onto the payload. Direct vendor endpoints stay
-        # forbidden; the provenance LABEL "open-meteo" (as stored data in the
-        # backend payload) is fine.
-        self.assertNotIn("api.open-meteo.com", text)
+        # and licence verdicts onto the payload. The vendor ban bites where it
+        # matters: NO fetching code in the web app may target a vendor. The
+        # report DATA file may QUOTE the upstream URL as provenance lineage
+        # (quoting sources is the product's religion; calling them is not).
+        backend = (root / "lib" / "backend.ts").read_text(encoding="utf-8").lower()
+        text = "\n".join(parts).lower()
+        self.assertNotIn("open-meteo", backend)
+        self.assertNotIn("api.open-meteo.com", backend)
+        # no client-side direct fetch of a vendor host anywhere
+        self.assertNotRegex(text, r"fetch\(\s*[\"'`]https://(api\.open-meteo|single-runs-api\.open-meteo)")
         self.assertNotIn("attach_weather", text)
         self.assertNotIn("maps.googleapis", text)
         self.assertNotIn("earthengine", text)
