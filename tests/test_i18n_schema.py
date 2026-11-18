@@ -133,20 +133,18 @@ class I18nSchemaTests(unittest.TestCase):
 
 
 class ReportCopyGuardTests(unittest.TestCase):
-    """Report v2 (biratori-1119) copy must be structurally complete.
+    """Report (biratori-1119) copy must be structurally complete in ALL FIVE
+    locales (Sprint-B raised zh-TW+ja to the full house roster).
 
-    Launched locales: zh-TW + ja (founder work-order 2026-11-18; zh-CN/en/th
-    deliberately deferred but the TYPE carries them, so filling them later is
-    compile-checked). Every locale dict must carry the same top-level keys and
-    the same array cardinalities — a translated-but-shorter array would push
-    English strings at readers otherwise.
-
-    The scanner is template-aware: `${...}` expressions inside template
-    literals are stripped before any brace counting, and each array's element
-    count comes from its own balanced `[...]` slice, not a shared window.
+    Every locale dict must carry the same top-level keys and the same array
+    cardinalities — a translated-but-shorter array would push another
+    language's strings at readers otherwise. The scanner is template-aware:
+    `${...}` expressions inside template literals are stripped before any
+    brace counting, and each array's element count comes from its own
+    balanced `[...]` slice, not a shared window.
     """
 
-    REPORT_LANGS = ["zh-TW", "ja"]
+    REQUIRED_REPORT_LOCALES = ["zh-TW", "zh-CN", "en", "ja", "th"]
     ARRAYS = {
         # key -> regex matching the first line of each ELEMENT
         "playbook": r"glyph:",
@@ -156,6 +154,16 @@ class ReportCopyGuardTests(unittest.TestCase):
         "invSpine": r"num:",
         "invLinks": r"label:",
         "invRefs": r"label:",
+    }
+    # The investor tab is the ONLY place a licensing caveat may appear; each
+    # locale phrases it natively (registered here so a "translated" footer
+    # that lost its teeth fails loud).
+    FOOTER_EXPECTATION = {
+        "zh-TW": ["非投資要約", "金融用途授權現為否"],
+        "zh-CN": ["不是投资邀约", "金融用途授权现为否"],
+        "en": ["not an investment solicitation", "licensing is currently OFF"],
+        "ja": ["投資勧誘ではありません", "金融用途のライセンスは現状オフ"],
+        "th": ["ไม่ใช่การชักชวนลงทุน", "การอนุญาตใช้เพื่อการเงินยังปิดอยู่"],
     }
 
     @classmethod
@@ -193,9 +201,9 @@ class ReportCopyGuardTests(unittest.TestCase):
             return re.findall(sign + r"[^\n]*", body, re.M)
         return re.findall(sign, body)
 
-    def test_both_launched_locales_present_with_matching_key_sets(self):
+    def test_all_five_locales_present_with_matching_key_sets(self):
         baseline: set[str] | None = None
-        for locale in self.REPORT_LANGS:
+        for locale in self.REQUIRED_REPORT_LOCALES:
             current = set(re.findall(r"^\s{4}([a-zA-Z][a-zA-Z0-9]*):", self._locale_slice(self.clean, locale), re.M))
             self.assertTrue(current, f"{locale} dict empty")
             if baseline is None:
@@ -205,31 +213,40 @@ class ReportCopyGuardTests(unittest.TestCase):
         anchors = {"docTitle", "h1", "tabFarmer", "tabInvestor", "sceneTitle", "invRoiTitle", "invFooter"}
         self.assertTrue(anchors.issubset(baseline or set()), f"missing anchors: {sorted(anchors - (baseline or set()))}")
 
-    def test_array_cardinality_matches_across_locales(self):
+    def test_array_cardinality_matches_across_all_five_locales(self):
         for key in self.ARRAYS:
             counts = {}
-            for locale in self.REPORT_LANGS:
+            for locale in self.REQUIRED_REPORT_LOCALES:
                 counts[locale] = len(self._array_elements(self._locale_slice(self.clean, locale), key))
-            self.assertGreater(counts[self.REPORT_LANGS[0]], 0, f"{key} must not be emptied")
-            self.assertEqual(counts[self.REPORT_LANGS[0]], counts[self.REPORT_LANGS[1]], f"{key} arrays differ between locales: {counts}")
+            self.assertGreater(min(counts.values()), 0, f"{key} must not be emptied")
+            self.assertEqual(len(set(counts.values())), 1, f"{key} arrays differ between locales: {counts}")
 
     def test_farmer_voice_avoids_internal_jargon(self):
-        # Founder: kill internal-compliance vocabulary from the farmer tab.
+        # Founder: kill internal-compliance vocabulary from the farmer tabs.
         text = self.clean
-        for phrase in ("許可", "治理", "授權牆", "コンプライアンス", "情治"):
+        for phrase in ("許可", "治理", "授權牆", "コンプライアンス", "情治", "compliance layer"):
             self.assertNotIn(phrase, text)
-        zh = self.clean[self.clean.find('"zh-TW": {'):self.clean.find("\n  ja: {")]
-        self.assertIn("農夫版", zh)
-        ja = self.clean[self.clean.find("\n  ja: {"):]
-        self.assertIn("生産者版", ja)
 
     def test_investor_tab_stamps_the_single_compliance_line(self):
-        for locale in self.REPORT_LANGS:
+        for locale in self.REQUIRED_REPORT_LOCALES:
             slice_text = self._locale_slice(self.clean, locale)
             fm = re.search(r"invFooter: \"(.+)\"", slice_text)
             self.assertIsNotNone(fm, f"{locale} missing invFooter")
-            self.assertIn("非投資" if "zh-TW" == locale else "投資勧誘", fm.group(1))
-            self.assertIn("金融", fm.group(1))
+            for needle in self.FOOTER_EXPECTATION[locale]:
+                self.assertIn(needle, fm.group(1), f"{locale} footer lost '{needle}'")
+
+    def test_scripts_look_native_not_machine_swapped(self):
+        # zh-CN must be Simplified (no traditional-only drift-ins), th must be
+        # Thai script, en must keep the business register on its columns.
+        zh_cn = self._locale_slice(self.clean, "zh-CN")
+        for trad in ("風", "後", "資", "點", "區", "現為否"):
+            self.assertNotIn(trad, zh_cn, f"zh-CN carries traditional/remnant '{trad}'")
+        self.assertIn("格点", zh_cn)
+        th = self._locale_slice(self.clean, "th")
+        self.assertRegex(th, r"[ก-๛]")
+        en = self._locale_slice(self.clean, "en")
+        self.assertIn("tranche", en.lower())
+        self.assertIn("$/bu", en)
 
     def test_pages_never_hardcode_report_strings(self):
         page = (WEB / "app" / "report" / "biratori-1119" / "page.tsx").read_text(encoding="utf-8")
@@ -237,6 +254,7 @@ class ReportCopyGuardTests(unittest.TestCase):
         self.assertIn("reportCopy", page)
         self.assertNotIn("農夫版", page)
         self.assertNotIn("生産者版", page)
+        self.assertNotIn("ลงทุน", page)
 
 
 if __name__ == "__main__":
