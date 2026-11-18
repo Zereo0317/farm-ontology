@@ -20,7 +20,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from farm_ontology import http_service as hs
 from farm_ontology import ingest_core
-from farm_ontology.ingest_status import ingest_status, summarize_job
+from farm_ontology.ingest_status import (
+    WATCHED_JOBS,
+    compose_status,
+    ingest_status,
+    job_of_row_name,
+    summarize_job,
+)
 from farm_ontology.pipelines.hazards import run_hazard_job
 from farm_ontology.ingest_weather import run_weather_job
 from farm_ontology.ingest_planet import run_planet_job
@@ -141,10 +147,13 @@ class RealShapedGcsTransport:
     """GCS JSON API with REAL response metadata (generation, md5, crc32c,
     etag, contentType, storageClass, timeCreated/updated): the fixture
     class that proves the reader copes with genuine GCS shapes, not just
-    the minimal in-memory stand-ins."""
+    the minimal in-memory stand-ins. Counts list vs media-get calls so
+    the task-15 I/O-budget assertions can be exact."""
 
     def __init__(self):
         self.objects: dict[str, bytes] = {}
+        self.lists_count = 0
+        self.media_gets_count = 0
 
     def __call__(self, method, url, headers, body):
         parsed = urllib.parse.urlsplit(url)
@@ -153,6 +162,7 @@ class RealShapedGcsTransport:
             self.objects[query["name"][0]] = body
             return 200, {}, json.dumps({"name": query["name"][0]}).encode("utf-8")
         if method == "GET" and parsed.path == f"/storage/v1/b/{BUCKET}/o":
+            self.lists_count += 1
             prefix = query["prefix"][0]
             items = [
                 {
@@ -183,6 +193,7 @@ class RealShapedGcsTransport:
                     {"error": {"code": 404, "message": f"No such object: {name}"}}
                 ).encode("utf-8")
             if query.get("alt", [None])[0] == "media":
+                self.media_gets_count += 1
                 return 200, {}, self.objects[name]
             return 200, {}, json.dumps(
                 {"name": name, "updated": "2026-11-18T02:00:00.456Z"}
@@ -304,6 +315,196 @@ class ProdBlindspotEndpointTests(unittest.TestCase):
         for job, summary in payload["jobs"].items():
             self.assertNotIn("gap", summary, msg=job)
             self.assertTrue(summary["last_ok"], msg=job)
+
+
+# ---------------------------------------------------------------------------
+# task-15 / Sprint-G: cache + single-listing fast path.
+
+
+def gcs_seeded_backend(*, rows_per_job: int, newest_failures: int = 0):
+    """Fully-real-shaped GCS backend; per job: rows_per_job DATED rows,
+    the NEWEST `newest_failures` of them failed. Returns (backend, transport).
+    """
+    transport = RealShapedGcsTransport()
+    backend = GcsBackend(BUCKET, "pipelines", request_fn=transport, token_fn=lambda: ("tok", 3600))
+    base = datetime(2026, 11, 1, 2, 0, tzinfo=timezone.utc)
+    for job in ("weather-hourly", "planet-nightly", "hazard-daily", "ndvi-weekly"):
+        for index in range(rows_per_job):
+            moment = base + timedelta(days=index)
+            failed = index >= rows_per_job - newest_failures
+            ingest_core.append_run(
+                backend, job=job, now=moment, started=moment,
+                finished=moment + timedelta(seconds=1),
+                ok=not failed, row_count=0 if failed else 1,
+                error="synthetic decline" if failed else None,
+            )
+    return backend, transport
+
+
+def fresh_caches():
+    """Flush ALL process-wide caches for identical-identity isolation."""
+    ingest_core.clear_row_caches()
+    ingest_core.invalidate_ingest_status_cache("test-setup")
+
+
+class FastComposeIoBudgetTests(unittest.TestCase):
+    def setUp(self):
+        fresh_caches()
+
+    def test_name_parser_maps_dates_and_rejects_aliens(self):
+        self.assertEqual(job_of_row_name("run-log/20261118-weather-hourly.json"), "weather-hourly")
+        self.assertEqual(job_of_row_name("20261118-planet-nightly.json"), "planet-nightly")
+        self.assertIsNone(job_of_row_name("20261118-mystery-job.json"))
+        self.assertIsNone(job_of_row_name("not-a-run-row.json"))
+        self.assertIsNone(job_of_row_name("20261118-.json"))
+
+    def test_two_listings_and_minimal_gets_even_with_long_history(self):
+        # 30 rows per job; the fast path must NOT read them all: it lists
+        # twice (concurrently) and reads bounded newest strides.
+        backend, transport = gcs_seeded_backend(rows_per_job=30)
+        report = compose_status(backend, now=datetime(2026, 12, 1, 3, 0, tzinfo=timezone.utc))
+        self.assertEqual(transport.lists_count, 2)
+        # Successful newest rows: first stride (3) per job, walked in order.
+        self.assertEqual(transport.media_gets_count, 12)
+        for job, summary in report["jobs"].items():
+            self.assertEqual(summary["consecutive_failures"], 0, msg=job)
+            self.assertEqual(len(summary["recent_runs"]), 3, msg=job)
+
+    def test_strike_walk_early_exits_and_counts_exact_streak(self):
+        # Newest 5 rows failed, 25 older rows succeeded: strikes == 5 while
+        # the full-history read would have cost 30 GETs.
+        backend, transport = gcs_seeded_backend(rows_per_job=30, newest_failures=5)
+        report = compose_status(backend, now=datetime(2026, 12, 1, 3, 0, tzinfo=timezone.utc))
+        summary = report["jobs"]["weather-hourly"]
+        self.assertEqual(summary["consecutive_failures"], 5)
+        self.assertFalse(summary["last_ok"])
+        self.assertTrue(summary["recent_runs"][0]["ok"] is False)
+        # 3 (first stride) + 8 (failure extension) per job, bounded.
+        self.assertEqual(transport.media_gets_count, 3 * 4 + 8 * 4)
+        # All four jobs were seeded with the same newest-failures pattern.
+        self.assertEqual(
+            report["failures_at_threshold"],
+            {job: True for job in WATCHED_JOBS},
+        )
+
+    def test_singleflight_avoids_duplicate_gets_inside_one_compose(self):
+        backend, transport = gcs_seeded_backend(rows_per_job=3)
+        compose_status(backend, now=datetime(2026, 12, 1, 3, 0, tzinfo=timezone.utc))
+        gets_first = transport.media_gets_count
+        compose_status(backend, now=datetime(2026, 12, 1, 3, 0, tzinfo=timezone.utc))
+        # Second compose: everything warm from the row cache — ZERO GETs.
+        self.assertEqual(transport.media_gets_count, gets_first)
+
+
+class CacheFacadeTests(unittest.TestCase):
+    def setUp(self):
+        fresh_caches()
+        self.backend, self.transport = gcs_seeded_backend(rows_per_job=2)
+        self.now = datetime(2026, 11, 3, 3, 0, tzinfo=timezone.utc)
+
+    def test_first_call_misses_second_hits_within_ttl(self):
+        first = ingest_status(self.backend, now=self.now)
+        second = ingest_status(self.backend, now=self.now)
+        self.assertFalse(first["cache"]["hit"])
+        self.assertTrue(second["cache"]["hit"])
+        lists_after_first = self.transport.lists_count
+        self.transport.lists_count = 0
+        ingest_status(self.backend, now=self.now)
+        self.assertEqual(self.transport.lists_count, 0)  # hit: zero storage
+        self.assertEqual(lists_after_first, 2)
+
+    def test_ttl_expiry_rebuilds_using_the_monotonic_clock(self):
+        ingest_status(self.backend, now=self.now)
+        frozen = ingest_core.status_clock()
+        with unittest.mock.patch.object(ingest_core, "status_clock", lambda: frozen + 61):
+            expired = ingest_status(self.backend, now=self.now)
+        self.assertFalse(expired["cache"]["hit"])
+        self.assertEqual(expired["jobs"]["weather-hourly"]["last_ok"], True)
+
+    def test_append_run_invalidates_operators_never_see_stale_strikes(self):
+        ingest_status(self.backend, now=self.now)  # warm
+        hit = ingest_status(self.backend, now=self.now)
+        self.assertTrue(hit["cache"]["hit"])
+        self.assertEqual(hit["jobs"]["weather-hourly"]["consecutive_failures"], 0)
+        later = self.now + timedelta(days=1)
+        ingest_core.append_run(
+            self.backend, job="weather-hourly", now=later,
+            started=later, finished=later, ok=False, row_count=0,
+            error="fresh failure the operator must see",
+        )
+        fresh = ingest_status(self.backend, now=later + timedelta(minutes=1))
+        self.assertFalse(fresh["cache"]["hit"])
+        self.assertEqual(fresh["jobs"]["weather-hourly"]["consecutive_failures"], 1)
+        self.assertIn("fresh failure", fresh["jobs"]["weather-hourly"]["last_error"])
+
+    def test_alert_writes_invalidate_and_surface_promptly(self):
+        # Warm the cache, then manufacture a 3-strike ALERT on the store.
+        ingest_status(self.backend, now=self.now)
+        hit = ingest_status(self.backend, now=self.now)
+        self.assertTrue(hit["cache"]["hit"])
+        failures = gcs_seeded_backend  # noqa: F841 (documentation anchor)
+        later = self.now + timedelta(days=2)
+        for offset in range(3):
+            moment = later + timedelta(days=offset)
+            ingest_core.append_run(
+                self.backend, job="hazard-daily", now=moment,
+                started=moment, finished=moment, ok=False, row_count=0,
+                error="declined",
+            )
+            ingest_core.on_run_finished(
+                self.backend, job="hazard-daily", now=moment,
+                run={"ok": False, "error": "declined", "row_count": 0,
+                     "started": ingest_core.iso(moment),
+                     "finished": ingest_core.iso(moment), "file": ""},
+            )
+        report = ingest_status(self.backend, now=later + timedelta(days=3))
+        self.assertFalse(report["cache"]["hit"])
+        # 2 seeded successes then 3 fresh failures -> a 3-streak + the ALERT.
+        self.assertEqual(report["jobs"]["hazard-daily"]["consecutive_failures"], 3)
+        self.assertEqual(len(report["jobs"]["hazard-daily"]["alerts_standing"]), 1)
+
+    def test_cross_backend_isolation(self):
+        ingest_status(self.backend, now=self.now)
+        empty_root = Path(tempfile.mkdtemp(prefix="ws2-empty-"))
+        empty_backend = ingest_core.local_pipe_backend(empty_root)
+        empty_report = ingest_status(empty_backend, now=self.now)
+        self.assertIn("gap", empty_report["jobs"]["weather-hourly"])
+        back = ingest_status(self.backend, now=self.now)
+        self.assertNotIn("gap", back["jobs"]["weather-hourly"])
+        self.assertTrue(back["cache"]["hit"])
+
+    def test_fast_and_legacy_composers_agree(self):
+        varied, _transport = gcs_seeded_backend(rows_per_job=6, newest_failures=2)
+        now = datetime(2026, 12, 2, 4, 0, tzinfo=timezone.utc)
+        fast = compose_status(varied, now=now)
+        legacy_jobs = {}
+        for job in WATCHED_JOBS:
+            legacy_jobs[job] = summarize_job(varied, job, now=now)
+        for job in WATCHED_JOBS:
+            for key in ("last_run", "last_ok", "last_row_count", "last_error",
+                        "hours_since_last_run", "stale", "staleness_limit",
+                        "consecutive_failures", "alerts_standing", "recent_runs"):
+                self.assertEqual(
+                    fast["jobs"][job][key], legacy_jobs[job][key],
+                    msg=f"{job}.{key}",
+                )
+        self.assertEqual(
+            fast["failures_at_threshold"],
+            {job: legacy_jobs[job]["consecutive_failures"] >= ingest_core.CONSECUTIVE_FAILURE_ALERT_AT
+             for job in WATCHED_JOBS},
+        )
+
+    def test_endpoint_carries_cache_bookkeeping(self):
+        root = Path(tempfile.mkdtemp(prefix="ws2-cep-"))
+        backend = ingest_core.local_pipe_backend(root)
+        run_hazard_job(backend, now=NOW)
+        env = {"FARM_RECORD_BACKEND": "local", "FARM_PIPE_ROOT": str(root)}
+        with unittest.mock.patch.dict("os.environ", env, clear=False):
+            first = hs.handle_target("/farm/ingest-status")[1]
+            second = hs.handle_target("/farm/ingest-status")[1]
+        self.assertFalse(first["cache"]["hit"])
+        self.assertTrue(second["cache"]["hit"])
+        self.assertEqual(second["jobs"], first["jobs"])
 
 
 if __name__ == "__main__":
