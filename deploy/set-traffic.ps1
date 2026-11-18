@@ -26,17 +26,17 @@ function Invoke-Pin([string]$Service) {
         gcloud run services describe $Service --project=$Project --region=$Region --format="$Fmt" 2>$null
     }
     $before = & $describe 'value(status.traffic[0].percent,status.traffic[0].revisionName)'
-    Write-Host "== $Service before: percent/revision = $(if ($before) { $before } else { '<none>' })"
+    Write-Host "== ${Service} before: percent/revision = $(if ($before) { $before } else { '<none>' })"
     gcloud run services update-traffic $Service --project=$Project --region=$Region --to-latest | Out-Host
-    $after = & $describe 'value(status.traffic[0].percent,status.traffic[0].revisionName)'
+    $after = ((& $describe 'value(status.traffic[0].percent,status.traffic[0].revisionName)') -split '\s+' | Where-Object { $_ }) -join ' '
     $latest = & $describe 'value(status.latestCreatedRevisionName)'
-    Write-Host "== $Service after: percent/revision = $after"
-    $pinned = ($after -split ' ')[1]
+    Write-Host "== ${Service} after: percent/revision = $after"
+    $pinned = (($after -split '\s+') | Where-Object { $_ })[1]
     if ($pinned -eq $latest) {
-        Write-Host "== $Service: traffic pinned to latest revision $latest OK"
+        Write-Host "== ${Service}: traffic pinned to latest revision ${latest} OK"
     }
     else {
-        Write-Warning "== $Service: traffic ($pinned) != latest ($latest); re-check manually"
+        Write-Warning "== ${Service}: traffic (${pinned}) != latest (${latest}); re-check manually"
         exit 1
     }
 }

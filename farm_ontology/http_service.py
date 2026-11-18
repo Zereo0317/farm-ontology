@@ -19,6 +19,15 @@ GET /farm/ingest-status
                      WS2 ingest workers' last-run summaries from the
                      record backend (pipelines/run-log); jobs without
                      runs are reported as gaps
+GET /farm/observations?token=T&limit=N
+                     authenticated read of the latest N field
+                     observations with their birth-certificate stamps
+                     (file, recorded time, support, use class); the
+                     token is the same `web-access-token` Secret the
+                     web gate uses (WEB_ACCESS_TOKEN), given as the
+                     query parameter or the X-Access-Token header.
+                     Bad/absent token or unmounted secret: 401 + gap
+                     shape. Missing/unreadable record backend: gap.
 
 No secret is echoed. Logs stay off stdout buffers of records. Financial
 use stays false. Class C stays closed. A failed upstream answer is
@@ -27,6 +36,7 @@ reported as a gap, never as a value.
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import socketserver
@@ -340,6 +350,7 @@ STATUS_JSON = {
     "farm": {key: value for key, value in FARM.items()},
     "secrets_mounted": {
         "PLANET_API_KEY": _key_present("PLANET_API_KEY"),
+        "WEB_ACCESS_TOKEN": _key_present("WEB_ACCESS_TOKEN"),
     },
     "endpoints": [
         "/livez",
@@ -350,6 +361,7 @@ STATUS_JSON = {
         "/farm/memo",
         "/farm/licences",
         "/farm/ingest-status",
+        "/farm/observations (token-gated)",
     ],
 }
 
@@ -383,8 +395,98 @@ def _ingest_status_snapshot() -> dict:
         return {"gap": f"ingest-status unreadable: {str(error)[:160]}"}
 
 
-def handle_target(path: str) -> tuple[int, dict | str, str]:
-    path = urllib.parse.urlparse(path).path
+OBSERVATIONS_ROUTE = "/farm/observations"
+OBSERVATIONS_DEFAULT_LIMIT = 20
+OBSERVATIONS_MAX_LIMIT = 100
+
+
+def _latest_observations(limit: int) -> list[dict]:
+    """Latest observation stamps straight from the record backend.
+
+    Deliberately reads THROUGH the same record-store seam the writer
+    uses (record.record_dir -> record_store.open_backend), so an
+    operator sees exactly what durability serves — local directory or
+    GCS alike. Failures propagate as exceptions and surface as a gap.
+    """
+    from farm_ontology.record import record_dir
+    from farm_ontology.record_store import open_backend
+
+    store = open_backend(record_dir())
+    names = sorted(store.list_paths("", "obs-*.json"))[-limit:]
+    stamps = []
+    for name in reversed(names):
+        document = json.loads(store.read_text(name))
+        weather = document.get("weather") or {}
+        stamps.append(
+            {
+                "file": name,
+                "recorded_at": document.get("phenomenon_time"),
+                "availability_time": document.get("availability_time"),
+                "support": {
+                    "native_resolution_deg": weather.get("native_resolution_deg"),
+                    "spatial_support": weather.get("spatial_support"),
+                    "shrunk_to_plant": weather.get("shrunk_to_plant"),
+                    "gps_accuracy": document.get("gps_accuracy"),
+                },
+                "use_class": document.get("use_class"),
+                "class_c_policy": document.get("class_c_policy"),
+                "permits_financial_use": document.get("permits_financial_use"),
+                "dry_run": document.get("dry_run"),
+            }
+        )
+    return stamps
+
+
+def _observations_route(token: str | None, limit_raw: str | None) -> tuple[int, dict, str]:
+    """Token-gated record read: fail closed, 401+gap on anything unworthy."""
+    expected = os.environ.get("WEB_ACCESS_TOKEN", "").strip()
+    given = (token or "").strip()
+    if not expected:
+        return (
+            401,
+            {
+                "gap": (
+                    "observations not served: WEB_ACCESS_TOKEN is not "
+                    "mounted on this revision; the route fails closed"
+                )
+            },
+            "json",
+        )
+    if not given or not hmac.compare_digest(given, expected):
+        return (
+            401,
+            {"gap": "observations not served: a valid access token is required (query ?token= or X-Access-Token)"},
+            "json",
+        )
+    try:
+        limit = int(limit_raw) if limit_raw is not None else OBSERVATIONS_DEFAULT_LIMIT
+    except (TypeError, ValueError):
+        limit = OBSERVATIONS_DEFAULT_LIMIT
+    limit = max(1, min(OBSERVATIONS_MAX_LIMIT, limit))
+    try:
+        stamps = _latest_observations(limit)
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
+        return 200, {"gap": f"record backend unreadable: {str(error)[:160]}"}, "json"
+    return (
+        200,
+        {
+            "count": len(stamps),
+            "limit": limit,
+            "observations": stamps,
+            "note": (
+                "latest observations with their birth-certificate stamps; "
+                "the record never shrinks native support to the plant, and "
+                "financial use stays false"
+            ),
+        },
+        "json",
+    )
+
+
+def handle_target(path: str, *, token: str | None = None) -> tuple[int, dict | str, str]:
+    split = urllib.parse.urlsplit(path)
+    path = split.path
+    query = urllib.parse.parse_qs(split.query)
     if path in ("/", ""):
         return 200, STATUS_JSON, "json"
     if path == "/livez":
@@ -405,6 +507,11 @@ def handle_target(path: str) -> tuple[int, dict | str, str]:
         return 200, _licences_snapshot(), "json"
     if path == "/farm/ingest-status":
         return 200, _ingest_status_snapshot(), "json"
+    if path == OBSERVATIONS_ROUTE:
+        return _observations_route(
+            token=(query.get("token") or [None])[0] or token,
+            limit_raw=(query.get("limit") or [None])[0],
+        )
     if path == "/farm/memo":
         return 200, _memo_text(), "text"
     return 404, {"error": f"no route {path}"}, "json"
@@ -428,15 +535,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API)
         try:
-            status, payload, kind = handle_target(self.path)
+            header_token = self.headers.get("X-Access-Token")
+            status, payload, kind = handle_target(self.path, token=header_token)
         except Exception as error:  # a gap is reported; the connection survives
             status, payload, kind = 200, {"gap": f"handler error: {str(error)[:200]}"}, "json"
         self._respond(status, payload, kind)
 
     def log_message(self, fmt: str, *args) -> None:  # logs stay quiet but real
+        import re
         import sys
 
-        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+        line = fmt % args
+        # House rule: never print key material in logs — redact token=
+        # query values (X-Access-Token headers never reach this line).
+        line = re.sub(r"(token=)[^&\s]+", r"\1<redacted>", line)
+        sys.stderr.write("%s - %s\n" % (self.address_string(), line))
 
 
 class Server(socketserver.ThreadingMixIn, socketserver.TCPServer):

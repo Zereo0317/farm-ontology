@@ -1,0 +1,48 @@
+{
+  "driver": "python-stdlib-threads",
+  "base_url": "https://farm-seges-ai-451400509859.asia-east1.run.app",
+  "generated_at": "2026-11-18T12:49:29.462002+00:00",
+  "vu": 50,
+  "seconds": 300,
+  "requests": 8374,
+  "errors": 15,
+  "error_rate_pct": 0.179,
+  "p50_ms": 286,
+  "p95_ms": 6925,
+  "p99_ms": 19866,
+  "per_route": {
+    "/livez": {
+      "count": 5078,
+      "p50_ms": 252,
+      "p95_ms": 582,
+      "p99_ms": 2175,
+      "error_pct": 0.0
+    },
+    "/farm/ingest-status": {
+      "count": 2496,
+      "p50_ms": 1236,
+      "p95_ms": 16894,
+      "p99_ms": 27031,
+      "error_pct": 0.601
+    },
+    "/farm/weather": {
+      "count": 800,
+      "p50_ms": 657,
+      "p95_ms": 2052,
+      "p99_ms": 3622,
+      "error_pct": 0.0
+    }
+  },
+  "honest_bar": {
+    "p95_lt_400ms": false,
+    "errors_lt_05pct": true,
+    "breaching": true
+  },
+  "first_errors": [
+    "TimeoutError on /farm/ingest-status: The read operation timed out",
+    "TimeoutError on /farm/ingest-status: The read operation timed out",
+    "TimeoutError on /farm/ingest-status: The read operation timed out",
+    "TimeoutError on /farm/ingest-status: The read operation timed out",
+    "TimeoutError on /farm/ingest-status: The read operation timed out"
+  ]
+}

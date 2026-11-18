@@ -146,5 +146,138 @@ class HttpServiceRoutingTests(unittest.TestCase):
             self.assertIsNone(hs._metadata_token())
 
 
+class ObservationsRouteTests(unittest.TestCase):
+    """GET /farm/observations: token-gated record read (final wave)."""
+
+    def setUp(self):
+        self.expected = "0f3ae1c8719c4b5aa0d5ff2b6c8e77d41c9c0dbe2f7a49b58e2f7a1d3c5b6e70"
+        patcher = mock.patch.dict(
+            hs.os.environ, {"WEB_ACCESS_TOKEN": self.expected}, clear=False
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.stamps = [
+            {
+                "file": "obs-20261118T075203Z.json",
+                "recorded_at": "2026-11-18T07:52:03+00:00",
+                "availability_time": "2026-11-18T07:52:10+00:00",
+                "support": {
+                    "native_resolution_deg": 0.05,
+                    "spatial_support": "grid-cell",
+                    "shrunk_to_plant": False,
+                    "gps_accuracy": "unknown",
+                },
+                "use_class": "Screening",
+                "class_c_policy": "closed",
+                "permits_financial_use": False,
+                "dry_run": False,
+            }
+        ]
+
+    def _with_reader(self, stamps):
+        return mock.patch.object(hs, "_latest_observations", return_value=list(stamps))
+
+    def test_good_token_query_param_returns_stamped_observations(self):
+        with self._with_reader(self.stamps):
+            status, payload, kind = handle_target("/farm/observations?token=" + self.expected)
+        self.assertEqual(status, 200)
+        self.assertEqual(kind, "json")
+        self.assertEqual(payload["count"], 1)
+        row = payload["observations"][0]
+        self.assertEqual(row["file"], "obs-20261118T075203Z.json")
+        self.assertIn("support", row)
+        self.assertEqual(row["support"]["spatial_support"], "grid-cell")
+        self.assertFalse(row["support"]["shrunk_to_plant"])
+        self.assertEqual(row["use_class"], "Screening")
+        self.assertFalse(row["permits_financial_use"])
+
+    def test_header_token_honoured(self):
+        with self._with_reader(self.stamps):
+            status, payload, _kind = handle_target("/farm/observations", token=self.expected)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["count"], 1)
+
+    def test_bad_token_is_401_gap(self):
+        status, payload, kind = handle_target("/farm/observations?token=WRONG")
+        self.assertEqual(status, 401)
+        self.assertEqual(kind, "json")
+        self.assertIn("gap", payload)
+        self.assertNotIn("observations", payload)
+
+    def test_absent_token_is_401_gap(self):
+        status, payload, _kind = handle_target("/farm/observations")
+        self.assertEqual(status, 401)
+        self.assertIn("gap", payload)
+
+    def test_unmounted_secret_fails_closed_even_with_any_token(self):
+        with mock.patch.dict(hs.os.environ, clear=False):
+            hs.os.environ.pop("WEB_ACCESS_TOKEN", None)
+            status, payload, _kind = handle_target("/farm/observations?token=whatever")
+        self.assertEqual(status, 401)
+        self.assertIn("fails closed", payload["gap"])
+
+    def test_limit_is_parsed_capped_and_floor_safe(self):
+        with self._with_reader([]):
+            _status, payload, _k = handle_target("/farm/observations?token=" + self.expected + "&limit=999")
+        self.assertEqual(payload["limit"], hs.OBSERVATIONS_MAX_LIMIT)
+        with self._with_reader([]):
+            _status, payload, _k = handle_target("/farm/observations?token=" + self.expected + "&limit=nonsense")
+        self.assertEqual(payload["limit"], hs.OBSERVATIONS_DEFAULT_LIMIT)
+
+    def test_backend_failure_is_a_gap_not_a_crash(self):
+        with mock.patch.object(hs, "_latest_observations", side_effect=OSError("backend down")):
+            status, payload, kind = handle_target("/farm/observations?token=" + self.expected)
+        self.assertEqual(status, 200)
+        self.assertEqual(kind, "json")
+        self.assertIn("gap", payload)
+        self.assertIn("backend down", payload["gap"])
+
+    def test_latest_observations_read_through_the_record_seam(self):
+        with mock.patch("farm_ontology.record_store.open_backend") as fake_factory:
+            store = mock.Mock()
+            store.list_paths.side_effect = lambda sub, pattern: (
+                ["obs-20261118T075203Z.json", "obs-20261118T120948Z.json"]
+                if not sub
+                else []
+            )
+            store.read_text.side_effect = lambda name: json.dumps(
+                {
+                    "phenomenon_time": "2026-11-18T12:09:48+00:00",
+                    "availability_time": "2026-11-18T12:09:55+00:00",
+                    "gps_accuracy": "unknown",
+                    "use_class": "Screening",
+                    "class_c_policy": "closed",
+                    "permits_financial_use": False,
+                    "dry_run": True,
+                    "weather": {
+                        "native_resolution_deg": 0.05,
+                        "spatial_support": "grid-cell",
+                        "shrunk_to_plant": False,
+                    },
+                }
+            )
+            fake_factory.return_value = store
+            stamps = hs._latest_observations(5)
+        self.assertEqual([s["file"] for s in stamps], ["obs-20261118T120948Z.json", "obs-20261118T075203Z.json"])
+        newest = stamps[0]
+        self.assertEqual(newest["recorded_at"], "2026-11-18T12:09:48+00:00")
+        self.assertEqual(newest["support"]["native_resolution_deg"], 0.05)
+        self.assertTrue(newest["dry_run"])
+
+    def test_access_tokens_never_reach_the_request_log_line(self):
+        import io
+        import contextlib
+
+        handler = hs.Handler.__new__(hs.Handler)  # bypass init; test log_message alone
+        logged = io.StringIO()
+        with contextlib.redirect_stderr(logged):
+            handler.client_address = ("203.0.113.9", 44444)
+            handler.address_string = lambda: "203.0.113.9"  # type: ignore[method-assign]
+            handler.log_message('"GET /farm/observations?token=%s HTTP/1.1" 200 -', "SUPERSECRET")
+        line = logged.getvalue()
+        self.assertNotIn("SUPERSECRET", line)
+        self.assertIn("<redacted>", line)
+
+
 if __name__ == "__main__":
     unittest.main()

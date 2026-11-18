@@ -175,7 +175,7 @@ def run_load(base: str, vu: int, seconds: int) -> dict:
     samples: list[dict] = []
     lock = threading.Lock()
     stop = threading.Event()
-    plan = ramp_plan(vus, seconds)
+    plan = ramp_plan(vu, seconds)
     threads: list[threading.Thread] = []
     started = time.monotonic()
     for level, dwell in plan:
