@@ -72,15 +72,25 @@ class PageIoTests(unittest.TestCase):
                 continue
             parts.append(path.read_text(encoding="utf-8"))
         text = "\n".join(parts).lower()
-        self.assertNotIn("open-meteo", text)
+        # WS8 architecture (2026-11-18): the browser never talks to third-party
+        # weather/map vendors directly — every advisory value flows through OUR
+        # decision backend (FARM_API_BASE proxies), which stamps native support
+        # and licence verdicts onto the payload. Direct vendor endpoints stay
+        # forbidden; the provenance LABEL "open-meteo" (as stored data in the
+        # backend payload) is fine.
+        self.assertNotIn("api.open-meteo.com", text)
         self.assertNotIn("attach_weather", text)
         self.assertNotIn("maps.googleapis", text)
         self.assertNotIn("earthengine", text)
+        self.assertNotIn("openstreetmap", text)
+        # the proxy seam is mandatory: weather arrives named via our backend
+        self.assertIn("farm_api_base", text)
+        # honesty caption ships with the advisory panel (grid vs parcel)
+        self.assertIn("support: grid", text)
         self.assertIn("zh-tw", text)
         self.assertIn("zh-cn", text)
         self.assertIn('"ja"', text)
         self.assertIn("geolocation", text)
-        self.assertNotIn("openstreetmap", text)
 
     def test_mcp_and_fieldkit_write_the_same_coordinates(self):
         from farm_ontology.fieldkit import main
