@@ -42,6 +42,10 @@ Operational procedures now live in `deploy/`:
 | [deploy/rotate-planet-key.md](../deploy/rotate-planet-key.md) | Planet key rotation runbook + the 2026-11-17 `\r\n` secret postmortem |
 | [deploy/budget.md](../deploy/budget.md) | Monthly cost guard (TWD 2,000 ≈ ¥10k on `seges-ai`), thresholds and notification path |
 | [deploy/set-traffic.sh](../deploy/set-traffic.sh) / [.ps1](../deploy/set-traffic.ps1) | Post-deploy `update-traffic --to-latest` helper (the traffic-shift gotcha) |
+| [deploy/nightly-export.md](../deploy/nightly-export.md) | WS1.2: nightly record snapshot job (`farm-nightly-export`), 03:30 JST, manifest + verification |
+| [deploy/record-retention-policy.md](../deploy/record-retention-policy.md) | 90-day rolling archive retention — POLICY ONLY, lifecycle activation approval-gated |
+| [deploy/webhook-alerting.md](../deploy/webhook-alerting.md) | Reserved DISABLED webhook alert channel + HALT replica policy + enablement runbook |
+| [deploy/alert-ack-drill.md](../deploy/alert-ack-drill.md) | The executed end-to-end alert ACK drill with timestamps (2026-11-18) |
 | [deploy/create-observation-job.sh](../deploy/create-observation-job.sh) | Cloud Run job proving one observation round-trips through the record store |
 | [deploy/update-staging-env.sh](../deploy/update-staging-env.sh) | Point staging at the GCS record backend idempotently |
 

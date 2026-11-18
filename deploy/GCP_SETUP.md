@@ -179,11 +179,18 @@ IAM policy already contains conditional bindings). The GitHub workflow in
 
 ## 7. Deferred / not-created
 
-- Nightly record EXPORT bucket + scheduler (WS1.2): owned by the pipeline
-  workstream; `deploy/rollback.md` notes GCS versioning + soft-delete as the
-  interim floor.
+- ~~Nightly record EXPORT bucket + scheduler (WS1.2)~~ — DONE in the
+  Sprint-C tail (task-10, 2026-11-18): job `farm-nightly-export` +
+  scheduler `farm-sched-record-export` (03:30 JST), archive prefix
+  `field-archive/`; see `deploy/nightly-export.md`. Retention stays a
+  policy doc (`deploy/record-retention-policy.md`).
 - Custom domain / CDN: untouched.
-- Alert WEBHOOK channel: deferred (email suffices solo-founder Stage);
-  add later via `gcloud alpha monitoring channels create --type=webhook_token`.
-- JSON structured logs/Error Reporting wiring (WS1.4) beyond noting that
-  stack traces already land in Logging: not started (kept for the next wave).
+- ~~Alert WEBHOOK channel~~ — RESERVED 2026-11-18 (task-10): disabled
+  channel `6614179285845624282` + disabled HALT-webhook policy
+  `17774814249551034582`; enablement runbook
+  `deploy/webhook-alerting.md`.
+- JSON structured logs/Error Reporting wiring (WS1.4): exception→group
+  routing PROVEN 2026-11-18 via the thrown-away `farm-fault-drill` job
+  (group `CP__wqLVp5OKbQ`); the recording/job layers simply inherit it.
+  Remaining WS1.4 work (JSON request logs, request-id/latency fields)
+  belongs to a service-side task, not infra.
