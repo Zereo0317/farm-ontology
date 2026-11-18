@@ -652,3 +652,118 @@ details li { margin: 0.65rem 0; }
   .cta { break-before: page; }
   a { color: inherit; }
 }
+
+/* ============ Pitch pages (Sprint-J2) ============ */
+
+.pitch { max-width: 48rem; }
+
+.pitchNav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 1.1rem 0 0.2rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px dashed rgba(107, 79, 58, 0.35);
+  border-radius: 12px;
+  background: #fbf8f1;
+}
+
+.pitchNavTitle { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; }
+
+.pitchNavLink {
+  min-height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(107, 79, 58, 0.3);
+  border-radius: 999px;
+  background: var(--hay);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+
+.pitchNavLink.current { background: var(--sprout); color: #fff; opacity: 1; font-weight: 600; border-color: #6f8f52; }
+
+.pitch .thesis { margin: 0; font-size: 1rem; line-height: 1.7; }
+
+.pitch .loopSvg { width: 100%; height: auto; display: block; margin: 0.5rem 0 0.3rem; }
+
+.families div { margin: 0.8rem 0; }
+.families dt { font-weight: 600; font-size: 0.98rem; }
+.families dd { margin: 0.2rem 0 0; font-size: 0.9rem; opacity: 0.9; }
+.families dd.eg { opacity: 0.75; font-size: 0.85rem; padding-left: 0.8rem; border-left: 2px solid var(--wheat); }
+
+.ladder { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.6rem 0; }
+.rung {
+  border: 1px solid rgba(107, 79, 58, 0.25);
+  border-left: 5px solid var(--sprout);
+  border-radius: 10px;
+  background: #fffefa;
+  padding: 0.45rem 0.75rem;
+  box-shadow: 0 1px 2px rgba(60, 50, 30, 0.06);
+}
+.rung strong { display: block; font-size: 0.92rem; }
+.rung span { font-size: 0.8rem; opacity: 0.78; }
+
+.pitch ol.steps { margin: 0.3rem 0; padding-left: 1.2rem; font-size: 0.92rem; line-height: 1.6; }
+.pitch ol.steps li { margin: 0.5rem 0; }
+
+.algo { margin: 0.9rem 0; padding-bottom: 0.6rem; border-bottom: 1px dashed rgba(107, 79, 58, 0.2); }
+.algo:last-child { border-bottom: 0; }
+.algo h4 { margin: 0 0 0.25rem; font-size: 0.97rem; }
+.algo p { margin: 0; font-size: 0.88rem; opacity: 0.92; }
+.algo p.limit { opacity: 0.68; font-size: 0.8rem; margin-top: 0.2rem; }
+
+.card.notyet { background: var(--hay); }
+.plainList { margin: 0.3rem 0 0; padding-left: 1.15rem; font-size: 0.9rem; }
+.plainList li { margin: 0.4rem 0; }
+
+table.gloss { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table.gloss th { text-align: left; width: 34%; padding: 0.3rem 0.4rem; vertical-align: top; font-weight: 500; }
+table.gloss td { padding: 0.3rem 0.4rem; border-top: 1px dashed rgba(28, 27, 25, 0.14); }
+
+.invScroll { overflow-x: auto; }
+table.invTable { width: 100%; border-collapse: collapse; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+table.invTable th { text-align: left; padding: 0.35rem 0.45rem; vertical-align: top; font-weight: 600; white-space: nowrap; }
+table.invTable thead th { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+table.invTable td { padding: 0.4rem 0.45rem; border-top: 1px dashed rgba(28, 27, 25, 0.16); vertical-align: top; }
+table.invTable td.smallCell { font-size: 0.76rem; opacity: 0.85; }
+table.invTable td.lic { font-size: 0.76rem; color: #6f5a2e; }
+
+.bringGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-top: 0.6rem; }
+.bring { border: 1px solid rgba(107, 79, 58, 0.22); border-radius: 14px; padding: 0.8rem 0.9rem; background: #fffefa; box-shadow: 0 1px 2px rgba(60, 50, 30, 0.08); }
+.bring h4 { margin: 0.4rem 0 0.2rem; font-size: 0.98rem; }
+.bring p { margin: 0; font-size: 0.86rem; }
+
+.printBlock { break-inside: avoid; }
+.checkList { list-style: none; margin: 0.4rem 0 0; padding: 0; font-size: 0.88rem; line-height: 1.75; }
+
+.promise { margin: 0.6rem 0 0; padding: 0.6rem 0.8rem; background: #f4efe3; border-radius: 10px; font-size: 0.9rem; }
+
+.crosslinks { margin: 1.4rem 0 0.4rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.crosslinks p { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0; }
+.pill {
+  display: inline-flex; align-items: center; min-height: 2.6rem; padding: 0 1.1rem;
+  border-radius: 999px; background: var(--ink); color: var(--paper);
+  text-decoration: none; font-size: 0.88rem;
+}
+.pillGhost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+
+.spineWide { grid-template-columns: repeat(2, 1fr); }
+.spineCell p { margin: 0.3rem 0 0; font-size: 0.78rem; line-height: 1.45; opacity: 0.88; }
+.sev { font-weight: 600; white-space: nowrap; }
+
+.card.breached { border-left: 5px solid #a04b22; }
+
+@media (max-width: 480px) {
+  .bringGrid, .spineWide { grid-template-columns: 1fr; }
+  .pitchNav { padding: 0.5rem; }
+}
+
+@media print {
+  .pitchNav, .crosslinks { display: none; }
+  .checkList { font-size: 10.5pt; }
+}
