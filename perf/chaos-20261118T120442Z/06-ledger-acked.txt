@@ -1,0 +1,5 @@
+  File "<string>", line 5
+    path = pathlib.Path("C:\Users\user\Documents\deepseek-harness\default-workspace\farm-ont-ws-resilience\perf\chaos-20261118T120442Z\ledger-20261118T120442Z.jsonl")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: (unicode error) 'unicodeescape' codec can't decode bytes in position 2-3: truncated \UXXXXXXXX escape
+

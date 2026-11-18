@@ -1,0 +1,559 @@
+[
+  {
+    "insertId": "6afd958d000d0d893e42ecb9",
+    "labels": {
+      "container_name": "worker",
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-11-18T12:09:49.859472807Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "severity": "INFO",
+    "textPayload": "Container called exit(0).",
+    "timestamp": "2026-11-18T12:09:49.855363Z"
+  },
+  {
+    "insertId": "6afd958d000c06bdfe5e735e",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "}",
+    "timestamp": "2026-11-18T12:09:49.788157Z"
+  },
+  {
+    "insertId": "6afd958d000c06ba8d7101e0",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"note_count\": 1",
+    "timestamp": "2026-11-18T12:09:49.788154Z"
+  },
+  {
+    "insertId": "6afd958d000c06b67afd2a17",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"observation_count\": 9,",
+    "timestamp": "2026-11-18T12:09:49.788150Z"
+  },
+  {
+    "insertId": "6afd958d000c06b380f63818",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"permits_financial_use\": false,",
+    "timestamp": "2026-11-18T12:09:49.788147Z"
+  },
+  {
+    "insertId": "6afd958d000c06afb567629a",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"written\": \"obs-20261118T120948Z.json\",",
+    "timestamp": "2026-11-18T12:09:49.788143Z"
+  },
+  {
+    "insertId": "6afd958d000c06ab84b3c48f",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  },",
+    "timestamp": "2026-11-18T12:09:49.788139Z"
+  },
+  {
+    "insertId": "6afd958d000c06a60075c568",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "    \"api\": \"storage.googleapis.com\"",
+    "timestamp": "2026-11-18T12:09:49.788134Z"
+  },
+  {
+    "insertId": "6afd958d000c06a2b25bc074",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "    \"prefix\": \"field-notes\",",
+    "timestamp": "2026-11-18T12:09:49.788130Z"
+  },
+  {
+    "insertId": "6afd958d000c069d9faa0bde",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "    \"bucket\": \"farm-seges-ai-records\",",
+    "timestamp": "2026-11-18T12:09:49.788125Z"
+  },
+  {
+    "insertId": "6afd958d000c06998bc30cb2",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "    \"backend\": \"gcs\",",
+    "timestamp": "2026-11-18T12:09:49.788121Z"
+  },
+  {
+    "insertId": "6afd958d000c06945f956608",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"backend\": {",
+    "timestamp": "2026-11-18T12:09:49.788116Z"
+  },
+  {
+    "insertId": "6afd958d000c068e3ab7c415",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"drill\": \"observation-round-trip\",",
+    "timestamp": "2026-11-18T12:09:49.788110Z"
+  },
+  {
+    "insertId": "6afd958d000c067084fcbf1c",
+    "labels": {
+      "instanceId": "00e8a408bdc43aa6d2020e7fea47ec15032e951ace702a97afe6ef027cb909a763ea92a5345a51854a363c48e4b80bf2a43d90dfc74510f8671101a3d0fb794387c3ff9e6aead25012ccf095a037f9707ebc295e43dded8759f401",
+      "run.googleapis.com/execution_name": "farm-observation-drill-hdbzg",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:09:49.793110885Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "{",
+    "timestamp": "2026-11-18T12:09:49.788080Z"
+  },
+  {
+    "insertId": "dnt75ud6lqe",
+    "labels": {
+      "run.googleapis.com/execution_name": "farm-observation-drill-2bftl"
+    },
+    "logName": "projects/seges-ai/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "methodName": "/Jobs.RunJob",
+      "resourceName": "namespaces/seges-ai/executions/farm-observation-drill-2bftl",
+      "response": {
+        "@type": "type.googleapis.com/google.cloud.run.v1.Execution",
+        "apiVersion": "run.googleapis.com/v1",
+        "kind": "Execution",
+        "metadata": {
+          "annotations": {
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "570.0.0",
+            "run.googleapis.com/creator": "segescloud@gmail.com",
+            "run.googleapis.com/execution-environment": "gen2",
+            "run.googleapis.com/lastModifier": "segescloud@gmail.com",
+            "run.googleapis.com/operation-id": "0303da07-946d-4649-9b28-68149f75a4a0"
+          },
+          "creationTimestamp": "2026-11-18T12:05:28.281527Z",
+          "generation": 1,
+          "labels": {
+            "client.knative.dev/nonce": "xax_xed_koy",
+            "cloud.googleapis.com/location": "asia-east1",
+            "run.googleapis.com/job": "farm-observation-drill",
+            "run.googleapis.com/jobGeneration": "4",
+            "run.googleapis.com/jobResourceVersion": "1794906533695578",
+            "run.googleapis.com/jobUid": "db927398-6d00-456b-be99-a726f674a3f6"
+          },
+          "name": "farm-observation-drill-2bftl",
+          "namespace": "451400509859",
+          "ownerReferences": [
+            {
+              "apiVersion": "serving.knative.dev/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "Job",
+              "name": "farm-observation-drill",
+              "uid": "db927398-6d00-456b-be99-a726f674a3f6"
+            }
+          ],
+          "resourceVersion": "AAZgi9TFjnE",
+          "selfLink": "/apis/run.googleapis.com/v1/namespaces/451400509859/executions/farm-observation-drill-2bftl",
+          "uid": "7ac5e692-15fb-424b-b2cb-15ac4de6cbee"
+        },
+        "spec": {
+          "parallelism": 1,
+          "taskCount": 1,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "args": [
+                    "python",
+                    "-m",
+                    "farm_ontology.record_store"
+                  ],
+                  "env": [
+                    {
+                      "name": "FARM_RECORD_BACKEND",
+                      "value": "gcs"
+                    },
+                    {
+                      "name": "FARM_RECORD_BUCKET",
+                      "value": "farm-seges-ai-records"
+                    },
+                    {
+                      "name": "GCP_PROJECT",
+                      "value": "seges-ai"
+                    },
+                    {
+                      "name": "FARM_RECORD_DIR",
+                      "value": "/tmp/farm-records"
+                    }
+                  ],
+                  "image": "asia-east1-docker.pkg.dev/seges-ai/farm/drill@sha256:bde3f20b2aa3795a6de8e9af81502298d881bd5c8ff769d513b85dbbe298e7c0",
+                  "resources": {
+                    "limits": {
+                      "cpu": "1000m",
+                      "memory": "512Mi"
+                    }
+                  }
+                }
+              ],
+              "maxRetries": 1,
+              "serviceAccountName": "451400509859-compute@developer.gserviceaccount.com",
+              "timeoutSeconds": "600"
+            }
+          }
+        },
+        "status": {
+          "completionTime": "2026-11-18T12:05:46.323069Z",
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-11-18T12:05:46.323069Z",
+              "message": "Execution completed successfully in 14.03s.",
+              "status": "True",
+              "type": "Completed"
+            },
+            {
+              "lastTransitionTime": "2026-11-18T12:05:29.393426Z",
+              "message": "Provisioned imported containers.",
+              "status": "True",
+              "type": "ResourcesAvailable"
+            },
+            {
+              "lastTransitionTime": "2026-11-18T12:05:39.352345Z",
+              "message": "Started deployed execution in 9.95s.",
+              "status": "True",
+              "type": "Started"
+            },
+            {
+              "lastTransitionTime": "2026-11-18T12:05:29.245420Z",
+              "message": "Imported container image.",
+              "status": "True",
+              "type": "ContainerReady"
+            },
+            {
+              "lastTransitionTime": "2026-11-18T12:05:46.699511Z",
+              "message": "System will retry after 00:00 from lastTransitionTime for attempt 0.",
+              "reason": "ImmediateRetry",
+              "severity": "Info",
+              "status": "True",
+              "type": "Retry"
+            }
+          ],
+          "logUri": "https://console.cloud.google.com/logs/viewer?project=seges-ai&advancedFilter=resource.type%3D%22cloud_run_job%22%0Aresource.labels.job_name%3D%22farm-observation-drill%22%0Aresource.labels.location%3D%22asia-east1%22%0Alabels.%22run.googleapis.com/execution_name%22%3D%22farm-observation-drill-2bftl%22",
+          "observedGeneration": 1,
+          "startTime": "2026-11-18T12:05:32.285654Z",
+          "succeededCount": 1
+        }
+      },
+      "serviceName": "run.googleapis.com",
+      "status": {
+        "message": "Execution farm-observation-drill-2bftl has completed successfully."
+      }
+    },
+    "receiveTimestamp": "2026-11-18T12:05:47.695858803Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "severity": "INFO",
+    "timestamp": "2026-11-18T12:05:46.720146Z"
+  },
+  {
+    "insertId": "6afd9494000ddea20788d1ef",
+    "labels": {
+      "container_name": "worker",
+      "instanceId": "00e8a408bd528fda1a50e68503f9458442fdaee36e3d2a67c633cdceef00223972dcf821ea579a1951bfb4a40a8387ddd91d464799c364859548ef75798c25d420b08297cd03f5bac0a04577b4db386581718df2205bf51af69e",
+      "run.googleapis.com/execution_name": "farm-observation-drill-2bftl",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-11-18T12:05:40.912961058Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "severity": "INFO",
+    "textPayload": "Container called exit(0).",
+    "timestamp": "2026-11-18T12:05:40.908881Z"
+  },
+  {
+    "insertId": "6afd9494000d3557baed0810",
+    "labels": {
+      "instanceId": "00e8a408bd528fda1a50e68503f9458442fdaee36e3d2a67c633cdceef00223972dcf821ea579a1951bfb4a40a8387ddd91d464799c364859548ef75798c25d420b08297cd03f5bac0a04577b4db386581718df2205bf51af69e",
+      "run.googleapis.com/execution_name": "farm-observation-drill-2bftl",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:05:40.869602810Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "}",
+    "timestamp": "2026-11-18T12:05:40.865623Z"
+  },
+  {
+    "insertId": "6afd9494000d35567cdf35a4",
+    "labels": {
+      "instanceId": "00e8a408bd528fda1a50e68503f9458442fdaee36e3d2a67c633cdceef00223972dcf821ea579a1951bfb4a40a8387ddd91d464799c364859548ef75798c25d420b08297cd03f5bac0a04577b4db386581718df2205bf51af69e",
+      "run.googleapis.com/execution_name": "farm-observation-drill-2bftl",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:05:40.869602810Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"note_count\": 1",
+    "timestamp": "2026-11-18T12:05:40.865622Z"
+  },
+  {
+    "insertId": "6afd9494000d355418f11217",
+    "labels": {
+      "instanceId": "00e8a408bd528fda1a50e68503f9458442fdaee36e3d2a67c633cdceef00223972dcf821ea579a1951bfb4a40a8387ddd91d464799c364859548ef75798c25d420b08297cd03f5bac0a04577b4db386581718df2205bf51af69e",
+      "run.googleapis.com/execution_name": "farm-observation-drill-2bftl",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:05:40.869602810Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"observation_count\": 8,",
+    "timestamp": "2026-11-18T12:05:40.865620Z"
+  },
+  {
+    "insertId": "6afd9494000d3552d3166031",
+    "labels": {
+      "instanceId": "00e8a408bd528fda1a50e68503f9458442fdaee36e3d2a67c633cdceef00223972dcf821ea579a1951bfb4a40a8387ddd91d464799c364859548ef75798c25d420b08297cd03f5bac0a04577b4db386581718df2205bf51af69e",
+      "run.googleapis.com/execution_name": "farm-observation-drill-2bftl",
+      "run.googleapis.com/task_attempt": "0",
+      "run.googleapis.com/task_index": "0"
+    },
+    "logName": "projects/seges-ai/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-11-18T12:05:40.869602810Z",
+    "resource": {
+      "labels": {
+        "job_name": "farm-observation-drill",
+        "location": "asia-east1",
+        "project_id": "seges-ai"
+      },
+      "type": "cloud_run_job"
+    },
+    "textPayload": "  \"permits_financial_use\": false,",
+    "timestamp": "2026-11-18T12:05:40.865618Z"
+  }
+]
+

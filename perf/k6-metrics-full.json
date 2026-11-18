@@ -1,0 +1,213 @@
+{
+    "metrics": {
+        "http_req_duration": {
+            "avg": 865.4313859821699,
+            "min": 79.8636,
+            "med": 664.792,
+            "max": 28777.7151,
+            "p(90)": 1359.1075600000006,
+            "p(95)": 1832.1425800000009,
+            "thresholds": {
+                "p(99)<1500": true,
+                "p(95)<400": true
+            }
+        },
+        "http_req_duration{name:ingest-status}": {
+            "avg": 1458.1814000307422,
+            "min": 591.2537,
+            "med": 925.0125,
+            "max": 28777.7151,
+            "p(90)": 1890.0164600000005,
+            "p(95)": 3783.303419999994,
+            "thresholds": {
+                "p(95)<400": true
+            }
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 865.4313859821699,
+            "min": 79.8636,
+            "med": 664.792,
+            "max": 28777.7151,
+            "p(90)": 1359.1075600000006,
+            "p(95)": 1832.1425800000009
+        },
+        "http_req_waiting": {
+            "max": 28774.1851,
+            "p(90)": 1353.7322600000002,
+            "p(95)": 1828.9604400000007,
+            "avg": 862.3346177784583,
+            "min": 79.141,
+            "med": 659.5678
+        },
+        "http_req_connecting": {
+            "avg": 0.33556372579157695,
+            "min": 0,
+            "med": 0,
+            "max": 183.117,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "iteration_duration": {
+            "p(90)": 4230.6911800000025,
+            "p(95)": 5841.516319999998,
+            "avg": 3002.662794866277,
+            "min": 1587.7563,
+            "med": 2413.6787,
+            "max": 31533.9245
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 50
+        },
+        "group_duration": {
+            "avg": 1000.8779260682444,
+            "min": 319.9598,
+            "med": 784.7962,
+            "max": 28898.0059,
+            "p(90)": 1478.4277800000002,
+            "p(95)": 1959.7209500000008
+        },
+        "http_req_duration{name:livez}": {
+            "min": 79.8636,
+            "med": 180.9143,
+            "max": 3435.5641,
+            "p(90)": 762.5092400000001,
+            "p(95)": 1012.8463399999972,
+            "avg": 353.0785284967737,
+            "thresholds": {
+                "p(95)<400": true
+            }
+        },
+        "data_received": {
+            "count": 21668011,
+            "rate": 71954.5950636525
+        },
+        "iterations": {
+            "count": 3253,
+            "rate": 10.80248195102271
+        },
+        "http_req_duration{name:farm-weather}": {
+            "p(95)": 1503.7607199999989,
+            "avg": 785.0342294189996,
+            "min": 464.597,
+            "med": 595.8822,
+            "max": 15520.9763,
+            "p(90)": 1206.95692,
+            "thresholds": {
+                "p(95)<1200": true
+            }
+        },
+        "http_req_receiving": {
+            "med": 0.5081,
+            "max": 83.9542,
+            "p(90)": 9.36626,
+            "p(95)": 12.573010000000004,
+            "avg": 2.988881012398816,
+            "min": 0
+        },
+        "http_reqs": {
+            "count": 9759,
+            "rate": 32.40744585306813
+        },
+        "vus_max": {
+            "value": 50,
+            "min": 50,
+            "max": 50
+        },
+        "http_req_sending": {
+            "med": 0,
+            "max": 5.5719,
+            "p(90)": 0.3806,
+            "p(95)": 0.5065200000000001,
+            "avg": 0.10788719131058515,
+            "min": 0
+        },
+        "data_sent": {
+            "count": 979195,
+            "rate": 3251.686539819146
+        },
+        "http_req_blocked": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 1.53542635515934,
+            "min": 0,
+            "med": 0,
+            "max": 1154.3487
+        },
+        "http_req_tls_handshaking": {
+            "p(95)": 0,
+            "avg": 1.1732169382108824,
+            "min": 0,
+            "med": 0,
+            "max": 1077.6781,
+            "p(90)": 0
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 9759,
+            "value": 0
+        },
+        "checks": {
+            "fails": 0,
+            "passes": 9759,
+            "thresholds": {
+                "rate>0.995": false
+            },
+            "value": 1
+        }
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "livez": {
+                "id": "baac815673c93a23953b7925decd0b6c",
+                "groups": {},
+                "checks": {
+                    "livez 2xx": {
+                        "passes": 3253,
+                        "fails": 0,
+                        "name": "livez 2xx",
+                        "path": "::livez::livez 2xx",
+                        "id": "382163d3cb14002d0a05d816603e827d"
+                    }
+                },
+                "name": "livez",
+                "path": "::livez"
+            },
+            "ingest-status": {
+                "id": "dc17f362eab65f8521e4f1f7fb69e02a",
+                "groups": {},
+                "checks": {
+                    "status 2xx": {
+                        "passes": 3253,
+                        "fails": 0,
+                        "name": "status 2xx",
+                        "path": "::ingest-status::status 2xx",
+                        "id": "69befae9e983bc1cb6daf6262a539d6b"
+                    }
+                },
+                "name": "ingest-status",
+                "path": "::ingest-status"
+            },
+            "farm-weather": {
+                "name": "farm-weather",
+                "path": "::farm-weather",
+                "id": "cb67e6b3be6d02e66bd9bc38ec186cc2",
+                "groups": {},
+                "checks": {
+                    "weather 2xx (gap-object reads count as served)": {
+                        "path": "::farm-weather::weather 2xx (gap-object reads count as served)",
+                        "id": "5e1d97454278c93ebf599b25350b1f6a",
+                        "passes": 3253,
+                        "fails": 0,
+                        "name": "weather 2xx (gap-object reads count as served)"
+                    }
+                }
+            }
+        },
+        "checks": {}
+    }
+}

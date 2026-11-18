@@ -1,0 +1,12 @@
+Creating execution...
+Provisioning resources....................done
+Starting execution................................................................................................................done
+Running execution..........................................................done
+Done.
+Execution [farm-observation-drill-2bftl] has successfully completed.
+
+View details about this execution by running:
+gcloud run jobs executions describe farm-observation-drill-2bftl
+
+Or visit https://console.cloud.google.com/run/jobs/executions/details/asia-east1/farm-observation-drill-2bftl?project=451400509859
+

@@ -1,0 +1,86 @@
+{
+  "drill": "ColdStartKill",
+  "stamp": "20261118T120442Z",
+  "project": "seges-ai",
+  "region": "asia-east1",
+  "service": "farm-seges-ai-staging",
+  "bucket": "farm-seges-ai-records",
+  "steps": {
+    "00-preflight": {
+      "account": "segescloud@gmail.com",
+      "project": "seges-ai",
+      "ok": true
+    },
+    "01-before": {
+      "url": "https://farm-seges-ai-staging-kadpjlgt4q-de.a.run.app",
+      "latest_created": "farm-seges-ai-staging-00106-smn",
+      "latest_ready": "farm-seges-ai-staging-00106-smn",
+      "traffic": "farm-seges-ai-staging-00106-smn=100%",
+      "min_scale": null,
+      "max_scale": "3"
+    },
+    "02-min-instances-zero": {
+      "ok": true,
+      "min_scale_after": null
+    },
+    "03-ledger-built": {
+      "ok": true,
+      "local": "C:\\Users\\user\\Documents\\deepseek-harness\\default-workspace\\farm-ont-ws-resilience\\perf\\chaos-20261118T120442Z\\ledger-20261118T120442Z.jsonl",
+      "command_id": "739eb4e818921e21134494811cb86853"
+    },
+    "04-ledger-upload": {
+      "ok": true,
+      "gcs": "gs://farm-seges-ai-records/chaos-drills/ledger-20261118T120442Z.jsonl"
+    },
+    "05-observation-job": {
+      "exit_code": 0,
+      "execution": "",
+      "ok": true
+    },
+    "06-ledger-acked": {
+      "ok": false
+    },
+    "07-env-bump-deploy": {
+      "ok": true,
+      "new_revision": ""
+    },
+    "08-cold-vs-warm": {
+      "ttfb_ms": [
+        5743.0,
+        1226.0,
+        2516.0,
+        2233.0
+      ],
+      "note": "hit1 is the cold-boot request for the fresh minScale-0 revision (env leak none); hits 2-4 warm",
+      "url": "https://farm-seges-ai-staging-kadpjlgt4q-de.a.run.app/livez"
+    },
+    "09-readability": {
+      "service_status": "status=200 ms=2917 body_bytes=5003",
+      "obs_object": "gs://farm-seges-ai-records/field-notes/obs-20261118T120539Z.json\r",
+      "obs_readable": true,
+      "obs_head": "{\r\n  \"record_type\": \"field-observation\",\r\n  \"dry_run\": true,\r\n  \"labeled_as_farm\": false,\r\n  \"crop\": \"soybean\",\r\n  \"crop_stage\": \"harvest\",\r\n  \"crop_ontology_id\": \"CO_336\",\r\n  \"crop_ontology_title\": \"Soybean Ontology\",\r\n  \"crop_ontology_term\": \"https://cropontology.org/term/CO_336:ROOT\",\r\n  \"crop_ontology_rdf\": \"https://cropontology.org/ontology/CO_336/rdf\",\r\n  \"crop_ontology_resolved\": true,\r\n  \"",
+      "http_observations_route_exists": false,
+      "note": "the HTTP service exposes NO observations-list route; readability is at the storage layer and via the drill job's list_notes round-trip — recorded as a WEAKNESS"
+    },
+    "10-ledger-restored-verify": {
+      "pull_ok": true,
+      "verify_ok": true,
+      "tempdir": "C:\\Users\\user\\AppData\\Local\\Temp\\farm-restore-20261118T120442Z"
+    }
+  },
+  "verdict": {
+    "drill_ok": false,
+    "min_instances_zero": true,
+    "observation_written": true,
+    "observation_readable": true,
+    "ledger_uploaded": true,
+    "ledger_verified_after_recycle": true,
+    "cold_start_measured": [
+      5743.0,
+      1226.0,
+      2516.0,
+      2233.0
+    ],
+    "revision_recycled": ""
+  }
+}

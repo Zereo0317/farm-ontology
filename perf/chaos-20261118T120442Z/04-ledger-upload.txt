@@ -1,0 +1,4 @@
+Copying file://C:\Users\user\Documents\deepseek-harness\default-workspace\farm-ont-ws-resilience\perf\chaos-20261118T120442Z\ledger-20261118T120442Z.jsonl to gs://farm-seges-ai-records/chaos-drills/ledger-20261118T120442Z.jsonl
+  
+.....
+

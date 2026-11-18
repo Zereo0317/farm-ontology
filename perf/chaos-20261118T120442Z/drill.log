@@ -1,0 +1,22 @@
+[2026-11-18T12:04:42.681Z][setup] artifact dir: C:\Users\user\Documents\deepseek-harness\default-workspace\farm-ont-ws-resilience\perf\chaos-20261118T120442Z
+[2026-11-18T12:04:45.440Z][preflight] account=segescloud@gmail.com project=seges-ai expected-ok=True
+[2026-11-18T12:04:53.374Z][snapshot] {"url":"https://farm-seges-ai-staging-kadpjlgt4q-de.a.run.app","latest_created":"farm-seges-ai-staging-00106-smn","latest_ready":"farm-seges-ai-staging-00106-smn","traffic":"farm-seges-ai-staging-00106-smn=100%","min_scale":null,"max_scale":"3"}
+[2026-11-18T12:05:11.739Z][min-instances] update ok=True minScale-now=
+[2026-11-18T12:05:11.933Z][ledger] built ok=True :: {"command_id": "739eb4e818921e21134494811cb86853", "records": 3, "file": "C:\\Users\\user\\Documents\\deepseek-harness\\default-workspace\\farm-ont-ws-resilience\\perf\\chaos-20261118T120442Z\\ledger-20261118T120442Z.jsonl"}
+[2026-11-18T12:05:23.458Z][ledger-upload] ok=True :: Copying file://C:\Users\user\Documents\deepseek-harness\default-workspace\farm-ont-ws-resilience\perf\chaos-20261118T120442Z\ledger-20261118T120442Z.jsonl to gs://farm-seges-ai-records/chaos-drills/ledger-20261118T120442Z.jsonl |    | ..... |
+[2026-11-18T12:05:48.896Z][observation-job] exit=0 execution=
+[2026-11-18T12:05:48.946Z][ledger-ack] ok=False :: File "<string>", line 5
+    path = pathlib.Path("C:\Users\user\Documents\deepseek-harness\default-workspace\farm-ont-ws-resilience\perf\chaos-20261118T120442Z\ledger-20261118T120442Z.jsonl")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: (unicode error) 'unicodeescape' codec can't decode bytes in position 2-3: truncated \UXXXXXXXX escape
+[2026-11-18T12:05:59.790Z][ledger-upload-final] ok=True
+[2026-11-18T12:06:10.685Z][recycle] env-bump ok=True new-revision=
+[2026-11-18T12:06:16.461Z][cold-hit] hit=1 ttfb_ms=5743 status=200
+[2026-11-18T12:06:19.701Z][cold-hit] hit=2 ttfb_ms=1226 status=200
+[2026-11-18T12:06:24.236Z][cold-hit] hit=3 ttfb_ms=2516 status=200
+[2026-11-18T12:06:28.473Z][cold-hit] hit=4 ttfb_ms=2233 status=200
+[2026-11-18T12:06:33.400Z][readability] /farm/ingest-status: status=200 ms=2917 body_bytes=5003
+[2026-11-18T12:06:41.286Z][readability] latest-obs=gs://farm-seges-ai-records/field-notes/obs-20261118T120539Z.json readable(with stamps)=True
+[2026-11-18T12:06:50.180Z][restore] pulled ledger ok=True -> C:\Users\user\AppData\Local\Temp\farm-restore-20261118T120442Z
+[2026-11-18T12:06:50.400Z][ledger-verify] ok=True :: {"verify_ok": true, "records": 3, "problems": [], "snapshot": {"739eb4e818921e21134494811cb86853": "dispatched"}}
+[2026-11-18T12:06:50.409Z][verdict] {"drill_ok":false,"min_instances_zero":true,"observation_written":true,"observation_readable":true,"ledger_uploaded":true,"ledger_verified_after_recycle":true,"cold_start_measured":[5743.0,1226.0,2516.0,2233.0],"revision_recycled":""}
