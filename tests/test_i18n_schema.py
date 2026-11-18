@@ -93,6 +93,21 @@ class I18nSchemaTests(unittest.TestCase):
         self.assertIn("(locales as readonly string[]).includes", sheet)
         self.assertNotIn('saved === "zh-TW" ||', sheet)  # hardcoded whitelist retired
 
+    def test_middleware_negotiates_first_visit_language(self):
+        mw = (WEB / "middleware.ts").read_text(encoding="utf-8")
+        # reads the browser's Accept-Language header
+        self.assertIn("accept-language", mw)
+        # stamps the SAME cookie the client chooser mirrors (one shared name)
+        self.assertIn('LOCALE_COOKIE = "farm-locale"', mw)
+        # respects an explicit choice: negotiates only when the cookie is absent
+        self.assertIn("!request.cookies.get(LOCALE_COOKIE)?.value", mw)
+        # five-way routing table present (bare/ambiguous zh leans traditional)
+        self.assertIn('return "zh-TW"', mw)
+        self.assertIn('return "zh-CN"', mw)
+        self.assertIn('return "ja"', mw)
+        self.assertIn('return "th"', mw)
+        self.assertIn('return "en"', mw)
+
     def test_html_lang_reflects_bcp47_per_locale(self):
         self.assertIn("localeHtmlLang", (WEB / "app" / "field-sheet.tsx").read_text(encoding="utf-8"))
         m = re.search(
