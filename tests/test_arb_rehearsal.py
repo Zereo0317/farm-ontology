@@ -93,13 +93,15 @@ class Lane1GrantWallTest(unittest.TestCase):
         )
         self.assertIn("2 R5 violations", verdict_step.detail)
 
-    def test_forged_grant_slips_and_is_caught_by_crosscheck(self) -> None:
+    def test_forged_grant_dies_on_armed_registry(self) -> None:
         step = next(step for step in self.report.step_log if step.name == "attack-forged-valid-looking-grant")
-        self.assertIn("PASSED rails", step.detail)
-        self.assertIn("unknown_feed", step.detail)
+        self.assertIn("died on armed registry", step.detail)
+        self.assertIn("fingerprint-not-in-registry", step.detail)
+        self.assertIn("legacy unarmed path unchanged", step.detail)
         defect = next(defect for defect in self.report.defects if defect.defect_id == "D1")
         self.assertEqual(defect.severity, "rough")
-        self.assertIn("fingerprint", defect.named_remedy)
+        self.assertIn("HISTORICAL (healed this sprint)", defect.finding)
+        self.assertIn("RESIDUAL", defect.finding)
 
     def test_expired_and_specimen_attacks_caught(self) -> None:
         self.assertIn("attack-expired-grant-caught", self.report.steps_ok)
@@ -138,7 +140,7 @@ class Lane3PrecisionTest(unittest.TestCase):
             for step in self.report.step_log
             if step.name == "collar-intent-demands-premium-budget-precisely"
         )
-        self.assertIn("rail='R3'", step.detail)
+        self.assertIn("rail='R6'", step.detail)
         self.assertIn("precise=True", step.detail)
 
     def test_self_authored_budget_is_the_crack(self) -> None:
@@ -177,9 +179,16 @@ class Lane4ChainTest(unittest.TestCase):
 
     def test_verify_chain_survives_legal_void_after_fix(self) -> None:
         # D9 was a blocker (verify_chain KeyError 'void'); fixed on main via
-        # ws/fix/actuation-ledger. The rehearsal must now verify a void-bearing
-        # chain CLEANLY — the regression guard flips direction: any RETURN of
-        # the old crash is itself a finding.
+        # ws/fix/actuation-ledger and re-hearsed. Dual assertion: the D9 entry
+        # (if present) speaks either in the crash's voice or the
+        # regression-sentinel voice; AND the rehearsal's void steps carry no
+        # surviving KeyError — a reintroduced crash is itself the finding.
+        d9 = [d for d in self.report.defects if d.defect_id == "D9"]
+        for defect in d9:
+            self.assertTrue(
+                "KeyError" in defect.finding or "REGRESSION SENTINEL" in defect.finding,
+                defect.finding,
+            )
         void_steps = [
             step
             for step in self.report.step_log

@@ -180,7 +180,9 @@ class RailViolationsTest(unittest.TestCase):
             hedge_tickets=(
                 rl.HedgeTicket("T", rl.F_FORWARD_PHYSICAL_COMMITMENT, True, True, "human"),
             ),
-            upside_term=rl.UpsideShareTerm(0.3, "farmer", "Founder", "contract-2027-01"),
+            upside_term=rl.UpsideShareTerm(
+                0.3, rl.Beneficiary.FARMER_CONTRACTED, "Founder", "contract-2027-01"
+            ),
         )
         self.assertEqual(
             [v for v in rl.validate_playbook_artefact(fixed, AS_OF) if v.rail == rl.RAIL_2_UPSIDE_SHARE],
@@ -212,12 +214,21 @@ class RailViolationsTest(unittest.TestCase):
             families=(rl.F_COST_CAPPED_STRADDLE,),
             hedge_tickets=(rl.HedgeTicket("T", rl.F_COST_CAPPED_STRADDLE, True, True, "human"),),
         )
-        self.assertTrue(any("premium budget" in v.detail for v in rl.validate_playbook_artefact(unc, AS_OF)))
+        # Fix sprint D5/D6: the budget demand carries its own rail id (R6)
+        # and demands cap_sheet_hash + registry binding.
+        self.assertTrue(
+            any(
+                v.rail == rl.RAIL_6_PREMIUM_CAP
+                for v in rl.validate_playbook_artefact(unc, AS_OF)
+            )
+        )
         funded = artefact(
             state=rl.STATE_UNCERTAIN,
             families=(rl.F_COST_CAPPED_STRADDLE,),
             hedge_tickets=(rl.HedgeTicket("T", rl.F_COST_CAPPED_STRADDLE, True, True, "human"),),
-            premium_budget=rl.PremiumBudget(1.0, 2.0, "2026Q4", "risk owner"),
+            premium_budget=rl.PremiumBudget(
+                1.0, 2.0, "2026Q4", "risk owner", cap_sheet_hash="a" * 64
+            ),
         )
         budget_violations = [
             v for v in rl.validate_playbook_artefact(funded, AS_OF) if "premium budget" in v.detail

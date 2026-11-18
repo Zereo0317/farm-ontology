@@ -1,0 +1,13 @@
+{
+  "quarter": "2026Q4",
+  "specimen": true,
+  "specimen_note": "SPECIMEN - NOT A SIGNED CAP SHEET. Shape of the quarterly premium-cap sheet the human risk owner would sign (arbitrage-playbook-rails.md section 4.3, doctrine section 3 uncertainty row). Registers the mechanics only; it NEVER unlocks real caps. Replace with an executed sheet (specimen: false) after the risk owner signs; register its cap_sheet_hash via the cap-sheet registry.",
+  "cap_sheet_hash": null,
+  "caps": {
+    "p1_seasonal_premium_budget_percent_of_notional": null,
+    "p2_single_strategy_sub_allocation_percent_of_p1": null,
+    "p3_collar_skew_tolerance_debit_percent_of_p1": null,
+    "set_by": null,
+    "set_on": null
+  }
+}
