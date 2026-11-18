@@ -1,0 +1,48 @@
+{
+  "_readme": "EXAMPLE filled bundle (synthetic values, demonstrates a predicted-vs-actual HIT path (model R8 2026-09-27 on the Biratori phenology rows)). Dictated over the phone after the visit.",
+  "_version": "harvest-truth-v1",
+
+  "template": "harvest-truth-v1",
+
+  "parcel_iri": "observation/boundary/demo-not-a-real-farm",
+
+  "collection_date": "2026-09-30",
+
+  "dictated_over_phone": true,
+
+  "weigh_ticket": {
+    "ticket_number": "T-250930-077",
+    "gross_weight_kg": 4820.0,
+    "weighed_at": "2026-09-30T11:20:00+09:00",
+    "scale_description": "JA collection-point digital weighbridge"
+  },
+
+  "moisture": {
+    "percent": 13.8,
+    "measured_with": "Kett PM-8188 (borrowed from JA)",
+    "sample_bag_photo": "photo-20260930-11-moisture.jpg"
+  },
+
+  "grade_certificate": {
+    "present": true,
+    "class": "1等",
+    "inspector": "JA Tosu collection",
+    "certificate_photo": "photo-20260930-12-grade.jpg"
+  },
+
+  "photos": {
+    "combine_display": "photo-20260930-05-display.jpg",
+    "truck_scale_printout": "photo-20260930-07-scaleprint.jpg",
+    "field_edge": "photo-20260930-15-edge.jpg"
+  },
+
+  "gps_pins": [
+    { "corner": "NW", "lat": 42.701852, "lon": 142.407121, "accuracy_m": 3.5 },
+    { "corner": "NE", "lat": 42.701994, "lon": 142.407894, "accuracy_m": 4.2 },
+    { "corner": "SW", "lat": 42.701113, "lon": 142.407180, "accuracy_m": 3.9 }
+  ],
+
+  "operator_notes": "Combine finished the north strip; dust dry; no rain overnight."
+}
+
+
