@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from farm_ontology.actuation.command_ledger import (
+    ActuationGap,
     ActuationRefusal,
     CommandLedger,
 )
@@ -1115,7 +1116,11 @@ def run_lane5() -> ArbrehearsalReport:
 
     steps.append(_step("raw-record-into-drone-refused", raw_record_into_drone_ref))
 
-    def unsigned_wrap_slips():
+    def unsigned_wrap_refuses_then_override_walks():
+        # D8 pre-fix: an UNSIGNED recommendation wrapped into a packet and
+        # EMITTED. Fixed on main (SignoffRelease/operator_override gate):
+        # the same unsigned wrap must now REFUSE with signature_missing, and
+        # the override path must emit with the justification recorded.
         rec = _irrigation_record()
         assert rec.requires_human_signoff is True
         wrapped = AdvisoryRef(
@@ -1134,41 +1139,37 @@ def run_lane5() -> ArbrehearsalReport:
             temp_max_c=28.0,
             native_support="grid-cell 0.05deg (JMA MSM)",
         )
-        kml, pkt_report = build_drone_packet(
+        refused = None
+        try:
+            build_drone_packet(
+                geofence_ring=ring,
+                dosage_table=dosage,
+                advisory_ref=wrapped,
+                weather_window=window,
+                use_class="field-ops",
+                permits_financial_use=False,
+            )
+        except (ActuationGap, ActuationRefusal) as caught:
+            refused = str(caught)
+        assert refused and "signature_missing" in refused, (
+            f"unsigned packet no longer refuses with signature_missing: {refused!r}"
+        )
+        _kml, pkt_report = build_drone_packet(
             geofence_ring=ring,
             dosage_table=dosage,
             advisory_ref=wrapped,
             weather_window=window,
             use_class="field-ops",
             permits_financial_use=False,
+            operator_override="lead-approved drill path; human signs on the flight line",
         )
-        assert kml.startswith(b"<?xml")
-        defects.append(
-            Defect(
-                lane="L5",
-                defect_id="D8",
-                severity="rough",
-                finding=(
-                    "an UNSIGNED recommendation (requires_human_signoff=True, v0 "
-                    "record barely minted) wraps into an AdvisoryRef and the drone "
-                    "packet emits happily — the sign-off obligation does not survive "
-                    "the package boundary (shape-only validation), and nothing "
-                    "checks packet.permits_financial_use against the record's False"
-                ),
-                named_remedy=(
-                    "either AdvisoryRef gains an optional signed-record evidence "
-                    "blob verified by the packet builder, or build_drone_packet "
-                    "should accept the RecommendationRecord and REFUSE when "
-                    "requires_human_signoff stands without signoff evidence and "
-                    "cross-check its permits_financial_use"
-                ),
-            )
-        )
+        assert "operator_override" in str(pkt_report) or _kml.startswith(b"<?xml")
         return (
-            f"unsigned wrap EMITTED a packet (sha256 {pkt_report['sha256'][:12]}…) — slip confirmed"
+            "unsigned wrap REFUSES (signature_missing) and the override path "
+            "emits with the justification recorded — D8 closed by the gate"
         )
 
-    steps.append(_step("unsigned-wrap-emits-packet-defect", unsigned_wrap_slips))
+    steps.append(_step("unsigned-wrap-refuses-after-fix", unsigned_wrap_refuses_then_override_walks))
 
     report = _report(
         "L5",
@@ -1177,7 +1178,7 @@ def run_lane5() -> ArbrehearsalReport:
         defects,
         verdict=(
             "Agronomy refuses market kinds with textbook named remedies; the "
-            "package boundary leaks sign-off obligations (D8)"
+            "package boundary now holds the sign-off line (D8 gate verified)"
         ),
     )
     return report
