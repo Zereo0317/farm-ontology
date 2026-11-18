@@ -1,0 +1,42 @@
+{
+  "driver": "python-stdlib-threads",
+  "base_url": "https://farm-seges-ai-451400509859.asia-east1.run.app",
+  "generated_at": "2026-11-18T13:27:50.799951+00:00",
+  "vu": 50,
+  "seconds": 300,
+  "requests": 24909,
+  "errors": 0,
+  "error_rate_pct": 0.0,
+  "p50_ms": 265,
+  "p95_ms": 840,
+  "p99_ms": 1228,
+  "per_route": {
+    "/livez": {
+      "count": 15002,
+      "p50_ms": 259,
+      "p95_ms": 806,
+      "p99_ms": 1116,
+      "error_pct": 0.0
+    },
+    "/farm/ingest-status": {
+      "count": 7434,
+      "p50_ms": 265,
+      "p95_ms": 812,
+      "p99_ms": 1120,
+      "error_pct": 0.0
+    },
+    "/farm/weather": {
+      "count": 2473,
+      "p50_ms": 657,
+      "p95_ms": 1215,
+      "p99_ms": 1658,
+      "error_pct": 0.0
+    }
+  },
+  "honest_bar": {
+    "p95_lt_400ms": false,
+    "errors_lt_05pct": true,
+    "breaching": true
+  },
+  "first_errors": []
+}
