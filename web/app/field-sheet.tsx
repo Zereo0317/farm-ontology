@@ -24,12 +24,18 @@ function numberOrNull(value: string): number | null {
   return parsed;
 }
 
-export function FieldSheet() {
+type FieldSheetProps = {
+  /** Prefilled from the /farm/<lat>,<lon> "open this farm" deep link. */
+  initialLat?: string;
+  initialLon?: string;
+};
+
+export function FieldSheet({ initialLat = "", initialLon = "" }: FieldSheetProps) {
   const [locale, setLocale] = useState<Locale>("zh-TW");
   const [status, setStatus] = useState<Status | null>(null);
   const [listed, setListed] = useState<Listed>({ observations: [], notes: [] });
-  const [lat, setLat] = useState("");
-  const [lon, setLon] = useState("");
+  const [lat, setLat] = useState(initialLat);
+  const [lon, setLon] = useState(initialLon);
   const [locateMsg, setLocateMsg] = useState("");
   const [obsMsg, setObsMsg] = useState("");
   const [obsBad, setObsBad] = useState(false);
