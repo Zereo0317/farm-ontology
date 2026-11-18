@@ -1,6 +1,13 @@
+# ── Python ────────────────────────────────────────────────────────────────
+# `__pycache__/` has no leading slash: git matches it at ANY depth
+# (farm_ontology/*/…, pipelines/, perf/, tests/ — all confirmed in practice).
 __pycache__/
 *.py[cod]
 .venv/
+
+# ── Secrets & credentials: never commit ───────────────────────────────────
+# Values live in Secret Manager (Planet-labs, web-access-token). Runbooks in
+# deploy/ write secrets from bytes files, never pipes (CRLF incident).
 .env
 .env.*
 *.pem
@@ -9,6 +16,38 @@ __pycache__/
 application_default_credentials.json
 *planet-api-key*
 api-key.txt
+
+# ── Field ops output (device-local, written by the web page + fieldkit) ───
 field-notes/
+
+# ── Web app build & deps (reproducible via web/package-lock.json `npm ci`) ─
 web/node_modules/
 web/.next/
+web/out/
+
+# ── Local build / audit / load-test artefacts ─────────────────────────────
+# Staged Cloud Build context produced by web/tools/web-image-build.ps1:
+.dockerbuild-web/
+# Browser audit scratch (Playwright CLI sessions):
+.playwright-cli/
+# perf/run-load-test.ps1 regenerates these fixed-name files on every run
+# (machine output). Deliberately tracked evidence — the dated
+# k6-metrics-*.json / after-/baseline- / verdict-k6.json snapshots behind
+# perf/RESILIENCE-REPORT*.md — predates these patterns and stays tracked
+# (gitignore never applies to files git already tracks).
+perf/k6-metrics.json
+perf/verdict-*.json
+perf/results-stdlib-*.json
+perf/load-test-*.log
+# k6 binaries resolve under %TEMP%\k6-bin (Find-K6 in perf/run-load-test.ps1),
+# OUTSIDE this repo — no pattern needed here.
+
+# ── Packaging / staging tars ──────────────────────────────────────────────
+*.tgz
+
+# ── Editors & OS junk ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
