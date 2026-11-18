@@ -45,7 +45,7 @@ export function negotiateLocale(acceptLanguage: string | null): Supported {
   return "en";
 }
 
-const PUBLIC_PREFIXES = ("/login|/api/access|/livez|/report|/api/scene-thumb").split("|");
+const PUBLIC_PREFIXES = ("/login|/api/access|/livez|/report|/api/scene-thumb|/reports|/icon.svg").split("|");
 
 export const config = {
   // every page including /login participates, so first-visit language

@@ -34,6 +34,9 @@ WORKDIR /app/web
 # output: "standalone" emits server.js + its own node_modules trace.
 COPY --from=builder --chown=node:node /app/web/.next/standalone ./
 COPY --from=builder --chown=node:node /app/web/.next/static ./.next/static
+# public/ (source-report copies linked from the investor tab) is served by
+# next start relative to the standalone dir — it is NOT part of standalone output.
+COPY --from=builder --chown=node:node /app/web/public ./public
 # The record bridge resolves the repo root one level above cwd (/app).
 COPY --chown=root:root farm_ontology/ /app/farm_ontology/
 COPY --chown=root:root vocabulary-manifest.json /app/vocabulary-manifest.json
