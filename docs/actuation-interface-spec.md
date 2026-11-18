@@ -8,6 +8,14 @@ Everything below describes code that exists in
 `farm_ontology/actuation/` on this branch; nothing here touches a real
 machine, and no module in the package opens a network connection.
 
+**Rev 2 — fix sprint `ws/fix/actuation-ledger` (2026-11-18):** D9 BLOCKER
+fixed — `verify_chain()` had consulted `_TRANSITION_FROM["void"]` (KeyError)
+before the void special-case; replay now dispatches void first, refuses
+void-of-unproposed-command, and survives a full lifecycle containing a
+mid-HALT void (disk roundtrip proven). D8 rough seam closed — drone packet
+emission now requires a human signoff release or an explicit recorded
+operator override (§5).
+
 ---
 
 ## 0. Standing rules inherited from the record
@@ -193,6 +201,17 @@ weather_window, use_class, permits_financial_use, designator="")` →
   `window_start_utc`/`window_end_utc` (aware, end > start), `wind_max_ms` >
   0, `rain_free_hours` ≥ 0, `temp_min_c` ≤ `temp_max_c`,
   `native_support` stamp of the weather data itself.
+- **SIGNOFF GATE (D8, Rev 2)**: the packet refuses to fly on an UNSIGNED
+  recommendation. `AdvisoryRef.requires_human_signoff` defaults **True**;
+  while it stands, emission demands either `signoff_release` — a
+  `SignoffRelease(signer, signed_at, signature, recommendation_id)` whose
+  `recommendation_id` binds it to EXACTLY the cited recommendation (a
+  mismatch refuses with `signoff_target_mismatch`) — or an explicit
+  `operator_override="<justification>"`, which is recorded VERBATIM into the
+  packet payload (`operator_override=…`, `signature=
+  none-operator-override-recorded`). Neither given ⇒ refusal
+  `signature_missing`. A malformed supplied release refuses loudly
+  (`signoff_release_invalid`) and is not silently rescued by an override.
 - **All-or-nothing refusal**: the builder collects EVERY gap across all six
   inputs and refuses with one verbose refusal (`drone_packet_inputs_incomplete`)
   enumerating them — a partially-filled packet is a field hazard, not a
@@ -215,7 +234,8 @@ Raised by every public function in the package; never a fake pass.
 | `partfield_id_missing`, `task_id_missing` | TaskSet identity missing |
 | `grid_ill_formed`, `grid_missing_field`, `grid_cell_nonpositive`, `grid_shape_nonpositive`, `grid_origin_out_of_range`, `grid_codes_shape`, `grid_code_ill_formed` | gridded prescription malformations |
 | `taskset_bytes_missing`, `taskset_zip_unreadable` | validator input unusable |
-| `advisory_reference_id_missing`, `advisory_issuer_missing`, `advisory_issued_at_missing`, `advisory_issued_at_unparsable`, `advisory_issued_at_naive`, `advisory_contract_missing` | AdvisoryRef malformation |
+| `advisory_reference_id_missing`, `advisory_issuer_missing`, `advisory_issued_at_missing`, `advisory_issued_at_unparsable`, `advisory_issued_at_naive`, `advisory_contract_missing`, `advisory_signoff_flag_not_boolean` | AdvisoryRef malformation |
+| `signoff_signer_missing`, `signoff_signature_missing`, `signoff_signed_at_missing`, `signoff_signed_at_unparsable`, `signoff_signed_at_naive`, `signoff_recommendation_id_missing` | SignoffRelease malformation (Rev 2) |
 | `weather_window_missing` + per-field window gaps | weather window unusable |
 | `geofence_ring` (+ indexed variants) | KML fence unusable |
 | `command_id_missing`, `unknown_command` | ledger addressing errors |
@@ -237,6 +257,10 @@ Raised by every public function in the package; never a fake pass.
 | `halt_already_active` / `halt_not_active` | HALT idempotence |
 | `product_wrong_for_operation` | e.g. fungicide inside IRRIG |
 | `drone_packet_inputs_incomplete` | the aggregate all-gaps packet refusal |
+| `signature_missing` | unsigned recommendation, no release AND no override given (Rev 2, D8) |
+| `signoff_release_invalid` | a supplied SignoffRelease failed shape validation (Rev 2) |
+| `signoff_target_mismatch` | release binds a different recommendation than the packet cites (Rev 2) |
+| `operator_override_ill_formed` | override given but not a justification string (Rev 2) |
 | `taskset_structure_invalid` (validator refusals incl. `taskset_xml_unparsable`) | offline structural validation failed; every problem enumerated |
 | `ledger_verify_failed` | loaded chain failed integrity; never silently accepted |
 

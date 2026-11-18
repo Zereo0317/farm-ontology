@@ -5,11 +5,12 @@ import unittest
 from datetime import datetime, timezone
 from xml.etree import ElementTree as ET
 
-from farm_ontology.actuation.command_ledger import ActuationRefusal
+from farm_ontology.actuation.command_ledger import ActuationGap, ActuationRefusal
 from farm_ontology.actuation.drone_packet import (
     KML_NAMESPACE,
     RECOMMENDATION_CONTRACT,
     AdvisoryRef,
+    SignoffRelease,
     build_drone_packet,
     weather_window_gaps,
 )
@@ -31,6 +32,12 @@ _ADVISORY = AdvisoryRef(
     issuer="agronomy-engine-fixture",
     issued_at="2027-01-15T08:00:00+00:00",
 )
+_RELEASE = SignoffRelease(
+    signer="risk-owner",
+    signed_at="2027-01-15T12:00:00+00:00",
+    signature="SIG-ACK/REC-2027-0001/seed",
+    recommendation_id="REC-2027-0001",
+)
 
 
 def _packet(**overrides):
@@ -41,6 +48,7 @@ def _packet(**overrides):
         weather_window=dict(_WINDOW),
         use_class="field-ops",
         permits_financial_use=False,
+        signoff_release=_RELEASE,
     )
     kwargs.update(overrides)
     return build_drone_packet(**kwargs)
@@ -183,6 +191,133 @@ class AdvisoryRefTests(unittest.TestCase):
         gaps = weather_window_gaps(window)
         self.assertEqual(len(gaps), 1)
         self.assertIn("rain_free_hours", gaps[0])
+
+
+class SignoffGateTests(unittest.TestCase):
+    """D8 regressions (ws/fix/actuation-ledger): no packet on an UNSIGNED rec."""
+
+    def test_unsigned_recommendation_refused_naming_the_signature(self):
+        with self.assertRaises(ActuationRefusal) as ctx:
+            _packet(signoff_release=None)
+        self.assertEqual(ctx.exception.refusal, "signature_missing")
+        detail = ctx.exception.detail
+        self.assertIn("REC-2027-0001", detail)
+        self.assertIn("requires_human_signoff=True", detail)
+        self.assertIn("UNSIGNED", detail)
+        self.assertIn("SignoffRelease", ctx.exception.remediation)
+        self.assertIn("operator_override", ctx.exception.remediation)
+
+    def test_override_path_emits_with_override_recorded_into_payload(self):
+        justification = (
+            "operator re-checked window after stall report FL-42; takes "
+            "responsibility for the unsigned rec"
+        )
+        kml, report = _packet(signoff_release=None, operator_override=justification)
+        text = kml.decode("utf-8")
+        self.assertIn(f"operator_override={justification}", text)
+        self.assertIn("signature=none-operator-override-recorded", text)
+        self.assertIsNone(report["signoff"])
+        self.assertEqual(report["operator_override"], justification)
+
+    def test_whitespace_override_counts_as_absent(self):
+        with self.assertRaises(ActuationRefusal) as ctx:
+            _packet(signoff_release=None, operator_override="   ")
+        self.assertEqual(ctx.exception.refusal, "signature_missing")
+
+    def test_non_string_override_refused(self):
+        for bad in (True, 1, ["because"]):
+            with self.subTest(override=bad):
+                with self.assertRaises(ActuationRefusal) as ctx:
+                    _packet(signoff_release=None, operator_override=bad)
+                self.assertEqual(ctx.exception.refusal, "operator_override_ill_formed")
+
+    def test_release_binding_enforced_against_cited_recommendation(self):
+        stranger = SignoffRelease(
+            signer="risk-owner",
+            signed_at="2027-01-15T12:00:00+00:00",
+            signature="SIG-ACK/other/seed",
+            recommendation_id="REC-2026-9999",
+        )
+        with self.assertRaises(ActuationRefusal) as ctx:
+            _packet(signoff_release=stranger)
+        self.assertEqual(ctx.exception.refusal, "signoff_target_mismatch")
+        self.assertIn("REC-2027-0001", ctx.exception.detail)
+
+    def test_malformed_release_refused_loudly(self):
+        broken = SignoffRelease(
+            signer="  ",
+            signed_at="2027-01-15T12:00:00+00:00",
+            signature="SIG-ACK/x",
+            recommendation_id="REC-2027-0001",
+        )
+        with self.assertRaises(ActuationRefusal) as ctx:
+            _packet(signoff_release=broken)
+        self.assertEqual(ctx.exception.refusal, "signoff_release_invalid")
+        self.assertIn("signer", ctx.exception.detail)
+        # override must not silently rescue a malformed release the caller intended
+        with self.assertRaises(ActuationRefusal):
+            _packet(signoff_release=broken, operator_override="oops")
+
+    def test_release_evidence_travels_into_payload_and_report(self):
+        kml, report = _packet()
+        text = kml.decode("utf-8")
+        self.assertIn("signoff=risk-owner@2027-01-15T12:00:00+00:00", text)
+        self.assertIn("signoff_recommendation=REC-2027-0001", text)
+        self.assertIn("signoff_signature=SIG-ACK/REC-2027-0001/seed", text)
+        self.assertEqual(
+            report["signoff"],
+            {
+                "signer": "risk-owner",
+                "signed_at": "2027-01-15T12:00:00+00:00",
+                "signature": "SIG-ACK/REC-2027-0001/seed",
+                "recommendation_id": "REC-2027-0001",
+            },
+        )
+        self.assertEqual(report["operator_override"], "")
+
+    def test_upstream_signed_advisory_emits_without_release_or_override(self):
+        signed_upstream = AdvisoryRef(
+            reference_id="REC-2027-0002",
+            issuer="agronomy-engine-fixture",
+            issued_at="2027-01-15T08:00:00+00:00",
+            requires_human_signoff=False,
+        )
+        kml, report = _packet(
+            advisory_ref=signed_upstream, signoff_release=None
+        )
+        self.assertIn(
+            "requires_human_signoff=false (recommendation signed upstream)",
+            kml.decode("utf-8"),
+        )
+        self.assertIsNone(report["signoff"])
+        self.assertEqual(report["operator_override"], "")
+        self.assertIs(report["advisory"]["requires_human_signoff"], False)
+
+    def test_signoff_flag_must_be_boolean(self):
+        sloppy = AdvisoryRef(
+            reference_id="REC-2027-0003",
+            issuer="agronomy-engine-fixture",
+            issued_at="2027-01-15T08:00:00+00:00",
+            requires_human_signoff="yes",
+        )
+        with self.assertRaises(ActuationRefusal) as ctx:
+            _packet(advisory_ref=sloppy, signoff_release=None)
+        self.assertIn("advisory_signoff_flag_not_boolean", ctx.exception.detail)
+
+    def test_signoff_release_shape_gaps(self):
+        cases = [
+            (SignoffRelease("", "2027-01-15T12:00:00+00:00", "sig", "R"), "signoff_signer_missing"),
+            (SignoffRelease("o", "2027-01-15T12:00:00+00:00", "", "R"), "signoff_signature_missing"),
+            (SignoffRelease("o", "", "sig", "R"), "signoff_signed_at_missing"),
+            (SignoffRelease("o", "not-a-date", "sig", "R"), "signoff_signed_at_unparsable"),
+            (SignoffRelease("o", "2027-01-15T12:00:00", "sig", "R"), "signoff_signed_at_naive"),
+            (SignoffRelease("o", "2027-01-15T12:00:00+00:00", "sig", "  "), "signoff_recommendation_id_missing"),
+        ]
+        for release, gap in cases:
+            with self.subTest(gap=gap):
+                with self.assertRaises(ActuationGap) as ctx:
+                    release.validated()
+                self.assertEqual(ctx.exception.gap, gap)
 
 
 if __name__ == "__main__":

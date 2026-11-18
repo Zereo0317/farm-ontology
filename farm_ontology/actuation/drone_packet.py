@@ -22,6 +22,14 @@ Emission rules (fail closed):
   perfectly respectable value and travels honestly.
 - The emitted KML stamps both values verbatim in its metadata, so the flying
   sheet self-describes its licence posture.
+- SIGNOFF GATE (D8 fix, ws/fix/actuation-ledger): a packet may not fly on an
+  UNSIGNED recommendation. ``AdvisoryRef.requires_human_signoff`` defaults
+  True; while it stands, emission demands EITHER ``signoff_release`` (a
+  ``SignoffRelease`` bound to exactly the cited recommendation) OR an
+  explicit ``operator_override`` justification string — and the override is
+  recorded VERBATIM into the packet payload. Unsigned and unreleased ⇒
+  refusal ``signature_missing`` naming what is missing; the engine proposes,
+  humans dispose.
 """
 
 from __future__ import annotations
@@ -39,6 +47,7 @@ __all__ = [
     "AdvisoryRef",
     "KML_NAMESPACE",
     "RECOMMENDATION_CONTRACT",
+    "SignoffRelease",
     "WEATHER_WINDOW_FIELDS",
     "build_drone_packet",
     "weather_window_gaps",
@@ -78,13 +87,17 @@ class AdvisoryRef:
     ``issuer`` names whoever produced it; ``issued_at`` is an injected,
     timezone-aware ISO-8601 instant (never ``now()``). ``contract`` names the
     record contract — defaulted to the roadmap WS3.5 shape so the pointer is
-    meaningful before the engine exists.
+    meaningful before the engine exists. ``requires_human_signoff`` defaults
+    True (engine proposes, human disposes): while True, packet emission
+    demands release or override evidence (see :class:`SignoffRelease`);
+    only a recommendation already signed upstream may declare False.
     """
 
     reference_id: str
     issuer: str
     issued_at: str
     contract: str = RECOMMENDATION_CONTRACT
+    requires_human_signoff: bool = True
 
     def validated(self) -> "AdvisoryRef":
         """Refuse an ill-formed advisory reference with a named gap."""
@@ -119,6 +132,12 @@ class AdvisoryRef:
                 "advisory_contract_missing",
                 "advisory_ref.contract must name the recommendation-record contract",
             )
+        if not isinstance(self.requires_human_signoff, bool):
+            raise ActuationGap(
+                "advisory_signoff_flag_not_boolean",
+                "advisory_ref.requires_human_signoff must be a real boolean; "
+                f"got {self.requires_human_signoff!r}",
+            )
         return self
 
     def to_dict(self) -> dict:
@@ -127,6 +146,75 @@ class AdvisoryRef:
             "issuer": self.issuer,
             "issued_at": self.issued_at,
             "contract": self.contract,
+            "requires_human_signoff": self.requires_human_signoff,
+        }
+
+
+@dataclass(frozen=True)
+class SignoffRelease:
+    """Signed-record acknowledgement releasing a recommendation for field use.
+
+    The D8 signoff evidence: a human ``signer``, an injected aware
+    ``signed_at`` instant, a non-empty ``signature`` (reference to the signed
+    acknowledgement record — the artefact that evidences the signing) and a
+    ``recommendation_id`` BINDING the release to exactly the recommendation
+    the packet cites. Shape is validated here; the signature's cryptography
+    and the agronomy behind the record are not (upstream concerns).
+    """
+
+    signer: str
+    signed_at: str
+    signature: str
+    recommendation_id: str
+
+    def validated(self) -> "SignoffRelease":
+        """Refuse an ill-formed release with a named gap."""
+        if not isinstance(self.signer, str) or self.signer.strip() == "":
+            raise ActuationGap(
+                "signoff_signer_missing", "signoff_release.signer is required"
+            )
+        if not isinstance(self.signature, str) or self.signature.strip() == "":
+            raise ActuationGap(
+                "signoff_signature_missing",
+                "signoff_release.signature must reference the signed "
+                "acknowledgement record",
+            )
+        if not isinstance(self.signed_at, str) or self.signed_at.strip() == "":
+            raise ActuationGap(
+                "signoff_signed_at_missing",
+                "signoff_release.signed_at must be an injected aware ISO-8601 "
+                "instant",
+            )
+        try:
+            moment = datetime.fromisoformat(self.signed_at)
+        except ValueError as exc:
+            raise ActuationGap(
+                "signoff_signed_at_unparsable",
+                f"signoff_release.signed_at {self.signed_at!r}: {exc}",
+            ) from exc
+        if moment.tzinfo is None or moment.utcoffset() is None:
+            raise ActuationGap(
+                "signoff_signed_at_naive",
+                "signoff_release.signed_at must carry a timezone (replay "
+                "determinism)",
+            )
+        if (
+            not isinstance(self.recommendation_id, str)
+            or self.recommendation_id.strip() == ""
+        ):
+            raise ActuationGap(
+                "signoff_recommendation_id_missing",
+                "signoff_release.recommendation_id must bind the release to a "
+                "recommendation id",
+            )
+        return self
+
+    def to_dict(self) -> dict:
+        return {
+            "signer": self.signer,
+            "signed_at": self.signed_at,
+            "signature": self.signature,
+            "recommendation_id": self.recommendation_id,
         }
 
 
@@ -246,13 +334,17 @@ def build_drone_packet(
     weather_window,
     use_class: str,
     permits_financial_use: bool,
+    signoff_release: "SignoffRelease | None" = None,
+    operator_override: str = "",
     designator: str = "",
 ) -> tuple[bytes, dict]:
     """Return ``(kml_bytes, report)`` or raise with the FULL gap list.
 
     The KML carries: the geofence polygon, one ``Data`` element per dosage
-    zone, the weather window, the advisory reference, and the two stamps
-    (``use_class``, ``permits_financial_use``) verbatim.
+    zone, the weather window, the advisory reference, the two stamps
+    (``use_class``, ``permits_financial_use``) verbatim, and the D8
+    signature evidence: either the bound ``signoff_release`` line or the
+    recorded ``operator_override`` justification.
     """
     gaps = _packet_gaps(
         geofence_ring=geofence_ring,
@@ -277,6 +369,65 @@ def build_drone_packet(
         )
     advisory = advisory_ref.validated()
 
+    # -- D8 signature gate: no packet flies on an unsigned recommendation ----
+    if not isinstance(operator_override, str):
+        raise ActuationRefusal(
+            "operator_override_ill_formed",
+            "operator_override must be the justification STRING to record into "
+            f"the packet payload (or ''); got {operator_override!r}",
+            "pass operator_override='<why this operator takes responsibility>'",
+        )
+    override = operator_override.strip()
+    sig_lines: list[str] = []
+    release_dict: dict | None = None
+    recorded_override = ""
+    if advisory.requires_human_signoff:
+        if signoff_release is not None:
+            try:
+                release = signoff_release.validated()
+            except ActuationGap as exc:
+                raise ActuationRefusal(
+                    "signoff_release_invalid",
+                    f"signoff_release unusable: {exc.detail}",
+                    exc.remediation
+                    or "pass a well-formed SignoffRelease(signer, signed_at, "
+                    "signature, recommendation_id)",
+                ) from exc
+            if release.recommendation_id.strip() != advisory.reference_id:
+                raise ActuationRefusal(
+                    "signoff_target_mismatch",
+                    f"signoff_release releases recommendation "
+                    f"{release.recommendation_id!r} but the packet cites "
+                    f"{advisory.reference_id!r}; a release binds exactly one "
+                    "recommendation",
+                    "sign the recommendation the packet actually cites",
+                )
+            release_dict = release.to_dict()
+            sig_lines = [
+                f"signoff={release.signer}@{release.signed_at}",
+                f"signoff_recommendation={release.recommendation_id}",
+                f"signoff_signature={release.signature}",
+            ]
+        elif override:
+            recorded_override = override
+            sig_lines = [
+                f"operator_override={override}",
+                "signature=none-operator-override-recorded",
+            ]
+        else:
+            raise ActuationRefusal(
+                "signature_missing",
+                f"recommendation {advisory.reference_id!r} carries "
+                "requires_human_signoff=True but NO signoff_release was "
+                "supplied and NO operator_override was given — refusing to "
+                "emit a drone packet on an UNSIGNED recommendation",
+                "pass signoff_release=SignoffRelease(...) bound to this "
+                "recommendation, or operator_override='<recorded "
+                "justification>'",
+            )
+    else:
+        sig_lines = ["requires_human_signoff=false (recommendation signed upstream)"]
+
     ET.register_namespace("", KML_NAMESPACE)
     kml = ET.Element(f"{{{KML_NAMESPACE}}}kml")
     document = ET.SubElement(kml, f"{{{KML_NAMESPACE}}}Document")
@@ -293,6 +444,7 @@ def build_drone_packet(
         "operator_notice=HUMAN-flown packet: the operator flies, this sheet "
         "prescribes. No autopilot link is created by farm-ontology.",
     ]
+    description_lines.extend(sig_lines)
     ET.SubElement(document, f"{{{KML_NAMESPACE}}}description").text = "\n".join(
         description_lines
     )
@@ -338,6 +490,8 @@ def build_drone_packet(
         "use_class": use_class.strip(),
         "permits_financial_use": permits_financial_use,
         "advisory": advisory.to_dict(),
+        "signoff": release_dict,
+        "operator_override": recorded_override,
         "geofence_points": len(geofence_ring),
         "dosage_zones": sorted(dosage_table),
         "weather_window": copy.deepcopy(dict(weather_window)),
