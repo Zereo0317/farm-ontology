@@ -2,35 +2,94 @@
 
 import { useEffect, useState } from "react";
 
+type Corner = "NW" | "NE" | "SE" | "SW" | "CENTRE";
+
 type Pin = {
-  corner: "NW" | "NE" | "SE" | "SW" | "CENTRE";
+  corner: Corner;
   lat: string;
   lon: string;
   accuracy: string;
   pinned: boolean;
 };
 
-const ORDER: Pin["corner"][] = ["NW", "NE", "SE", "SW", "CENTRE"];
+const ORDER: Corner[] = ["NW", "NE", "SE", "SW", "CENTRE"];
+const LOCALES = ["zh-TW", "zh-CN", "en", "ja", "th"] as const;
+type Lang = (typeof LOCALES)[number];
 
-const LABELS = {
+const LABELS: Record<
+  Lang,
+  {
+    title: string;
+    sub: string;
+    parcel: string;
+    note: string;
+    pinHere: string;
+    rePin: string;
+    accuracyNote: string;
+    save: string;
+    saving: string;
+    saved: (f: string) => string;
+    needAll: string;
+    noGeo: string;
+    locating: string;
+    dry: string;
+    areaKnown: (ha: string) => string;
+    corner: Record<Corner, string>;
+  }
+> = {
   "zh-TW": {
     title: "田界步行釘界",
-    sub: "站在每個角，按順序點「釘這個角」——手機會自動抓經緯度與精度",
-    parcel: "田區名稱（例如 豊糠-ハウス横）",
-    note: "備註（作物、備考；留空亦可）",
+    sub: "站在每個角，按順序點「釘這個角」——手機自動抓經緯度與精度",
+    parcel: "田區名稱（例：豊糠-ハウス横）",
+    note: "備註（作物等；可留空）",
     pinHere: "📌 釘這個角",
     rePin: "重新釘",
-    accuracyNote: "精度（公尺，手機顯示的數字）",
+    accuracyNote: "精度（公尺）",
     save: "💾 存入帳本",
     saving: "儲存中…",
-    saved: (f: string) => `已存入帳本：${f}`,
-    needAll: "先把四個角都釘完（中心選填）",
+    saved: (f) => `已存入帳本：${f}`,
+    needAll: "先把四個角釘完（中心選填）",
     noGeo: "這台裝置沒有定位功能",
     locating: "讀取位置中…",
     dry: "乾跑（不寫入帳本）",
     corner: { NW: "西北角 NW", NE: "東北角 NE", SE: "東南角 SE", SW: "西南角 SW", CENTRE: "中心（選填）" },
-    areaKnown: (ha: string) => `估算面積 ≈ ${ha} ha（鞋帶法，含緯度修正）`,
-    accuracyClosed: (m: string) => `精度狀態：閉合四邊形、最差角 ±${m} m`,
+    areaKnown: (ha) => `估算面積 ≈ ${ha} ha（鞋帶法，緯度修正）`,
+  },
+  "zh-CN": {
+    title: "田界步行打点",
+    sub: "站在每个角，按顺序点「钉这个角」——手机自动抓经纬度与精度",
+    parcel: "田块名称（例：豊糠-ハウス横）",
+    note: "备注（作物等；可留空）",
+    pinHere: "📌 钉这个角",
+    rePin: "重新打点",
+    accuracyNote: "精度（米）",
+    save: "💾 存入台账",
+    saving: "保存中…",
+    saved: (f) => `已存入台账：${f}`,
+    needAll: "先把四个角打完（中心选填）",
+    noGeo: "这台设备没有定位功能",
+    locating: "读取位置中…",
+    dry: "空跑（不写入台账）",
+    corner: { NW: "西北角 NW", NE: "东北角 NE", SE: "东南角 SE", SW: "西南角 SW", CENTRE: "中心（选填）" },
+    areaKnown: (ha) => `估算面积 ≈ ${ha} ha（鞋带法，纬度修正）`,
+  },
+  en: {
+    title: "Boundary walk",
+    sub: "Stand at each corner and tap “Pin this corner” — the phone grabs lat/lon and accuracy for you",
+    parcel: "Parcel name (e.g. Toyokinu-house)",
+    note: "Note (crop, remarks; optional)",
+    pinHere: "📌 Pin this corner",
+    rePin: "Re-pin",
+    accuracyNote: "Accuracy (metres)",
+    save: "💾 Save to ledger",
+    saving: "Saving…",
+    saved: (f) => `Saved to the ledger: ${f}`,
+    needAll: "Pin all four corners first (centre optional)",
+    noGeo: "This device has no geolocation",
+    locating: "Reading position…",
+    dry: "Dry run (nothing written)",
+    corner: { NW: "Northwest NW", NE: "Northeast NE", SE: "Southeast SE", SW: "Southwest SW", CENTRE: "Centre (optional)" },
+    areaKnown: (ha) => `Estimated area ≈ ${ha} ha (shoelace, latitude-corrected)`,
   },
   ja: {
     title: "ほ場境界ウォーク",
@@ -39,21 +98,36 @@ const LABELS = {
     note: "メモ（作目など。空欄可）",
     pinHere: "📌 このかどを記録",
     rePin: "取り直す",
-    accuracyNote: "精度（メートル、端末表示の数字）",
+    accuracyNote: "精度（メートル）",
     save: "💾 台帳へ保存",
     saving: "保存中…",
-    saved: (f: string) => `台帳に保存しました：${f}`,
+    saved: (f) => `台帳に保存しました：${f}`,
     needAll: "まず4かどを記録してください（中心は任意）",
     noGeo: "この端末には位置情報がありません",
     locating: "位置を取得中…",
     dry: "ドライラン（台帳に書き込まない）",
     corner: { NW: "北西かど NW", NE: "北東かど NE", SE: "南東かど SE", SW: "南西かど SW", CENTRE: "中心（任意）" },
-    areaKnown: (ha: string) => `推定面積 ≈ ${ha} ha（鞋帯法・緯度補正付き）`,
-    accuracyClosed: (m: string) => `精度状態：閉四角形、最悪かど ±${m} m`,
+    areaKnown: (ha) => `推定面積 ≈ ${ha} ha（鞋帯法・緯度補正付き）`,
   },
-} as const;
-
-type Lang = keyof typeof LABELS;
+  th: {
+    title: "เดินสำรวจขอบแปลง",
+    sub: "ยืนที่มุมแต่ละมุมแล้วกด “ปักหมุดมุมนี้” —— มือถือจะดึงพิกัดและความแม่นยำให้เอง",
+    parcel: "ชื่อแปลง (เช่น Toyokinu-house)",
+    note: "โน้ต (พืชที่ปลูก ฯลฯ; เว้นได้)",
+    pinHere: "📌 ปักหมุดมุมนี้",
+    rePin: "ปักใหม่",
+    accuracyNote: "ความแม่นยำ (เมตร)",
+    save: "💾 บันทึกลงบัญชี",
+    saving: "กำลังบันทึก…",
+    saved: (f) => `บันทึกลงบัญชีแล้ว: ${f}`,
+    needAll: "ปักครบสี่มุมก่อน (ตรงกลางเลือกได้)",
+    noGeo: "อุปกรณ์นี้ไม่มีระบุตำแหน่ง",
+    locating: "กำลังอ่านตำแหน่ง…",
+    dry: "ซ้อมรัน (ไม่เขียนลงบัญชี)",
+    corner: { NW: "มุมตะวันตกเฉียงเหนือ NW", NE: "มุมตะวันออกเฉียงเหนือ NE", SE: "มุมตะวันออกเฉียงใต้ SE", SW: "มุมตะวันตกเฉียงใต้ SW", CENTRE: "ตรงกลาง (เลือกได้)" },
+    areaKnown: (ha) => `พื้นที่ประมาณ ≈ ${ha} ha (วิธีเชือกเงื่อน แก้ตามละติจูด)`,
+  },
+};
 
 export function BoundaryWalker() {
   const [lang, setLang] = useState<Lang>("zh-TW");
@@ -70,10 +144,17 @@ export function BoundaryWalker() {
 
   useEffect(() => {
     const saved = document.cookie.match(/farm-locale=([^;]+)/)?.[1];
-    if (saved === "ja") setLang("ja");
+    if ((LOCALES as readonly string[]).includes(saved ?? "")) setLang(saved as Lang);
   }, []);
-  const t = LABELS[lang];
 
+  useEffect(() => {
+    document.documentElement.lang = { "zh-TW": "zh-Hant-TW", "zh-CN": "zh-Hans-CN", en: "en", ja: "ja", th: "th" }[
+      lang
+    ];
+    document.cookie = `farm-locale=${encodeURIComponent(lang)}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
+  }, [lang]);
+
+  const t = LABELS[lang];
   const cornersDone = pins.filter((p) => p.corner !== "CENTRE" && p.pinned).length;
 
   function pin(index: number) {
@@ -147,7 +228,7 @@ export function BoundaryWalker() {
         body: JSON.stringify(body),
       });
       const doc = await response.json();
-      if (!response.ok) throw new Error(doc.error || doc.gap?.reason || "save failed");
+      if (!response.ok) throw new Error(doc.error || "save failed");
       setResult({
         file: doc.file,
         areaHa: doc.walk?.area_estimate_ha ?? null,
@@ -164,6 +245,13 @@ export function BoundaryWalker() {
 
   return (
     <section className="walk">
+      <div className="langs" role="group" aria-label="language">
+        {LOCALES.map((l) => (
+          <button key={l} type="button" aria-pressed={l === lang} onClick={() => setLang(l)}>
+            {l === "zh-TW" ? "繁體" : l === "zh-CN" ? "简体" : l === "en" ? "EN" : l === "ja" ? "日本語" : "ไทย"}
+          </button>
+        ))}
+      </div>
       <p className="kicker">{t.title}</p>
       <p className="sub">{t.sub}</p>
 
@@ -222,6 +310,26 @@ export function BoundaryWalker() {
           padding: 1.1rem 1.15rem;
           margin: 1.5rem 0;
           background: #fffdf8;
+        }
+        .langs {
+          display: flex;
+          gap: 0.25rem;
+          margin: 0 -0.6rem 0.9rem;
+          flex-wrap: wrap;
+        }
+        .langs button {
+          border: 0;
+          background: transparent;
+          padding: 0.35rem 0.55rem;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          cursor: pointer;
+          opacity: 0.5;
+        }
+        .langs button[aria-pressed="true"] {
+          opacity: 1;
+          background: #eef4ea;
+          font-weight: 600;
         }
         .walk .sub {
           font-size: 0.85rem;
