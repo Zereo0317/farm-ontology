@@ -1,0 +1,42 @@
+{
+  "_readme": " PRINT THIS OR READ IT OVER THE PHONE — the founder fills the nulls. Every key may stay null; leave what you didn't witness as null. Dates: YYYY-MM-DD. Timestamps: ISO-8601 with timezone (+09:00 for Japan). The parcel_iri line is PRE-PRINTED by the agent before the visit. ",
+  "_version": "harvest-truth-v1",
+
+  "template": "harvest-truth-v1",
+
+  "parcel_iri": null,
+
+  "collection_date": null,
+
+  "dictated_over_phone": null,
+
+  "weigh_ticket": {
+    "ticket_number": null,
+    "gross_weight_kg": null,
+    "weighed_at": null,
+    "scale_description": null
+  },
+
+  "moisture": {
+    "percent": null,
+    "measured_with": null,
+    "sample_bag_photo": null
+  },
+
+  "grade_certificate": {
+    "present": null,
+    "class": null,
+    "inspector": null,
+    "certificate_photo": null
+  },
+
+  "photos": {
+    "combine_display": null,
+    "truck_scale_printout": null,
+    "field_edge": null
+  },
+
+  "gps_pins": [],
+
+  "operator_notes": null
+}

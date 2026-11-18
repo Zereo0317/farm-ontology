@@ -1,0 +1,48 @@
+{
+  "_readme": "EXAMPLE filled bundle demonstrating a predicted-vs-actual MISS: the combine ran 28 days past the model's R8 (or the model is late). Self-typed at the kitchen table (not dictated). Four pins, one without a stated screen accuracy.",
+  "_version": "harvest-truth-v1",
+
+  "template": "harvest-truth-v1",
+
+  "parcel_iri": "observation/boundary/demo-not-a-real-farm",
+
+  "collection_date": "2026-10-25",
+
+  "dictated_over_phone": false,
+
+  "weigh_ticket": {
+    "ticket_number": "T-251025-114",
+    "gross_weight_kg": 5110.0,
+    "weighed_at": "2026-10-25T15:45:00+09:00",
+    "scale_description": "truck-bed portable scale at the shed"
+  },
+
+  "moisture": {
+    "percent": 12.1,
+    "measured_with": "sample-bag-for-lab",
+    "sample_bag_photo": "photo-20261025-02-bag.jpg"
+  },
+
+  "grade_certificate": {
+    "present": false,
+    "class": null,
+    "inspector": null,
+    "certificate_photo": null
+  },
+
+  "photos": {
+    "combine_display": "photo-20261025-01-display.jpg",
+    "truck_scale_printout": null,
+    "field_edge": "photo-20261025-03-edge.jpg"
+  },
+
+  "gps_pins": [
+    { "corner": "NW", "lat": 42.701852, "lon": 142.407121, "accuracy_m": 5.0 },
+    { "corner": "NE", "lat": 42.701994, "lon": 142.407894, "accuracy_m": null },
+    { "corner": "SW", "lat": 42.701113, "lon": 142.407180, "accuracy_m": 4.0 },
+    { "corner": "SE", "lat": 42.701090, "lon": 142.407871, "accuracy_m": 6.5 }
+  ],
+
+  "operator_notes": "Waited for a dryer forecast window; stalks lodged on the wind side."
+}
+
