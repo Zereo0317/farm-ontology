@@ -162,7 +162,22 @@ function parseLicences(raw: unknown): Extract<LiveLedger, { ok: true }>["licence
   };
 }
 
+// Locale switching used to re-run the three backend fetches on EVERY page
+// render (server RPC), which made each language click take seconds and feel
+// broken. Cache the snapshot server-side: one live pull per TTL, every
+// subsequent load/locale switch serves instantly from memory.
+let ledgerCache: { at: number; data: LiveLedger } | null = null;
+const LEDGER_TTL_MS = 60_000;
+
 export const getLiveLedger = createServerFn({ method: "GET" }).handler(async (): Promise<LiveLedger> => {
+  const now = Date.now();
+  if (ledgerCache && now - ledgerCache.at < LEDGER_TTL_MS) return ledgerCache.data;
+  const data = await pullLiveLedger();
+  ledgerCache = { at: now, data };
+  return data;
+});
+
+async function pullLiveLedger(): Promise<LiveLedger> {
   const fetchedAt = new Date().toISOString();
   const [farmRaw, weatherRaw, licenceRaw] = await Promise.all([
     pull("/farm"),
@@ -178,4 +193,4 @@ export const getLiveLedger = createServerFn({ method: "GET" }).handler(async ():
     weather: parseWeather(weatherRaw),
     licences: parseLicences(licenceRaw),
   };
-});
+}

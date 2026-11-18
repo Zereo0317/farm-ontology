@@ -1,13 +1,13 @@
 import type { Copy } from "@/lib/copy-types";
 
 export const ja: Copy = {
-  metaTitle: "すべての農地データに、生産証明書が付いてくる — Farm Ontology",
+  metaTitle: "すべての農地データに、生産証明書が付いてくる — Seges",
   metaDescription:
     "衛星・気象・センサー・ライセンスを、改ざん不能な台帳に。田んぼを読み、リスクを読み、天気が動く前に動く。ここでは何も発明しません。",
-  startMetaTitle: "無料でほ場の記録を始める — Farm Ontology",
+  startMetaTitle: "無料でほ場の記録を始める — Seges",
   startMetaDescription:
     "ほ場を釘打ちし、生産証明書付きの最初の観測を発行する。およそ3分。カード不要。この端末に書き、本番台帳には書きません。",
-  reportMetaTitle: "5地域の実測レポート — Farm Ontology",
+  reportMetaTitle: "5地域の実測レポート — Seges",
   reportMetaDescription:
     "日高・十勝・上川・根室・庄内。2026-11-18 実測。致命的欠陥はゼロ。北海道の四産地の成熟判定は、公開品種暦の ±15% 以内。",
   measuredLabel: "実測",
@@ -83,7 +83,7 @@ export const ja: Copy = {
   },
   trust: {
     title: "実際に測ったこと",
-    lede: "2026-11-18。予測ではありません。公表されていない数字は、このページに置きません。",
+    lede: "予測ではありません。公表されていない数字は、このページに置きません。",
     items: [
       { figure: "1,744", label: "自動テスト、すべて成功", note: "プッシュのたびに CI が再実行します。" },
       {
@@ -251,7 +251,7 @@ export const ja: Copy = {
   },
   report: {
     title: "5地域の実測レポート",
-    lede: "2026-11-18 の実測。公表されたものだけを置きます。公表されていないものは欠損であり、ゼロではありません。",
+    lede: "実測。公表されたものだけを置きます。公表されていないものは欠損であり、ゼロではありません。",
     fatalFigure: "0",
     fatal: "致命的欠陥",
     maturityFigure: "±15%",

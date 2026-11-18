@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { htmlLangForPath } from "@/lib/locale";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Farm Ontology";
+const APP_NAME = "Seges";
 
 export const Route = createRootRoute({
   head: () => ({

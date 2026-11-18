@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 export type Variant = "primary" | "secondary" | "inverse" | "ghost";
 
 const base =
-  "inline-flex min-h-11 items-center justify-center rounded-control px-5 py-2.5 text-center text-sm font-medium leading-snug transition-[scale,background-color,opacity] duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-center text-sm font-medium leading-snug tracking-wide text-balance transition-[scale,background-color,opacity,box-shadow] duration-150 ease-out hover:shadow-[0_2px_10px_rgba(28,27,25,0.14)] active:not-disabled:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 sm:px-7 sm:text-base";
 
 const styles: Record<Variant, string> = {
   primary: "bg-ink text-paper hover:opacity-90",

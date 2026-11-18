@@ -1,13 +1,13 @@
 import type { Copy } from "@/lib/copy-types";
 
 export const en: Copy = {
-  metaTitle: "Every farm data point ships with its birth certificate — Farm Ontology",
+  metaTitle: "Every farm data point ships with its birth certificate — Seges",
   metaDescription:
     "Satellites, weather, sensors and licences, written into one tamper-evident ledger. Read the field, read the risk, and act before the weather does. Nothing here is invented.",
-  startMetaTitle: "Start recording my field — free — Farm Ontology",
+  startMetaTitle: "Start recording my field — free — Seges",
   startMetaDescription:
     "Pin a field and issue the first observation with a birth certificate. About three minutes. No credit card. Written on this device, not the production ledger.",
-  reportMetaTitle: "Five-district field report — Farm Ontology",
+  reportMetaTitle: "Five-district field report — Seges",
   reportMetaDescription:
     "Hidaka, Tokachi, Kamikawa, Nemuro and Shonai. Measured 2026-11-18. Zero fatal defects. Maturity in four Hokkaido districts within ±15% of the public variety calendar.",
   measuredLabel: "Measured",
@@ -84,7 +84,7 @@ export const en: Copy = {
   },
   trust: {
     title: "What was actually measured",
-    lede: "2026-11-18. Not a projection. If a figure was not published, it is not on this page.",
+    lede: "Not a projection. If a figure was not published, it is not on this page.",
     items: [
       {
         figure: "1,744",
@@ -279,7 +279,7 @@ export const en: Copy = {
   },
   report: {
     title: "Five-district field report",
-    lede: "Measured 2026-11-18. What the run published is here. What it did not publish is a gap, not a zero.",
+    lede: "What the run published is here. What it did not publish is a gap, not a zero.",
     fatalFigure: "0",
     fatal: "Fatal defects",
     maturityFigure: "±15%",

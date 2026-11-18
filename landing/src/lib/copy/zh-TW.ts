@@ -1,12 +1,12 @@
 import type { Copy } from "@/lib/copy-types";
 
 export const zhTW: Copy = {
-  metaTitle: "每一筆農地數據，都自帶出生證明 — Farm Ontology",
+  metaTitle: "每一筆農地數據，都自帶出生證明 — Seges",
   metaDescription:
     "衛星、氣象、感測器與授權，全部寫進同一本防竄改帳本。看懂田、懂得險、趨吉避凶。這裡不發明任何數字。",
-  startMetaTitle: "免費開始記錄我的田 — Farm Ontology",
+  startMetaTitle: "免費開始記錄我的田 — Seges",
   startMetaDescription: "用手機把田釘進系統，完成第一筆有出生證明的觀測。大約三分鐘。免信用卡。寫在這台裝置上，不是正式帳本。",
-  reportMetaTitle: "五個農區實測報告 — Farm Ontology",
+  reportMetaTitle: "五個農區實測報告 — Seges",
   reportMetaDescription:
     "日高、十勝、上川、根室、庄內。2026-11-18 實測。零個致命缺陷。四個北海道產區的成熟度判定與公開品種曆吻合在 ±15% 內。",
   measuredLabel: "實測",
@@ -82,7 +82,7 @@ export const zhTW: Copy = {
   },
   trust: {
     title: "實際量到的",
-    lede: "2026-11-18。不是預測。沒有公布的數字，不會出現在這頁。",
+    lede: "不是預測。沒有公布的數字，不會出現在這頁。",
     items: [
       { figure: "1,744", label: "自動測試，全部通過", note: "每次推送，CI 都重跑。" },
       {
@@ -250,7 +250,7 @@ export const zhTW: Copy = {
   },
   report: {
     title: "五個農區的實測報告",
-    lede: "2026-11-18 實測。公布了的在這裡。沒公布的是缺口，不是零。",
+    lede: "實測。公布了的在這裡。沒公布的是缺口，不是零。",
     fatalFigure: "0",
     fatal: "致命缺陷",
     maturityFigure: "±15%",

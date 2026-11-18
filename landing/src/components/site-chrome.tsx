@@ -51,7 +51,7 @@ export function SiteHeader() {
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
         <Link to="/$locale" params={{ locale }} search={audienceSearch} className="flex min-w-0 items-center gap-3">
           <img src="/logo.svg" alt="" width={36} height={36} className="size-9 shrink-0" />
-          <span className="truncate font-display text-lg leading-none">Farm Ontology</span>
+          <span className="truncate font-display text-lg leading-none">Seges</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
           <nav aria-label={copy.nav.language} className="flex items-center gap-1">
@@ -79,7 +79,7 @@ export function SiteHeader() {
           <Link
             to="/$locale/start"
             params={{ locale }}
-            className="inline-flex min-h-11 items-center rounded-control bg-ink px-3 text-sm font-medium text-paper sm:px-4"
+            className="inline-flex min-h-11 items-center rounded-full bg-ink px-4 text-sm font-medium text-paper sm:px-5"
           >
             {copy.nav.start}
           </Link>
@@ -87,7 +87,7 @@ export function SiteHeader() {
       </div>
       {links.length > 0 ? (
         <div className="border-t border-line">
-          <nav className="mx-auto flex w-full max-w-6xl gap-4 overflow-x-auto px-4 py-2 sm:px-6" aria-label="Farm Ontology">
+          <nav className="mx-auto flex w-full max-w-6xl gap-4 overflow-x-auto px-4 py-2 sm:px-6" aria-label="Seges">
             {links.map((item) => (
               <a
                 key={item.hash}
@@ -129,7 +129,7 @@ export function SiteFooter() {
             {copy.hero.primary}
           </Link>
         </div>
-        <p className="font-display text-sm">Farm Ontology · 2026-11-18</p>
+        <p className="font-display text-sm">Seges</p>
         <p className="text-xs text-muted">{VISION[locale].credit}</p>
       </div>
     </footer>

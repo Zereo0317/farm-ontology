@@ -18,7 +18,7 @@ export const Route = createFileRoute("/$locale/")({
     const hunger = match.search.for === "hunger";
     return {
       meta: [
-        { title: `${hunger ? vision.hungerTitle : vision.farmerTitle} — Farm Ontology` },
+        { title: `${hunger ? vision.hungerTitle : vision.farmerTitle} — Seges` },
         { name: "description", content: hunger ? vision.hungerDeck : vision.farmerDeck },
       ],
       links: alternateLinks(""),

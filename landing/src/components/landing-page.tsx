@@ -117,7 +117,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
               <h2 className="mt-3 text-sm">{vision.falseNote}</h2>
             </article>
           </div>
-          <p className="mt-4 text-xs text-muted">2026-11-18 · {copy.trust.lede}</p>
+          <p className="mt-4 text-xs text-muted">{copy.trust.lede}</p>
         </div>
       </section>
 
