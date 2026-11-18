@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+# WS8: hosted field web app (farm-seges-ai-web).
+# Built remotely via Cloud Build from a staging dir (see docs/web-ops.md):
+#   copy this file to <stage>/Dockerfile and submit <stage>.
+FROM node:20-slim AS deps
+WORKDIR /app/web
+COPY web/package.json web/package-lock.json ./
+# --ignore-scripts: sharp's install script is irrelevant here (images are
+# unoptimised) and keeps the build hermetic on Cloud Build.
+RUN npm ci --ignore-scripts
+
+FROM node:20-slim AS builder
+WORKDIR /app/web
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY web/ .
+# Invoke next through node directly: the .bin shebang/exec-bit route broke on
+# regional Cloud Build before (documented in docs/backend-live.md pitfalls).
+RUN node node_modules/next/dist/bin/next build
+
+FROM node:20-slim AS runner
+# python3 + python-is-python3: the record bridge (web/lib/record.ts) spawns
+# `python -m farm_ontology.page_io`, which performs the durable-record write
+# (FARM_RECORD_BACKEND=gcs via the metadata-server token — stdlib only).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3-minimal python-is-python3 ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=8080 \
+    HOSTNAME=0.0.0.0
+WORKDIR /app/web
+# output: "standalone" emits server.js + its own node_modules trace.
+COPY --from=builder --chown=node:node /app/web/.next/standalone ./
+COPY --from=builder --chown=node:node /app/web/.next/static ./.next/static
+# The record bridge resolves the repo root one level above cwd (/app).
+COPY --chown=root:root farm_ontology/ /app/farm_ontology/
+COPY --chown=root:root vocabulary-manifest.json /app/vocabulary-manifest.json
+USER node
+EXPOSE 8080
+CMD ["node", "server.js"]

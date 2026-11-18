@@ -205,6 +205,158 @@ details li { margin: 0.65rem 0; }
 
 .files { margin: 0.25rem 0 0; padding-left: 1.15rem; }
 
+/* ---- Advisories panel (WS8) ---- */
+
+.advisories {
+  width: min(28rem, 100%);
+  margin: 0 auto;
+  padding: 0 1.5rem 4.5rem;
+}
+
+.advisories h2 {
+  margin: 0.75rem 0 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.advisories h2 span {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.card {
+  margin-top: 1.75rem;
+  padding: 1.1rem 1.15rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #fffdf8;
+}
+
+.card h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.rows li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 0.9375rem;
+}
+
+.rows li:last-child { border-bottom: 0; }
+
+.rows strong {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.scenes {
+  margin: 0.25rem 0 0;
+  padding-left: 1.15rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.scenes li { margin: 0.45rem 0; }
+
+.chip {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f1ede6;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.chip.badge-open { background: #e3ecd6; }
+
+.chips {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 0.85rem;
+}
+
+.chips li:last-child { border-bottom: 0; }
+
+.chips .name { overflow-wrap: anywhere; }
+
+.caption {
+  margin: 0.75rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: rgba(28, 27, 25, 0.72);
+}
+
+.gap {
+  margin: 0.4rem 0 0;
+  font-size: 0.9375rem;
+  color: #8a4b32;
+}
+
+/* ---- Login gate ---- */
+
+.gate { padding: 1.75rem 1.5rem 4.5rem; }
+
+.gate h1 {
+  margin: 0.75rem 0 0;
+  font-family: "Iowan Old Style", Palatino, "Palatino Linotype", "Songti TC", PMingLiU, Georgia, serif;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.gate h1 span {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+}
+
+.gate form button.primary { margin-top: 1.5rem; }
+
+@media (min-width: 760px) {
+  main { padding-top: 4.5rem; }
+
+  .gate { padding-top: 4.5rem; }
+}
+
 :focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 4px;
