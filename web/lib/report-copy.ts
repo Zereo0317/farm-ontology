@@ -1,22 +1,29 @@
 /**
- * Report v2 copy — Biratori 11/19 (founder work-order: two audiences, zero
- * internal jargon, evidence-dense).
+ * Report v2 copy — Biratori 11/19, five locales (Sprint-B: zh-CN/en/th join
+ * zh-TW/ja as first-class report languages).
  *
  * Audience split: `farmer` speaks decisions (GO/NO-GO tonight), `investor`
  * speaks numbers (staged selling, ROI arithmetic, trust spine). All strings
- * for the launched locales zh-TW + ja live HERE (no bilingual literals baked
- * into the page). Structural completeness is compile-enforced by
- * `Record<ReportLang, ReportCopy>`; the python guard
- * (tests/test_i18n_schema.py :: ReportCopyGuardTests) additionally checks
- * presence and per-locale top-level/array parity so a translation dropped
- * outside a type-checked path still fails loud.
+ * live HERE (no bilingual literals baked into the page). Completeness is
+ * compile-enforced by `Record<ReportLang, ReportCopy>`; the python guard
+ * (tests/test_i18n_schema.py :: ReportCopyGuardTests, REQUIRED_REPORT_LOCALES)
+ * additionally checks presence and per-locale top-level/array parity.
  *
- * Voice rules (founder): 农民 words = 田/今天/动手; NO vendor jargon, no
- * "compliance/identity/proof ledger" vocabulary — those live in the investor
- * tab's plain-number verification list instead.
+ * Register per locale (house style, not machine output):
+ *  zh-TW/ja — as briefed by the founder originally.
+ *  zh-CN    — 种植户口语 (read like a county-ag-extension text message);
+ *             investor侧 = 简洁商务书面语.
+ *  en       — farmer tab sounds like an extension agronomist talking to a
+ *             Midwest grower; investor tab is crisp business English.
+ *  th       — farmer tab: simple polite rural Thai a co-op officer would
+ *             read aloud; investor tab: formal business Thai.
+ *
+ * Numeric spine values (1,597 tests; AMS 10.79–11.34 band; 11.16 avg;
+ * 2.5 t/ha = 91.86 bu/ha; 40/30/30) are IDENTICAL across locales — the
+ * numbers are evidence, only the words localize.
  */
 
-export const REPORT_LANGS = ["zh-TW", "ja"] as const;
+export const REPORT_LANGS = ["zh-TW", "zh-CN", "en", "ja", "th"] as const;
 
 export type ReportLang = (typeof REPORT_LANGS)[number];
 
@@ -25,8 +32,6 @@ export type ReportCopy = {
   kicker: string;
   h1: string;
   sub: string;
-  langSwitch: string;
-  langSwitchHref: string;
   tabFarmer: string;
   tabInvestor: string;
   liveTitle: string;
@@ -61,7 +66,7 @@ export type ReportCopy = {
   invRoiTitle: string;
   invRoiLead: string;
   invAssumptions: string[];
-  invRoiCols: { band: string; allSold: string; staged: string; delta: string; risk: string };
+  invRoiCols: { band: string; allSold: string; staged: string; delta: string };
   invRoiRiskNote: (downCushionPct: string, upDragPct: string) => string;
   invTrustTitle: string;
   invTrustLead: string;
@@ -82,8 +87,6 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     kicker: "Farm Ontology 田間情報 · 免費閱讀",
     h1: "11/19 北海道大豆：明天怎麼動",
     sub: "平取町・日高地區（PC24+PVC）｜資料 2026-11-18 晚間更新",
-    langSwitch: "日本語",
-    langSwitchHref: "?lang=ja",
     tabFarmer: "農夫版",
     tabInvestor: "投資人版",
     liveTitle: "田區即時實況（自動更新）",
@@ -172,7 +175,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
       "算式：金額 = 蒲式耳 × 價格。 staged 平均 = 0.4×11.16 + 0.3×11.40 + 0.3×情境帶價。",
       "收入不含乾燥、運費與升貼水差；那是另外一行帳。",
     ],
-    invRoiCols: { band: "情境帶價 $/bu", allSold: "全數此價 $/ha", staged: "分批 40/30/30 $/ha", delta: "分批 vs 全數", risk: "風險提示" },
+    invRoiCols: { band: "情境帶價 $/bu", allSold: "全數此價 $/ha", staged: "分批 40/30/30 $/ha", delta: "分批 vs 全數" },
     invRoiRiskNote: (down, up) =>
       `下跌到 10.80 時分批少賠 ${down}；反向衝上 12.00 時分批少賺 ${up}——分批買的是安心，代價是讓出右尾。這是機制，不是預測。`,
     invTrustTitle: "為什麼敢信這些數字",
@@ -204,13 +207,264 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     ctaBody: "打開田間頁、手機釘樁，三分鐘做出第一筆有出生證明的觀測。免費、無信用卡。",
     ctaBtn: "免費開始記錄",
   },
+
+  "zh-CN": {
+    docTitle: "北海道大豆 11/19 田间决策（种植户版/投资人版）| Farm Ontology",
+    kicker: "Farm Ontology 田间情报 · 免费阅读",
+    h1: "11/19 北海道大豆：明天怎么干",
+    sub: "平取町・日高地区（PC24+PVC）｜数据 2026-11-18 晚间更新",
+    tabFarmer: "种植户版",
+    tabInvestor: "投资人版",
+    liveTitle: "地块实时数据（自动刷新）",
+    chartsTitle: "为什么这么安排：24 小时的凭据",
+    chartTempCaption: "气温曲线。灰底＝夜里；蓝虚线＝0°C 结冻线。来路：JMA MSM 0.05° 格点。",
+    chartRainCaption: "逐小时雨量柱。雨都在凌晨 02:00–04:00。来路：JMA MSM 0.05° 格点。",
+    chartWindCaption: "风速曲线；橙虚线＝喷药漂移上限 3.5 m/s；圆点＝14:00 最大阵风。来路：JMA MSM 0.05° 格点。",
+    chartRhCaption: "空气湿度带。颜色深＝≥85%（早上结露那段）。来路：JMA MSM 0.05° 格点。",
+    chartNightLabel: "夜间",
+    chartFrostLine: "0°C 结冻线",
+    chartSprayLimit: "喷药上限 3.5 m/s",
+    chartPeak: "14:00 最大 4.2",
+    chartRainSum: "Σ 00:00–06:00 = 14.2 mm",
+    playbookTitle: "明天的活儿卡",
+    playbookLead: "一天就四个决定。一张卡一件事，干完划掉。",
+    playbook: [
+      {
+        glyph: "🌾",
+        badge: "09–13点 GO",
+        badgeKind: "go",
+        title: "收获・拉粮",
+        body: "全天唯一不出水的窗户。头天下过雨，先在地头压一道辙试试陷不陷，不陷再整车进。",
+      },
+      {
+        glyph: "🌬️",
+        badge: "今晚必须办",
+        badgeKind: "must",
+        title: "烘干・通风",
+        body: "18 点以后到 −1.6°C，仓皮上要挂露。开风道把水分压回收购标准——这一晚上保住的都是等级钱。",
+      },
+      {
+        glyph: "🚿",
+        badge: "NO-GO",
+        badgeKind: "no",
+        title: "打药・叶面肥",
+        body: "早上叶子带水，下午风到 4.2 m/s，两头都不合规矩；再说这茬豆叶面吸收的劲儿也过了。",
+      },
+      {
+        glyph: "🚜",
+        badge: "挪到晌午",
+        badgeKind: "care",
+        title: "重型机械・翻场",
+        body: "夜里上冻白天化，地和面包一样，早晚最软。大家伙压在 10–14 点地皮最硬的时候动。",
+      },
+    ],
+    sceneTitle: "你这块地，最新的卫星照",
+    sceneCaption: (id, acq, cloud) =>
+      `场景 ${id} ・拍摄 ${acq}（日本时间）・云量 ${cloud}%`,
+    sceneLicence: "Planet 试用授权 · 就给了个场景信息和缩略图，像素没往外拿；商业授权目前没有。",
+    sceneAlt: "2026-11-17 平取地块卫星缩略图（PlanetScope）",
+    soilTitle: "墒情数据：说实话，还没有",
+    soilBody:
+      "地里还没装传感器——土壤水分眼下只能给格点级别的粗数（马上上）。在那之前，我们不会替你的地瞎编一个墒情数。",
+    soilStamp: "support: grid（预告）· 装了传感器才有地块级的数",
+    supportStamp:
+      "数据级别：格点（0.05°，差不多 5 公里一格）——这些数是格子的，不是你家那几垄的。地里没有校好的传感器之前，这里不说地块级别的话。",
+    legendTitle: "分级怎么看",
+    legend: [
+      "GO ＝ 条件齐了，今天就干",
+      "今晚必须办 ＝ 过了这个村就得吃亏",
+      "NO-GO ＝ 条件不够，硬干伤地",
+      "挪到晌午 ＝ 能干，得挑时候",
+    ],
+    lineageNote:
+      "数据的来历：JMA MSM 由 Open-Meteo 转发（免费档＝限非商业）｜Planet 试用（只有场景信息和缩略图）｜每个数都带 issue/valid/availability 三张时间戳，账本走哈希链，谁改过一版都能对出来。清洗和判定过程整套留底。",
+    invFrameworkTitle: "操作框架：分批定价 40 / 30 / 30",
+    invFrameworkLead:
+      "粮在仓里，本身就是多头。分三批走，把『什么价位干什么』提前写成死规矩——赌的不是感觉，是纪律。",
+    invTranches: [
+      { share: "40%", trigger: "现在", note: "第一批按 AMS 已登记的近期均价 11.16 $/bu 附近出手。" },
+      { share: "30%", trigger: "站上 11.40", note: "区间上沿 11.34 有效突破后的跟进批。" },
+      { share: "30%", trigger: "12 月供需报告之后", note: "WASDE 落地后的尾巴；南美播种的风险升水也算在这一批。" },
+    ],
+    invCalendar: [
+      "现在～11 月下旬：美豆收获收尾，仓单和出口检验是最硬的两个数。",
+      "11/30：本系统的 Planet 订阅去留节点（卫星验产能不能续上）。",
+      "12 月上旬：USDA 供需报告（WASDE）——第三批的扳机。",
+      "12–2 月：南美（巴西/阿根廷）播种生长季，一季度行情的主导变量。",
+    ],
+    invRoiTitle: "收益测算（一步一步摊开算）",
+    invRoiLead:
+      "外面进的输入只有一个价：USDA/AMS 已登记区间 10.79–11.34 $/bu（日期和版本都可回查账本）。剩下的全是明牌算术。",
+    invAssumptions: [
+      "设定值（假设，随时可换）：每公顷出售 2.5 吨＝91.86 蒲式耳（1 吨＝36.7433 蒲式耳）。",
+      "第一批固定按已登记均价 11.16；第二批按触发价 11.40；第三批按情景价格。",
+      "公式：金额 = 蒲式耳 × 价格。分批均价 = 0.4×11.16 + 0.3×11.40 + 0.3×情景价。",
+      "不含烘干、运费和蛋白油分升贴水；那是另一本账。",
+    ],
+    invRoiCols: { band: "情景价格 $/bu", allSold: "全按此价 $/ha", staged: "分批 40/30/30 $/ha", delta: "分批 − 全价" },
+    invRoiRiskNote: (down, up) =>
+      `跌到 10.80 时，分批少亏 ${down}；万一蹿上 12.00，分批少赚 ${up}——分批买的是踏实，代价是把最右边那段行情让出去。这是机制账，不是行情预测。`,
+    invTrustTitle: "凭什么信这些数",
+    invTrustLead: "不喊口号。机制摆在这儿，计数摆在这儿，你自己点开就能对。",
+    invSpine: [
+      { num: "1,597", label: "项自动化测试持续全绿（本版仓库全量套件，2026-11-18）" },
+      { num: "3 时间戳", label: "每个数的出生证明：issue / valid / availability" },
+      { num: "哈希链", label: "账本防篡改：任何人改动一行都会被比对出来" },
+      { num: "point-in-time", label: "回放：历史决策只用当时已知的资料原样重演" },
+      { num: "3 区域", label: "例行宕机演练（东京/新加坡/华盛顿探针）" },
+      { num: "GCS 版本桶", label: "观测记录落在带版本的云存储，机器没了记录还在" },
+    ],
+    invLinks: [
+      { label: "后端 /farm 总览", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm" },
+      { label: "授权判定（实时）", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm/licences" },
+      { label: "卫星场景清单（实时）", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm/planet" },
+    ],
+    invRefTitle: "引用来源与授权状态",
+    invRefLead: "每一路外部数据后面都挂着它的授权实况——目前全部停在筛选级。",
+    invRefs: [
+      { label: "JMA MSM（经 Open-Meteo 免费档）", state: "非商业条款 · 金融用途否", href: "https://open-meteo.com/en/docs" },
+      { label: "PlanetScope 场景信息/缩略图", state: "试用授权 · 商用否 · 未取像素", href: "https://www.planet.com" },
+      { label: "USDA/AMS 大豆竞标 + WASDE 11 月版", state: "公共数据 · 已登记（带日期）· 摘要引用", href: "https://www.ams.usda.gov/market-news" },
+      { label: "多点物候实地试验报告（全文）", state: "自有成果 · 公开", href: "/reports/fieldtest-multisite-REPORT-postfix.md" },
+      { label: "衍生交易演练报告（全文）", state: "自有成果 · 公开", href: "/reports/arb-rehearsal-REPORT.md" },
+    ],
+    invFooter: "本页是决策支持，不是投资邀约；金融用途授权现为否。",
+    ctaTitle: "想让你家的地也有这么一份？",
+    ctaBody: "打开田间页，手机钉个桩，三分钟记下第一条带出生证明的观测。免费，不用绑卡。",
+    ctaBtn: "免费开始记录",
+  },
+
+  en: {
+    docTitle: "Hokkaido soybeans 11/19 — field calls (grower / investor) | Farm Ontology",
+    kicker: "Farm Ontology field bulletin · free read",
+    h1: "Hokkaido soybeans, Nov 19: what to do tomorrow",
+    sub: "Biratori & Hidaka district (PC24+PVC) | data updated evening of 2026-11-18",
+    tabFarmer: "Grower",
+    tabInvestor: "Investor",
+    liveTitle: "This field, right now (auto-refresh)",
+    chartsTitle: "Why the system called it: 24 hours of receipts",
+    chartTempCaption: "Temperature curve. Grey bands = night; blue dashes = the 0 °C freeze line. Source: JMA MSM 0.05° grid.",
+    chartRainCaption: "Rain per hour. The morning burst sits 02:00–04:00. Source: JMA MSM 0.05° grid.",
+    chartWindCaption: "Wind curve; orange dashes = the 3.5 m/s spray-drift cap; dot = the 14:00 gust peak. Source: JMA MSM 0.05° grid.",
+    chartRhCaption: "Humidity band. Darker = ≥85% (the dew-on-the-bin hours). Source: JMA MSM 0.05° grid.",
+    chartNightLabel: "night",
+    chartFrostLine: "0 °C freeze line",
+    chartSprayLimit: "spray cap 3.5 m/s",
+    chartPeak: "14:00 peak 4.2",
+    chartRainSum: "Σ 00:00–06:00 = 14.2 mm",
+    playbookTitle: "Tomorrow's four cards",
+    playbookLead: "Four decisions, one day. One action per card; cross it off and move.",
+    playbook: [
+      {
+        glyph: "🌾",
+        badge: "09:00–13:00 GO",
+        badgeKind: "go",
+        title: "Combining & hauling",
+        body: "The only dry window all day. Morning rain sat on top — make one test pass on the headland, check the ruts aren't grabbing, then commit the whole crew.",
+      },
+      {
+        glyph: "🌬️",
+        badge: "TONIGHT",
+        badgeKind: "must",
+        title: "Dry-down & aeration",
+        body: "It falls to −1.6 °C after 18:00 and the bin skin sweats. Run the fan cycles and bring moisture back inside contract spec — that's what protects the grade premium.",
+      },
+      {
+        glyph: "🚿",
+        badge: "NO-GO",
+        badgeKind: "no",
+        title: "Spraying & foliar",
+        body: "Wet leaf canopy at dawn, gusts to 4.2 m/s after noon — fails on both counts, and this bean is past its foliar-uptake window anyway.",
+      },
+      {
+        glyph: "🚜",
+        badge: "MIDDAY",
+        badgeKind: "care",
+        title: "Heavy iron",
+        body: "The ground freezes overnight and thaws by day; dawn and dusk are when it gives. Put the big machines on it between 10:00 and 14:00.",
+      },
+    ],
+    sceneTitle: "Your field, latest satellite pass",
+    sceneCaption: (id, acq, cloud) =>
+      `Scene ${id} · captured ${acq} (JST) · cloud ${cloud}%`,
+    sceneLicence: "Planet trial licence · scene headers/thumbnail only, no pixels exported; commercial use currently NO.",
+    sceneAlt: "2026-11-17 Biratori field, satellite thumbnail (PlanetScope)",
+    soilTitle: "Soil moisture: honestly, not yet",
+    soilBody:
+      "There's no calibrated sensor in the ground yet, so soil data can only ship as grid-grade figures (coming soon). Until then we don't invent a soil number for your field.",
+    soilStamp: "support: grid (preview) · parcel-grade only after sensors go in",
+    supportStamp:
+      "Support level: grid (0.05°, roughly a 5 km cell) — these numbers belong to the cell, not to your plants. No calibrated on-farm sensor yet, so this page makes no parcel-level claims.",
+    legendTitle: "Grade legend",
+    legend: [
+      "GO ＝ conditions line up; move today",
+      "TONIGHT ＝ miss the window, pay for it",
+      "NO-GO ＝ conditions fail; going anyway scars the field",
+      "MIDDAY ＝ fine, but pick the hour",
+    ],
+    lineageNote:
+      "Where the numbers come from: JMA MSM relayed via Open-Meteo (free tier = non-commercial) | Planet trial (headers/thumbnail only) | every figure carries an issue/valid/availability birth certificate plus a tamper-evident hash chain. The full cleaning and judgement trail stays in our ledger.",
+    invFrameworkTitle: "The framework: staged pricing 40 / 30 / 30",
+    invFrameworkLead:
+      "Grain in the shed means you're naturally long. Three tranches, with the IF-THEN written down in advance — you're betting on discipline, not vibes.",
+    invTranches: [
+      { share: "40%", trigger: "NOW", note: "Price tranche one around the recorded AMS average, 11.16 $/bu." },
+      { share: "30%", trigger: "BREAK OF 11.40", note: "Follow-on tranche once the top of the band (11.34) gives way decisively." },
+      { share: "30%", trigger: "AFTER THE DEC WASDE", note: "Tail tranche once the supply-demand report lands; South-American planting-risk premium shows up here." },
+    ],
+    invCalendar: [
+      "Now–late November: US harvest finish; warehouse stocks and export inspections are the hard data.",
+      "Nov 30: this system's Planet subscription decision (can satellite yield verification continue).",
+      "Early December: USDA WASDE — the trigger for tranche three.",
+      "Dec–Feb: South America (Brazil/Argentina) planting and growing season; the driver for Q1.",
+    ],
+    invRoiTitle: "Revenue scenarios (arithmetic shown, stepwise)",
+    invRoiLead:
+      "Exactly one outside input: the recorded USDA/AMS band 10.79–11.34 $/bu (dates and edition checkable in the ledger). Everything else is arithmetic in the open.",
+    invAssumptions: [
+      "Setting (an assumption, swap yours in): 2.5 t sold per hectare = 91.86 bushels (1 t = 36.7433 bu).",
+      "Tranche one priced at the recorded average 11.16; tranche two at the 11.40 trigger; tranche three at the scenario price.",
+      "Formula: revenue = bushels × price. Staged average = 0.4×11.16 + 0.3×11.40 + 0.3×scenario.",
+      "Excludes drying, freight and grade/protein premiums; that's a separate ledger line.",
+    ],
+    invRoiCols: { band: "Scenario price $/bu", allSold: "All at that price $/ha", staged: "Staged 40/30/30 $/ha", delta: "Staged − all" },
+    invRoiRiskNote: (down, up) =>
+      `At 10.80 the staged plan is ${down} better than selling all at that price; if prices spike to 12.00 it gives up ${up} of upside. Staged selling buys calm and sells the right tail — that's the mechanism, not a forecast.`,
+    invTrustTitle: "Why trust these numbers",
+    invTrustLead: "No slogans — mechanisms and counters you can open and check yourself.",
+    invSpine: [
+      { num: "1,597", label: "automated tests continuously green (whole repo suite, 2026-11-18)" },
+      { num: "3 stamps", label: "a birth certificate on every figure: issue / valid / availability" },
+      { num: "hash chain", label: "tamper-evident ledger: edit one row and the chain disagrees" },
+      { num: "point-in-time", label: "replay: any past decision re-runs on only what was known then" },
+      { num: "3 regions", label: "routine outage drills (probes in Tokyo / Singapore / Virginia)" },
+      { num: "GCS versioned bucket", label: "observations land in versioned cloud storage; hardware can vanish, records don't" },
+    ],
+    invLinks: [
+      { label: "Backend /farm overview", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm" },
+      { label: "Licence verdicts (live)", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm/licences" },
+      { label: "Satellite scene headers (live)", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm/planet" },
+    ],
+    invRefTitle: "Sources and their licence state",
+    invRefLead: "Every external line carries its licensing reality — all currently parked at Screening.",
+    invRefs: [
+      { label: "JMA MSM (via Open-Meteo free tier)", state: "non-commercial terms · financial use NO", href: "https://open-meteo.com/en/docs" },
+      { label: "PlanetScope scene headers/thumbnail", state: "trial licence · commercial NO · no pixels exported", href: "https://www.planet.com" },
+      { label: "USDA/AMS soy bids + Nov WASDE", state: "public data · recorded (dated) · summarized quotation", href: "https://www.ams.usda.gov/market-news" },
+      { label: "Multi-site phenology field trial report (full text)", state: "our own work · public", href: "/reports/fieldtest-multisite-REPORT-postfix.md" },
+      { label: "Derivatives rehearsal report (full text)", state: "our own work · public", href: "/reports/arb-rehearsal-REPORT.md" },
+    ],
+    invFooter: "Decision support, not an investment solicitation; financial-use licensing is currently OFF.",
+    ctaTitle: "Want this page for your own field?",
+    ctaBody: "Open the field sheet, drop a pin from your phone, and three minutes later you've made your first observation with a birth certificate. Free, no credit card.",
+    ctaBtn: "Start recording — free",
+  },
+
   ja: {
     docTitle: "北海道大豆 11/19 ほ場意思決定（生産者版/投資家版）| Farm Ontology",
     kicker: "Farm Ontology ほ場情報 · 無料公開",
     h1: "11/19 北海道大豆：明日の動かし方",
     sub: "平取町・日高地方（PC24+PVC）｜データ 2026-11-18 夕方更新",
-    langSwitch: "繁體中文",
-    langSwitchHref: "?lang=zh-TW",
     tabFarmer: "生産者版",
     tabInvestor: "投資家版",
     liveTitle: "ほ場ライブ（自動更新）",
@@ -299,7 +553,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
       "式：金額 = ブッシェル × 価格。分割平均 = 0.4×11.16 + 0.3×11.40 + 0.3×シナリオ価格。",
       "乾燥・運賃・等級差引は含みません。別科目です。",
     ],
-    invRoiCols: { band: "シナリオ価格 $/bu", allSold: "全量この価格 $/ha", staged: "分割 40/30/30 $/ha", delta: "分割 − 全量", risk: "リスク注記" },
+    invRoiCols: { band: "シナリオ価格 $/bu", allSold: "全量この価格 $/ha", staged: "分割 40/30/30 $/ha", delta: "分割 − 全量" },
     invRoiRiskNote: (down, up) =>
       `10.80 まで下がれば分割は損失を ${down} 軽減。逆に 12.00 まで上がれば利益を ${up} 手放します——分割は安心を買い、右尻尾を売る仕組みです。これは予測ではなく構造の話。`,
     invTrustTitle: "なぜこの数字を信じてよいか",
@@ -330,5 +584,131 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     ctaTitle: "あなたのほ場でも、同じ形のレポートを。",
     ctaBody: "ほ場ページを開き、スマホでピン。3分で最初の「出生証明付き」観測が作れます。無料・カード不要。",
     ctaBtn: "無料で記録を始める",
+  },
+
+  th: {
+    docTitle: "ถั่วเหลืองฮอกไกโด 19/11 — การตัดสินใจหน้างาน (เกษตรกร/นักลงทุน) | Farm Ontology",
+    kicker: "Farm Ontology ข้อมูลแปลง · อ่านฟรี",
+    h1: "ถั่วเหลืองฮอกไกโด 19/11: พรุ่งนี้ทำอะไร",
+    sub: "อำเภอบิราโทริ–ฮิดากะ (PC24+PVC) | ข้อมูลอัปเดตค่ำวันที่ 2026-11-18",
+    tabFarmer: "ฉบับเกษตรกร",
+    tabInvestor: "ฉบับนักลงทุน",
+    liveTitle: "แปลงนี้ตอนนี้ (อัปเดตอัตโนมัติ)",
+    chartsTitle: "ทำไมระบบถึงสั่งแบบนี้: หลักฐาน 24 ชั่วโมง",
+    chartTempCaption: "กราฟอุณหภูมิ แถบสีเทา = กลางคืน, เส้นประสีฟ้า = เส้นเยือกแข็ง 0°C, ที่มา: กริด JMA MSM 0.05°",
+    chartRainCaption: "แท่งฝนรายชั่วโมง ฝนตกหนักช่วง 02:00–04:00, ที่มา: กริด JMA MSM 0.05°",
+    chartWindCaption: "กราฟลม เส้นประสีส้ม = เพดานพ่น 3.5 m/s, จุดวงกลม = ลมกระโชกพีค 14:00, ที่มา: กริด JMA MSM 0.05°",
+    chartRhCaption: "แถบความชื้นสัมพัทธ์ สีเข้ม = ≥85% (ช่วงน้ำค้างเกาะ), ที่มา: กริด JMA MSM 0.05°",
+    chartNightLabel: "กลางคืน",
+    chartFrostLine: "เส้นเยือกแข็ง 0°C",
+    chartSprayLimit: "เพดานพ่น 3.5 m/s",
+    chartPeak: "พีค 14:00 = 4.2",
+    chartRainSum: "Σ 00:00–06:00 = 14.2 mm",
+    playbookTitle: "การ์ดงานของพรุ่งนี้",
+    playbookLead: "วันหนึ่งมีสี่การตัดสินใจ การ์ดละหนึ่งงาน ทำเสร็จก็ขีดฆ่า",
+    playbook: [
+      {
+        glyph: "🌾",
+        badge: "09:00–13:00 GO",
+        badgeKind: "go",
+        title: "เกี่ยวและขนส่ง",
+        body: "เป็นหน้าต่างแห้งช่วงเดียวของวัน ฝนเช้ายังแฉะอยู่ ให้ล้อทดสอบที่ริมแปลงก่อนหนึ่งรอบ ดูร่องล้อว่าติดหรือไม่ แล้วค่อยเข้าเต็มทีม",
+      },
+      {
+        glyph: "🌬️",
+        badge: "คืนนี้ต้องทำ",
+        badgeKind: "must",
+        title: "ลดความชื้นและระบายอากาศ",
+        body: "หลัง 18:00 อุณหภูมิลงไป −1.6°C ผิวยุ้งจะเกิดน้ำค้าง เดินพัดลมวนซ้ำให้ความชื้นกลับเข้าเกณฑ์จริงข้อสัญญา — ขั้นนี้คือสิ่งที่รักษาราคาเกรดไว้",
+      },
+      {
+        glyph: "🚿",
+        badge: "NO-GO",
+        badgeKind: "no",
+        title: "พ่นยาและทางใบ",
+        body: "ใบเปียกจากฝนเช้า บ่ายลมกระโชกถึง 4.2 m/s ไม่ผ่านทั้งสองข้อ และถั่วรอบนี้ก็พ้นช่วงดูดซึมทางใบไปแล้ว",
+      },
+      {
+        glyph: "🚜",
+        badge: "ไปช่วงเที่ยง",
+        badgeKind: "care",
+        title: "เครื่องหนัก",
+        body: "ดินแข็งกลางคืนและละลายตอนกลางวัน เช้ามืดกับหัวค่ำคือช่วงที่ดินอ่อนที่สุด ให้เครื่องใหญ่ลงไปช่วง 10:00–14:00 เท่านั้น",
+      },
+    ],
+    sceneTitle: "แปลงของคุณ ภาพดาวเทียมล่าสุด",
+    sceneCaption: (id, acq, cloud) =>
+      `ฉาก ${id} · ถ่าย ${acq} (เวลาญี่ปุ่น) · เมฆ ${cloud}%`,
+    sceneLicence: "ใบอนุญาตทดลองของ Planet · เฉพาะหัวฉากและภาพย่อ ไม่นำพิกเซลออก, การใช้เชิงพาณิชย์ปัจจุบันยังไม่อนุญาต",
+    sceneAlt: "ภาพย่อดาวเทียมแปลงบิราโทริ 17/11/2026 (PlanetScope)",
+    soilTitle: "ข้อมูลดิน: ตรงไปตรงมา ยังไม่มี",
+    soilBody:
+      "ยังไม่มีเซนเซอร์ที่ผ่านการสอบเทียบฝังอยู่ในแปลง ข้อมูลดินจึงมีได้เฉพาะระดับกริด (กำลังจะมา) ก่อนหน้านั้นเราจะไม่แต่งตัวเลขดินให้แปลงของคุณ",
+    soilStamp: "support: grid (แจ้งล่วงหน้า) · ระดับแปลงจะมีเมื่อติดตั้งเซนเซอร์แล้ว",
+    supportStamp:
+      "ระดับการสนับสนุน: กริด (0.05° หรือราว 5 กม. ต่อช่อง) — ตัวเลขเหล่านี้เป็นของช่องกริด ไม่ใช่ของต้นถั่วในแปลงคุณ ยังไม่มีเซนเซอร์ที่สอบเทียบแล้วในแปลง หน้านี้จึงไม่อ้างสิทธิ์ระดับแปลง",
+    legendTitle: "คำอธิบายระดับ",
+    legend: [
+      "GO = เงื่อนไขครบ ลงมือได้ทันที",
+      "คืนนี้ต้องทำ = พลาดหน้าต่างนี้แล้วมีราคาต้องจ่าย",
+      "NO-GO = เงื่อนไขไม่ถึง ฝืนทำแล้วแปลงเสียหาย",
+      "ไปช่วงเที่ยง = ทำได้ แต่ต้องเลือกเวลา",
+    ],
+    lineageNote:
+      "ที่มาของตัวเลข: JMA MSM ผ่าน Open-Meteo (ระดับฟรี = ไม่ใช้เชิงพาณิชย์) | ทดลองใช้ Planet (เฉพาะหัวฉาก/ภาพย่อ) | ทุกตัวเลขมีใบกำเนิดสามเวลา issue/valid/availability พร้อมโซ่แฮชต้านการแก้ไข กระบวนการเก็บกวาดและการตัดสินทั้งหมดเก็บไว้ในบัญชีแยกของระบบ",
+    invFrameworkTitle: "กรอบการตัดสินใจ: ขายแบ่งงวด 40 / 30 / 30",
+    invFrameworkLead:
+      "ข้าวอยู่ในยุ้ง = คุณเป็นฝั่งซื้อข้าวขึ้นเองตามธรรมชาติ แบ่งขายสามงวด และเขียนกติกาว่าราคาไหนทำอะไรไว้ล่วงหน้า — เดิมพันที่วินัย ไม่ใช่ความรู้สึก",
+    invTranches: [
+      { share: "40%", trigger: "ตอนนี้", note: "งวดแรกขายใกล้ค่าเฉลี่ย AMS ที่บันทึกไว้ 11.16 $/bu" },
+      { share: "30%", trigger: "ทะลุ 11.40", note: "งวดตาม เมื่อขอบบนของกรอบ (11.34) ถูกทะลุอย่างมีนัยสำคัญ" },
+      { share: "30%", trigger: "หลังรายงาน WASDE เดือน 12", note: "งวดท้ายเมื่อรายงานอุปสงค์-อุปทานลงตัว ส่วนพรีเมียมความเสี่ยงฤดูปลูกของอเมริกาใต้สะท้อนอยู่ตรงนี้" },
+    ],
+    invCalendar: [
+      "ตอนนี้–ปลายพ.ย.: ช่วงปิดท้ายเก็บเกี่ยวของสหรัฐ ยอดคงคลังและการตรวจส่งออกคือข้อมูลแข็งหลัก",
+      "30 พ.ย.: จุดตัดสินใจสมาชิก Planet ของระบบนี้ (การตรวจผลผลิตด้วยดาวเทียมจะไปต่อได้หรือไม่)",
+      "ต้น ธ.ค.: รายงาน USDA WASDE — ไกชนงวดที่สาม",
+      "ธ.ค.–ก.พ.: ฤดูปลูกของอเมริกาใต้ (บราซิล/อาร์เจนตินา) ตัวแปรหลักของราคาไตรมาสหนึ่ง",
+    ],
+    invRoiTitle: "ฉากทัพรายได้ (โชว์เลขเป็นขั้น)",
+    invRoiLead:
+      "ข้อมูลจากภายนอกมีตัวเดียวคือราคา: กรอบ USDA/AMS ที่บันทึกไว้ 10.79–11.34 $/bu (วันที่และฉบับตรวจย้อนได้จากบัญชี) ที่เหลือคือเลขคณิตแบบเปิดหนังสือ",
+    invAssumptions: [
+      "ค่าตั้งต้น (สมมติ เปลี่ยนเป็นตัวเลขคุณได้): ขาย 2.5 ตัน/เฮกตาร์ = 91.86 บุชเชล (1 ตัน = 36.7433 bu)",
+      "งวดแรกยึดค่าเฉลี่ยที่บันทึกไว้ 11.16; งวดสองที่ไก 11.40; งวดสามตามราคาฉาก",
+      "สูตร: รายได้ = บุชเชล × ราคา; ราคาเฉลี่ยแบบแบ่งงวด = 0.4×11.16 + 0.3×11.40 + 0.3×ราคาฉาก",
+      "ไม่รวมค่าอบแห้ง ค่าขนส่ง และส่วนต่างเกรด/โปรตีน; นั่นคือบัญชีอีกแผ่น",
+    ],
+    invRoiCols: { band: "ราคาฉาก $/bu", allSold: "ขายเต็มที่ราคานี้ $/ha", staged: "แบ่งงวด 40/30/30 $/ha", delta: "แบ่งงวด − เต็ม" },
+    invRoiRiskNote: (down, up) =>
+      `ถ้าราคาลงไป 10.80 แบบแบ่งงวดขาดทุนน้อยกว่า ${down}; ถ้าพุ่งไป 12.00 ก็ให้กำไรปลายหางไป ${up} — การขายแบ่งงวดซื้อความสงบและขายหางขวาไป นี่คือกลไก ไม่ใช่การพยากรณ์`,
+    invTrustTitle: "ทำไมตัวเลขเหล่านี้น่าเชื่อ",
+    invTrustLead: "ไม่มีคำโปรย — มีกลไกและตัวเลขที่คุณเปิดตรวจเองได้",
+    invSpine: [
+      { num: "1,597", label: "ชุดทดสอบอัตโนมัติเขียวต่อเนื่อง (ชุดเต็มทั้งรีโพ, 2026-11-18)" },
+      { num: "3 ตราเวลา", label: "ใบกำเนิดของทุกตัวเลข: issue / valid / availability" },
+      { num: "โซ่แฮช", label: "บัญชีต้านการแก้ไข: แตะแถวเดียว โซ่ก็ไม่ตรง" },
+      { num: "point-in-time", label: "เล่นซ้ำ: การตัดสินใจในอดีตเล่นซ้ำได้ด้วยข้อมูลที่รู้เฉพาะวันนั้น" },
+      { num: "3 ภูมิภาค", label: "ซ้อมกู้ระบบประจำ (หัววัดที่โตเกียว/สิงคโปร์/เวอร์จิเนีย)" },
+      { num: "ถังเก็บเวอร์ชัน GCS", label: "ข้อมูลสังเกตการณ์ลงเก็บเชิงวัตถุแบบมีเวอร์ชัน เครื่องหายบันทึกไม่หาย" },
+    ],
+    invLinks: [
+      { label: "ภาพรวม /farm (แบ็กเอนด์)", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm" },
+      { label: "ผลตัดสินใบอนุญาต (สด)", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm/licences" },
+      { label: "รายการฉากดาวเทียม (สด)", href: "https://farm-seges-ai-451400509859.asia-east1.run.app/farm/planet" },
+    ],
+    invRefTitle: "แหล่งอ้างอิงและสถานะใบอนุญาต",
+    invRefLead: "ข้อมูลภายนอกทุกสายพากับความจริงเรื่องใบอนุญาต — ปัจจุบันยังจอดที่ระดับคัดกรองทั้งหมด",
+    invRefs: [
+      { label: "JMA MSM (ผ่าน Open-Meteo ระดับฟรี)", state: "เงื่อนไขไม่เชิงพาณิชย์ · ใช้การเงิน ไม่ได้", href: "https://open-meteo.com/en/docs" },
+      { label: "หัวฉาก/ภาพย่อ PlanetScope", state: "ใบอนุญาตทดลอง · พาณิชย์ ไม่ได้ · ไม่นำพิกเซลออก", href: "https://www.planet.com" },
+      { label: "ราคาประมูลถั่วเหลือง USDA/AMS + WASDE ฉบับ พ.ย.", state: "ข้อมูลสาธารณะ · บันทึกแล้ว (ระบุวันที่) · อ้างแบบสรุป", href: "https://www.ams.usda.gov/market-news" },
+      { label: "รายงานทดสอบภูมิอากาศพืชหลายแปลง (ฉบับเต็ม)", state: "ผลงานของเรา · สาธารณะ", href: "/reports/fieldtest-multisite-REPORT-postfix.md" },
+      { label: "รายงานซ้อมเดิมพันอนุพันธ์ (ฉบับเต็ม)", state: "ผลงานของเรา · สาธารณะ", href: "/reports/arb-rehearsal-REPORT.md" },
+    ],
+    invFooter: "เป็นการสนับสนุนการตัดสินใจ ไม่ใช่การชักชวนลงทุน; การอนุญาตใช้เพื่อการเงินยังปิดอยู่",
+    ctaTitle: "อยากได้หน้าแบบนี้ของแปลงคุณไหม?",
+    ctaBody: "เปิดหน้าบันทึกแปลง ปักพินจากมือถือ สามนาทีได้ข้อมูลสังเกตการณ์พร้อมใบกำเนิดชุดแรก ฟรี ไม่ต้องใช้บัตรเครดิต",
+    ctaBtn: "เริ่มบันทึกฟรี",
   },
 };

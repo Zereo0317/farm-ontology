@@ -3,7 +3,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 import { fetchWeatherFeed } from "@/lib/backend";
-import { reportCopy, type ReportLang } from "@/lib/report-copy";
+import { localeLabels } from "@/lib/copy";
+import { REPORT_LANGS, reportCopy, type ReportLang } from "@/lib/report-copy";
 import { CAPTURE, DERIVED } from "@/lib/report-1119-data";
 
 import { ChartsBlock } from "./charts";
@@ -15,6 +16,15 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+const LANG_SET: ReadonlySet<string> = new Set(REPORT_LANGS);
+
+/** ?lang= beats the negotiated farm-locale cookie; default zh-TW. */
+function langFrom(param: string | undefined, cookie: string | undefined): ReportLang {
+  if (param && LANG_SET.has(param)) return param as ReportLang;
+  if (cookie && LANG_SET.has(cookie)) return cookie as ReportLang;
+  return "zh-TW";
+}
 
 const LANGS: ReportLang[] = ["zh-TW", "ja"];
 
@@ -51,15 +61,10 @@ export default async function Biratori1119Report(props: {
 }) {
   const params = await props.searchParams;
   const jar = await cookies();
-  const cookieLang = jar.get("farm-locale")?.value;
-  const lang: ReportLang =
-    params.lang === "ja"
-      ? "ja"
-      : params.lang === "zh-TW"
-        ? "zh-TW"
-        : cookieLang === "ja"
-          ? "ja"
-          : "zh-TW";
+  const lang = langFrom(
+    typeof params.lang === "string" ? params.lang : undefined,
+    jar.get("farm-locale")?.value,
+  );
   const t = reportCopy[lang];
 
   const cookieTab = jar.get("farm-report-tab")?.value;
@@ -280,12 +285,21 @@ export default async function Biratori1119Report(props: {
         <p className="kicker">{t.kicker}</p>
         <h1>{t.h1}</h1>
         <p className="sub">{t.sub}</p>
+        <nav className="langRow" aria-label="language">
+          {REPORT_LANGS.map((code) => (
+            <Link
+              key={code}
+              href={`?lang=${code}&tab=${initialTab}`}
+              className={code === lang ? "langLink current" : "langLink"}
+              aria-current={code === lang ? "true" : undefined}
+            >
+              {localeLabels[code]}
+            </Link>
+          ))}
+        </nav>
         <div className="langRow">
-          <Link href={t.langSwitchHref} className="langLink">
-            {t.langSwitch}
-          </Link>
           <span className="chip">{CAPTURE.point.place}</span>
-          <span className="chip chipGreen">R8 · GDD 1116.8</span>
+          <span className="chip chip-green">R8 · GDD 1116.8</span>
         </div>
       </header>
 
