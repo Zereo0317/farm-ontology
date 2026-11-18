@@ -46,6 +46,7 @@ Operational procedures now live in `deploy/`:
 | [deploy/record-retention-policy.md](../deploy/record-retention-policy.md) | 90-day rolling archive retention — POLICY ONLY, lifecycle activation approval-gated |
 | [deploy/webhook-alerting.md](../deploy/webhook-alerting.md) | Reserved DISABLED webhook alert channel + HALT replica policy + enablement runbook |
 | [deploy/alert-ack-drill.md](../deploy/alert-ack-drill.md) | The executed end-to-end alert ACK drill with timestamps (2026-11-18) |
+| [deploy/cost-optimization.md](../deploy/cost-optimization.md) | Sprint-I cost inventory (estimates), right-size review, applied safe subset + honest savings ledger |
 | [deploy/create-observation-job.sh](../deploy/create-observation-job.sh) | Cloud Run job proving one observation round-trips through the record store |
 | [deploy/update-staging-env.sh](../deploy/update-staging-env.sh) | Point staging at the GCS record backend idempotently |
 
