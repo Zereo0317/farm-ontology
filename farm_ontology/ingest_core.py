@@ -43,6 +43,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -60,6 +62,14 @@ ALERT_EVIDENCE_WINDOW = 5
 #: Identity of the durable pipeline store, echoed into run rows.
 OWNER_PROJECT = "seges-ai"
 OWNER_BUCKET = "farm-seges-ai-records"
+
+#: Upper bound of the process-wide row cache (singleflight); cleared
+#: wholesale when exceeded — rows are cheap to re-read on demand.
+_ROW_READ_CACHE_LIMIT = 512
+
+#: The status fast-path reads rows concurrently (I/O-bound waits, no
+#: GIL contention): a modest pool per compose call.
+ROW_READ_WORKERS = 8
 
 
 # ---------------------------------------------------------------- clocks
@@ -194,8 +204,72 @@ def read_json(backend, rel: str) -> dict | None:
 
 
 def write_json(backend, rel: str, document: dict) -> str:
+    """Write one document; ANY write through this seam invalidates the
+    process-wide ingest-status response cache (task-15 contract: operators
+    never see strikes/runs older than the write that changed them)."""
+    written = rel
     backend.write(rel, (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
-    return rel
+    invalidate_ingest_status_cache(reason=f"write:{rel}")
+    return written
+
+
+# ------------------------------------------- row cache (singleflight+TTLish)
+
+
+_ROW_CACHE: dict[str, dict | None] = {}
+
+
+def clear_row_caches() -> None:
+    """Flush the row cache (tests, ops tooling; identical-identity stores
+    reseeded in-process must not inherit prior rows)."""
+    _ROW_CACHE.clear()
+
+
+def _row_cache_key(backend, name: str) -> str:
+    try:
+        ident = json.dumps(backend.describe(), sort_keys=True, default=str)
+    except Exception:  # noqa: BLE001 - identity is best-effort
+        ident = "unknown-backend"
+    return f"{ident}|{name}"
+
+
+def read_row_once(backend, name: str) -> dict | None:
+    """Read one row document, deduplicating repeated reads process-wide.
+
+    The same run-log row is asked for by strikes, evidence windows, and
+    every status compose; without this cache each asker pays its own GET.
+    Corrupt content raises (read_json discipline); FileNotFoundError
+    caches the absence too.
+    """
+    key = _row_cache_key(backend, name)
+    if key in _ROW_CACHE:
+        return _ROW_CACHE[key]
+    row = read_json(backend, name)
+    if len(_ROW_CACHE) >= _ROW_READ_CACHE_LIMIT:
+        _ROW_CACHE.clear()
+    _ROW_CACHE[key] = row
+    return row
+
+
+def read_rows_parallel(backend, names: list[str]) -> dict[str, dict | None]:
+    """Several row GETs concurrently; one storage GET per name (warm rows
+    are answered from :func:`read_row_once` and cost no round trip)."""
+    if not names:
+        return {}
+    wanted = {name: _row_cache_key(backend, name) for name in names}
+    unresolved = [name for name, key in wanted.items() if key not in _ROW_CACHE]
+    resolved: dict[str, dict | None] = {
+        name: _ROW_CACHE[wanted[name]] for name in wanted if name not in unresolved
+    }
+    if unresolved:
+        with ThreadPoolExecutor(max_workers=max(1, min(ROW_READ_WORKERS, len(unresolved)))) as pool:
+            fetched = list(pool.map(lambda name: read_json(backend, name), unresolved))
+        for name, row in zip(unresolved, fetched):
+            if len(_ROW_CACHE) >= _ROW_READ_CACHE_LIMIT:
+                _ROW_CACHE.clear()
+            _ROW_CACHE[wanted[name]] = row
+            resolved[name] = row
+    return resolved
 
 
 # ------------------------------------------------------------------ rows
@@ -235,6 +309,69 @@ def write_data_row(backend, kind: str, name: str, row: dict, *, job: str, now: d
     return write_json(backend, f"{kind}/{name}", _attach_run_meta(row, job=job, now=now))
 
 
+# ------------------------------------------------- status response cache
+
+
+#: Owned HERE because every writer in this module must be able to
+#: invalidate it; composed/consumed by ``farm_ontology.ingest_status``.
+#: Slots are KEYED BY BACKEND IDENTITY so concurrent distinct stores
+#: (tests, tooling pointing at tmp dirs) never see each other's rows.
+STATUS_CACHE_TTL_S = 60.0
+_STATUS_CACHE: dict[str, dict] = {}
+#: Slot upper bound (test/tmp backends accumulate); wholesale clear beyond.
+_STATUS_CACHE_SLOT_LIMIT = 64
+#: Process-wide invalidation counter (mutable cell; tests may observe it).
+_CACHE_GENERATION = [0]
+
+#: Monotonic clock indirection: tests inject to jump the TTL.
+status_clock = time.monotonic
+
+
+def _cache_slot_key(backend) -> str:
+    try:
+        return json.dumps(backend.describe(), sort_keys=True, default=str)
+    except Exception:  # noqa: BLE001 - identity is best-effort
+        return "unknown-backend"
+
+
+def invalidate_ingest_status_cache(reason: str = "unspecified") -> None:
+    """Drop ALL cached /farm/ingest-status payloads (any writer may call;
+    a writer cannot know which backend identity a reader holds, so the
+    conservative whole-flush guarantees the operator-visibility contract)."""
+    for slot in _STATUS_CACHE.values():
+        slot["payload"] = None
+        slot["invalidated_by"] = reason
+    _CACHE_GENERATION[0] += 1
+
+
+def status_cache_generation() -> int:
+    return _CACHE_GENERATION[0]
+
+
+def cached_status_payload(backend):
+    """(payload, age_seconds, hit) from the TTL cache, or (None, .., False)."""
+    slot = _STATUS_CACHE.get(_cache_slot_key(backend))
+    if not slot or slot["payload"] is None:
+        return None, 0.0, False
+    age = status_clock() - slot["built_at_mono"]
+    if age >= STATUS_CACHE_TTL_S:
+        return None, age, False
+    return slot["payload"], age, True
+
+
+def store_status_payload(backend, payload: dict) -> None:
+    if len(_STATUS_CACHE) >= _STATUS_CACHE_SLOT_LIMIT:
+        _STATUS_CACHE.clear()
+    key = _cache_slot_key(backend)
+    previous_builds = _STATUS_CACHE.get(key, {}).get("builds", 0)
+    _STATUS_CACHE[key] = {
+        "payload": payload,
+        "built_at_mono": status_clock(),
+        "invalidated_by": None,
+        "builds": previous_builds + 1,
+    }
+
+
 # --------------------------------------------------------------- run log
 
 
@@ -269,7 +406,9 @@ def append_run(
         "error": (str(error)[:400] if error else None),
         **extra,
     }
-    return write_json(backend, log_rel(day_stamp(now), job), document)
+    written = write_json(backend, log_rel(day_stamp(now), job), document)
+    invalidate_ingest_status_cache(reason=f"append_run:{job}")
+    return written
 
 
 def run_rows(backend, job: str | None = None) -> list[dict]:
@@ -402,9 +541,14 @@ __all__ = [
     "STATE",
     "CONSECUTIVE_FAILURE_ALERT_AT",
     "ALERT_EVIDENCE_WINDOW",
+    "ROW_READ_WORKERS",
+    "STATUS_CACHE_TTL_S",
     "open_pipe_backend",
     "describe_backend",
     "read_json",
+    "read_row_once",
+    "read_rows_parallel",
+    "clear_row_caches",
     "write_json",
     "job_rows",
     "already_equal_value_row",
@@ -418,6 +562,11 @@ __all__ = [
     "on_run_finished",
     "persist_flag_rows",
     "standing_alerts",
+    "invalidate_ingest_status_cache",
+    "status_cache_generation",
+    "cached_status_payload",
+    "store_status_payload",
+    "status_clock",
     "iso",
     "day_stamp",
     "run_stamp",
