@@ -1,95 +1,121 @@
-# Farm decision record
+# farm-ontology — a governed farm decision record (live)
 
-A small, tested record for cultivated-land facts. It stores what was known, at which native spatial support, under which licence, with which error mark, and which uses were refused.
+A small, tested **decision record** for one farm operation (Biratori,
+Hokkaido). It stores what was known, at which time, at which native spatial
+support, under which licence, with which error mark — and which uses were
+**refused**. It refuses more than it admits, on purpose: a 10 km gridded
+value is never a parcel measurement, a join never rewrites support, an
+expired licence demotes the feed automatically, and unknown stays `unknown`.
 
-It does not estimate yield. It does not issue a hedge ratio, a parametric trigger, or a nature unit. Class C stays closed.
+It does not estimate yield. It does not issue a hedge ratio, a parametric
+trigger, or a nature unit. **Class C stays closed.**
 
-The IRI base `https://github.com/Zereo0317/farm-ontology/ns/` stays **provisional** until seges.ai serves the namespace. The intended domain is seges.ai. No DNS record was written.
+Charter (four lines, enforced by tests and refusals):
 
-## Run the tests
+1. **Stdlib-only Python** — no third-party runtime packages.
+2. **Fail closed** — refuse and record; a gap is published, never guessed.
+3. **No invented numbers** — native support, availability time, and an error
+   mark travel with every value, or the value does not exist.
+4. **Consent-first** — synthetic parties only; farmer data flows on written
+   certificates (grants/); class C stays closed.
 
-Python 3.11 or newer. No third-party packages.
+## Live system (verified 2026-11-18, project `seges-ai`, region `asia-east1`)
+
+| # | What | Where | Address |
+| --- | --- | --- | --- |
+| 1 | Decision API (prod) | Cloud Run `farm-seges-ai` | https://farm-seges-ai-451400509859.asia-east1.run.app (`/livez`) |
+| 2 | Staging of the same record | Cloud Run `farm-seges-ai-staging` | https://farm-seges-ai-staging-451400509859.asia-east1.run.app |
+| 3 | Field web app (Next.js, gated) | Cloud Run `farm-seges-ai-web` | https://farm-seges-ai-web-451400509859.asia-east1.run.app (report: `/report/biratori-1119`) |
+| 4 | Ingest workers | Cloud Run **jobs** `farm-ingest-*` + `farm-nightly-export`, fired by 5 ENABLED Cloud Scheduler entries (hourly weather, 22:00 JST Planet, daily hazard, weekly NDVI, 03:30 JST export) | — |
+| 5 | Durable record store | GCS bucket `farm-seges-ai-records` (`FARM_RECORD_BACKEND=gcs`) | `gs://farm-seges-ai-records` |
+
+Deploys: staging is automatic on green CI (`test.yml`: unit tests →
+byte-compile → Docker build → staging + **traffic pin**); production moves
+only via the manual `deploy-prod-tag.yml` workflow; the web app builds and
+ships via `web-image.yml`. Every Cloud Run deploy must finish the
+**`update-traffic --to-latest` ritual** — a `--source` deploy can create the
+revision without moving traffic.
+
+## Quickstart
+
+Tests (Python ≥ 3.11, no third-party packages, hermetic — no network):
 
 ```powershell
-cd farm-ontology
 $env:GCLOUD_CONFIGURATION = "segescloud"
 $env:GCP_PROJECT = "seges-ai"
-python -m unittest discover -s tests -t . -v
+python -m unittest discover -s tests -t .
 ```
 
-The tests set those variables themselves when an adapter plan needs them. Unset variables make a cloud plan fail closed.
+Suite state: **1686 tests, OK (14 opt-in skips)** on 2026-11-18. Live-fetch
+tests stay behind `FARM_ONLINE_TESTS=1` so CI never calls the network.
 
-## Field record
-
-The walk is `docs/field-playbook.md`. The steps are `docs/field-sop.md`. Later dates are `docs/later-routes.md`.
+Local field page + record bridge:
 
 ```powershell
-cd web
-npm install
-npm run dev
+cd web; npm install; npm run dev          # http://127.0.0.1:3000/
 python -m farm_ontology.mcp_stdio
-```
-
-The field page is `http://127.0.0.1:3000/`. The page and the MCP server write `field-notes/obs-*.json`. Notes are `field-notes/notes/note-*.json`. The page does not call weather or a map. Class C stays closed. GPS accuracy stays unknown unless you pass metres. The command-line shape check writes only the file you name. It is not the page record:
-
-```powershell
 python -m farm_ontology.fieldkit --dry-run --out fixtures\field\dry-run-not-a-farm.json
 ```
 
-## GCP
+Writes go to `field-notes/` (git-ignored, device-local); on Cloud Run the
+same bridge writes the durable GCS store.
 
-The adapters read the gcloud configuration name and the project id from the environment. They do not embed credentials, tokens, or service-account keys.
+Deploy:
 
-| Variable | Value for this deployment |
+```powershell
+gcloud run deploy farm-seges-ai --project seges-ai --region asia-east1 --source .
+gcloud run services update-traffic farm-seges-ai --region asia-east1 --to-latest
+```
+
+Pushes to `main` do this to **staging** automatically; prod is a manual,
+auditable workflow. Runbooks: `deploy/` (GCP_SETUP, rotate-planet-key,
+rollback, budget, webhook-alerting, nightly-export). Web image:
+`pwsh -NoProfile -File web/tools/web-image-build.ps1 -TagSuffix <tag>`
+(Cloud Build; a root `--source` deploy cannot see `web/` — the repo-root
+`.gcloudignore` excludes it on purpose).
+
+## Where things are
+
+| Path | What |
 | --- | --- |
-| `GCLOUD_CONFIGURATION` | `segescloud` |
-| `GCP_PROJECT` or `EE_PROJECT` | `seges-ai` |
+| `farm_ontology/` | the record: model, store, refusal rules, publication, query (`factsAt`), adapters, `agronomy/`, `markets/`, `licences/`, `actuation/`, `pipelines/`, `sensors/`, `fieldkit` |
+| `ontology/` | local TTL (`fd-decision.ttl`); upstream ontologies are pinned, not vendored (`vocabulary-manifest.json`) |
+| `grants/` | licence **certificates** (v2) + commercial punch-list + `state.json` unlock ledger |
+| `web/` | the field app and public report |
+| `pipelines/`, `perf/`, `hardware/`, `fixtures/` | workers, load-testing evidence, sensor kit plans, recorded test data |
+| `docs/` | plan of record and ops: `decision-infra-roadmap.md` (workstreams + phasing), `alpha-fairness-doctrine.md`, `backend-live.md`, `web-ops.md`, `final-verification-report.md`, `decision-log.md` (Q1–Q21 closed switches), `legal/commercial-punchlist.md`, `field-playbook.md` / `field-sop.md` / `later-routes.md` (the walks) |
 
-A recorded check from 2026-11-16 is in `fixtures/dry_run/gcp-preflight.json`. Earth Engine's API was enabled on `seges-ai`, and a read of the algorithms catalog returned HTTP 200. The commercial versus noncommercial registration type was not returned, so it is stored as `unknown`. Unknown registration forces `permitsFinancialUse` false and caps the use class at Screening. No Export task was started.
+## Licence honesty — today's state (2026-11-18)
 
-## What is shipped
+- `permits_financial_use` is **false everywhere**. Earth Engine registration
+  is `unknown` (catalog reads OK via `roles/earthengine.viewer` only);
+  Open-Meteo stays at the Q9 non-commercial answer; the Planet trial
+  (ends **2026-12-17**, decide by **2026-11-30**) is **not** a commercial
+  grant.
+- `grants/` contains only **SPECIMEN** certificates (`specimen: true`). The
+  evaluator refuses them with reason `specimen` — **a specimen never
+  unlocks any feed**. Executed grants replace them one for one after the
+  human cards clear (see `docs/legal/commercial-punchlist.md`).
+- Admission rules live in the refusal engine (`farm_ontology/rules.py`);
+  the unlock ledger (`farm_ontology/licences/`) can only demote, never
+  loosen them.
 
-- Local classes for a boundary version, holding, operator, right-holder, season, cropping, spatial join, error, licence, method, human gate, and refusal (`ontology/fd-decision.ttl`).
-- SOSA/SSN, GeoSPARQL, OWL Time, QUDT, PROV-O, and SKOS as namespace references. AGROVOC is a `skos:exactMatch` label only. Nothing from the non-commercial or unlicensed list in the spec is imported.
-- Refusal rules that run before a record is stored. A 10 km (or any gridded) value cannot be stored as a measurement of a farm boundary. A join does not rewrite native resolution.
-- Synthetic identity. Unknown tenure stays `unknown`. The operator is not copied into the right-holder.
-- `factsAt` and `associatedAt`. A fact is returned only when its availability time is at or before the query time, no visible revision supersedes it, and, for a forecast, its issue time is at or before the query time.
-- Fail-closed adapters for Earth Engine history, Open-Meteo (`jma_msm`, `ecmwf_ifs`), and CWA F-D0047 / WRF. Issue time and native support stay on the forecast. Contract fixtures under `fixtures/dry_run/` are marked `captured_live: false`.
-
-One live Open-Meteo sample is recorded in `fixtures/live/open_meteo_jma_msm_2026-11-16.json`. The point is 23.5°N, 121.0°E. The model is `jma_msm`. The stored spatial support is the published JMA MSM grid, **0.05° (about 5 km)**, not the 0.4 ha parcel. The stored hour is precipitation `0.0 mm` for 2026-11-16T04:00Z–05:00Z, issued at 2026-11-16T03:00Z and received at 2026-11-16T10:23:44Z. The plain forecast endpoint was called and does not return a model-run time, so its body is not the stored observation. No API key is in the repository. The test suite does not call the network. Class C stays closed.
-
-Upstream ontology files are not in git. Pins and the local-module SHA-256 are in `vocabulary-manifest.json`. QUDT unit IRIs are references; the release file was not downloaded and no hash is claimed for it. Crop Ontology ids in the manifest are the recorded pins: maize CO_322, sorghum CO_324, chickpea CO_338, groundnut CO_337, common bean CO_335, potato CO_330, and banana CO_325. Trait repositories CO_320, CO_321, and CO_334 are named and not cloned. Soybean field notes use CO_336. No ontology titled Musa was found. The precipitation observed-property IRI is a local id marked unresolved against CF standard-name collection P07 version 95.
-
-There is no SPARQL server and no OWL DL reasoner. The recorded store choice is Apache Jena. It is not deployed. The in-memory store is the development record.
-
-## What stays closed
-
-These decisions are recorded. The software keeps the missing files out and the closed switches closed.
-
-| ID | While it is open |
-| --- | --- |
-| Q1 | The GitHub IRI base above is provisional, not a final domain. |
-| Q2 | ENVO v2026-10-23 is pinned and not imported. |
-| Q3 | OGC AIM is not vendored. |
-| Q4 | Crop ids are recorded, including soybean CO_336 on a field note. Trait repositories CO_320, CO_321, and CO_334 are not cloned. No ontology titled Musa was found. |
-| Q5 | Plant Stress Ontology is not shipped. |
-| Q6 | The store choice is Apache Jena. It is not deployed. Development uses memory. |
-| Q7 | Livestock is in scope. ATOL and EOL OWL files were not downloaded. |
-| Q8 | No African, Indian, or Indonesian meteorological service is named or ingested. |
-| Q9 | Open-Meteo `permitsFinancialUse` stays false. |
-| Q10 | No listed instrument and no basis. Hedge and trigger annotations do not load. |
-| Q11 | Financial use stays false. Earth Engine registration type on this project is `unknown`. |
-| Q12 | `fd:classCPolicy` is `closed`. Data and environment variables cannot open it. |
-| Q13 | The reviewer name defaults to empty. A matching non-empty name can store a class B gate. The observation stays at Screening. Class C stays closed. |
-| Q14 | Synthetic parties only. Real personal data does not load. |
-| Q15 | No livelihood-zone layer. |
-| Q16 | No AgriStack extract is ingested. |
-| Q17 | No AGROVOC labels outside English, French, Spanish, Arabic, Russian, and Chinese. The shipped example label is English. |
-| Q18 | Phone-point accuracy stays unknown. Six decimal places do not count as metres. |
-| Q19 | Unmatched local names are not forced into maize. |
-| Q20 | No soil-profile store. |
-| Q21 | 宇辰 洪 is named as the independent validator. Pay and trading affiliates were not supplied. An internal score is not an error bar. |
+The IRI base `https://github.com/Zereo0317/farm-ontology/ns/` stays
+**provisional** until seges.ai serves the namespace (Q1). One live Open-Meteo
+sample is recorded in `fixtures/live/` (jma_msm, 0.05° ≈ 5 km support); the
+test suite does not call the network.
 
 ## What a memo will not say
 
-A memo from `factsAt` can say what was knowable at a time, at what support, under what licence, with what error mark, and which promotions were refused. It does not state a parcel yield, a parcel rainfall, a hedge ratio, or a nature unit. Hectare weather is unsupported unless a calibrated sensor observation is present. This build has no live sensor feed.
+A memo from `factsAt` can state what was knowable at a time, at what support,
+under what licence, with what error mark, and which promotions were refused.
+It does not state a parcel yield, a parcel rainfall, a hedge ratio, or a
+nature unit. Hectare weather is unsupported unless a calibrated sensor
+observation is present.
+
+## Contact / ownership
+
+Owned and operated by the founder (Zereo0317, gcloud `segescloud`);
+module ownership and agent conventions: [AGENTS.md](AGENTS.md). Decisions
+and closed switches: `docs/decision-log.md`. The card that gates every
+commercial unlock: `docs/legal/commercial-punchlist.md`.
