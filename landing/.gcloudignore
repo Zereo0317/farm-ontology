@@ -1,0 +1,12 @@
+# landing build context guard: ship the app, not the workshops
+*
+!landing/package.json
+!landing/package-lock.json
+!landing/src
+!landing/public
+!landing/scripts
+!landing/tsconfig.json
+!landing/vite.config.ts
+!landing/eslint.config.mjs
+!landing/index.html
+!Dockerfile.landing

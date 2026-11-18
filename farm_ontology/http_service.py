@@ -514,13 +514,62 @@ def handle_target(path: str, *, token: str | None = None) -> tuple[int, dict | s
         )
     if path == "/farm/memo":
         return 200, _memo_text(), "text"
+    if path == "/leads":
+        return _leads_admin(token=(query.get("token") or [None])[0] or token)
     return 404, {"error": f"no route {path}"}, "json"
+
+
+def _token_ok(candidate: str | None) -> bool:
+    expected = os.environ.get("WEB_ACCESS_TOKEN", "")
+    if not expected or not candidate:
+        return False
+    import hmac as _hmac
+
+    return _hmac.compare_digest(candidate.strip(), expected.strip())
+
+
+def _leads_admin(*, token: str | None) -> tuple[int, dict | str, str]:
+    from farm_ontology.leads import list_leads
+
+    if not _token_ok(token):
+        return (
+            401,
+            {"gap": "leads are an admin route: pass the access token (?token= or X-Access-Token)"},
+            "json",
+        )
+    try:
+        return 200, list_leads(), "json"
+    except (OSError, ValueError, TypeError) as error:
+        return 200, {"gap": f"lead registry unreadable: {str(error)[:140]}"}, "json"
+
+
+def handle_lead_post(body: bytes, *, origin: str | None) -> tuple[int, dict, dict]:
+    """POST /leads: validate, hash, store. Returns (status, payload, extra_headers)."""
+    from farm_ontology.leads import cors_preflight, submit_lead
+
+    if not body:
+        return 422, {"gap": "empty body"}, cors_preflight(origin)
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        return 422, {"gap": f"body was not json: {str(error)[:120]}"}, cors_preflight(origin)
+    if not isinstance(payload, dict):
+        return 422, {"gap": "body must be a json object"}, cors_preflight(origin)
+    try:
+        row = submit_lead(payload, origin=origin)
+    except ValueError as error:
+        return 422, {"gap": str(error)[:240]}, cors_preflight(origin)
+    except OSError as error:
+        return 502, {"gap": f"lead store unwritable: {str(error)[:140]}"}, cors_preflight(origin)
+    headers = cors_preflight(origin)
+    headers["Access-Control-Allow-Origin"] = headers.get("Access-Control-Allow-Origin", origin or "*")
+    return 200, row, headers
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "farm-ontology/1.0"
 
-    def _respond(self, status: int, payload, kind: str) -> None:
+    def _respond(self, status: int, payload, kind: str, extra_headers: dict | None = None) -> None:
         if kind == "text":
             body = (payload + "\n").encode("utf-8")
             ctype = "text/plain; charset=utf-8"
@@ -529,9 +578,33 @@ class Handler(BaseHTTPRequestHandler):
             ctype = "application/json; charset=utf-8"
         self.send_response(status)
         self.send_header("Content-Type", ctype)
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:  # noqa: N802 (http.server API)
+        from farm_ontology.leads import cors_preflight
+
+        origin = self.headers.get("Origin")
+        self.send_response(204)
+        for key, value in cors_preflight(origin).items():
+            self.send_header(key, value)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def do_POST(self) -> None:  # noqa: N802 (http.server API)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(min(length, 65536)) if length else b""
+            if urllib.parse.urlsplit(self.path).path == "/leads":
+                status, payload, headers = handle_lead_post(body, origin=self.headers.get("Origin"))
+                self._respond(status, payload, "json", headers)
+                return
+            self._respond(404, {"error": f"no POST route {urllib.parse.urlsplit(self.path).path}"}, "json")
+        except Exception as error:  # keep the connection alive, publish the gap
+            self._respond(200, {"gap": f"handler error: {str(error)[:200]}"}, "json")
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API)
         try:
