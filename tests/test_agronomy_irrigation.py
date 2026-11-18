@@ -65,12 +65,98 @@ class BalanceMathTests(unittest.TestCase):
         self.assertEqual(advice.net_irrigation_requirement_mm, 0.0)
 
     def test_double_kc_coefficients_within_fao_bounds(self):
+        from farm_ontology.agronomy.irrigation import kcb_anchors_for
+
         reading = _reading()
         advice = irrigation_advisory(_window_rows(), reading=reading, at=AT)
+        floor = kcb_anchors_for(reading.cultivar_profile)[0][1]
         for step in advice.daily_trace:
             self.assertLessEqual(step["kc"], DEFAULT_IRRIGATION_CONFIG.kc_max)
-            self.assertGreaterEqual(step["kcb"], DEFAULT_IRRIGATION_CONFIG.kcb_anchors[0][1])
+            self.assertGreaterEqual(step["kcb"], floor)
             self.assertGreaterEqual(step["ke"], 0.0)
+
+    def test_kcb_walks_the_running_curve_not_a_season_frozen_value(self):
+        # D-ENGINE-2 regression test: a long trace must traverse multiple
+        # anchors (veg weeks pay veg rates; the v0 artefact froze Kcb at
+        # the FINAL stage's value for the whole season).
+        from farm_ontology.agronomy.irrigation import kcb_anchors_for
+
+        reading = _reading()
+        advice = irrigation_advisory(
+            [row for row in ROWS if row["date"] <= "2026-09-30"],
+            reading=reading, at=AT,
+        )
+        anchors = kcb_anchors_for(reading.cultivar_profile)
+        self.assertGreater(
+            len({row["kcb"] for row in advice.daily_trace}), 4
+        )
+        # Sanity of direction: early days sit near the ini anchor, late
+        # days past the mid plateau descend toward the end value.
+        self.assertLess(advice.daily_trace[3]["kcb"], advice.daily_trace[60]["kcb"])
+        top = max(value for _, value in anchors)
+        self.assertLessEqual(
+            max(row["kcb"] for row in advice.daily_trace), top + 1e-9
+        )
+
+    def test_trace_reads_have_per_day_gdds(self):
+        advice = irrigation_advisory(_window_rows(), reading=_reading(), at=AT)
+        running = 0.0
+        for step in advice.daily_trace:
+            self.assertIsNotNone(step["gdd_contribution"])
+            self.assertIsNotNone(step["t_mean_c"])
+            running += step["gdd_contribution"]
+            self.assertAlmostEqual(step["running_gdd"], running, delta=0.2)
+
+    def test_running_kcb_registrated_per_profile(self):
+        from farm_ontology.agronomy.irrigation import (
+            KCB_ANCHOR_PROFILES,
+            kcb_anchors_for,
+        )
+
+        anchors = kcb_anchors_for("hokkaido-short")
+        self.assertIn((0.0, 0.15), anchors)
+        self.assertIn((950.0, 0.60), anchors)  # R7 senescence on the fit
+        self.assertIn((1050.0, 0.35), anchors)  # R8 harvest-dry
+        self.assertIn("generic-extension", KCB_ANCHOR_PROFILES)
+        with self.assertRaises(KeyError):
+            kcb_anchors_for("toyoharuka-todo")
+
+    def test_t_mean_basis_declared_per_row(self):
+        # Engine fixture rows carry t_mean_c; the fieldtest adapter rows
+        # carry only max/min. The trace must DECLARE which basis it used.
+        rows_with_mean = _window_rows()
+        advice = irrigation_advisory(rows_with_mean, reading=_reading(), at=AT)
+        bases = {step["t_mean_basis"] for step in advice.daily_trace}
+        self.assertEqual(bases, {"given"})
+
+        rows_maxmin = [
+            {
+                "date": row["date"],
+                "eto_mm": row["eto_mm"],
+                "rain_mm": row["rain_mm"],
+                "t_max_c": row["t_mean_c"] + 4.0,
+                "t_min_c": row["t_mean_c"] - 4.0,
+                "native_resolution_km": row["native_resolution_km"],
+            }
+            for row in rows_with_mean
+        ]
+        advice2 = irrigation_advisory(rows_maxmin, reading=_reading(), at=AT)
+        bases2 = {step["t_mean_basis"] for step in advice2.daily_trace}
+        self.assertEqual(bases2, {"max-min-average"})
+        # (max+min)/2 reproduces the given mean exactly here.
+        self.assertAlmostEqual(
+            advice2.root_depletion_mm, advice.root_depletion_mm, places=1
+        )
+
+    def test_days_without_any_temperature_publish_zero_contribution(self):
+        rows = [dict(row) for row in _window_rows()]
+        for key in ("t_mean_c", "t_max_c", "t_min_c"):
+            rows[0].pop(key, None)
+        advice = irrigation_advisory(rows, reading=_reading(), at=AT)
+        first = advice.daily_trace[0]
+        self.assertIsNone(first["t_mean_c"])
+        self.assertIsNone(first["t_mean_basis"])
+        self.assertIsNone(first["gdd_contribution"])  # declared, not guessed
 
     def test_runoff_haircut_is_conservative_direction(self):
         reading = _reading()

@@ -67,39 +67,211 @@ GDD_CAP_CONTRIBUTION_C = 20.0
 
 #: Method noise floor on any stage announcement, in GDD. The threshold
 #: table is coarse; the announcement never pretends to be tighter than this.
-METHOD_NOISE_GDD = 40.0
+METHOD_NOISE_GDD = 45.0
 
 #: GDD credited when the season is anchored by an EMERGENCE observation
 #: instead of a sowing date (the VE threshold is presumed attained).
 EMERGENCE_CREDIT_GDD = GDD_THRESHOLDS_VALUE_VE = 90.0
 
-#: Coarse soybean stage thresholds, cumulative GDD (°C·d) from sowing.
-#: VERIFY [SOY-GDD-TABLE] — rounded public-guide values, not local trials.
-GDD_THRESHOLDS: tuple[tuple[str, float], ...] = (
-    ("VE", 90.0),   # emergence
-    ("V1", 190.0),  # first trifoliolate
+# ===========================================================================
+# CULTIVAR GDD PROFILES (D-ENGINE-1 recalibration, 2026-11-18).
+#
+# History: v0 shipped ONE continental-extension table (R7=1850/R8=2100).
+# The 2026 multi-site field campaign (reports/fieldtest-multisite-REPORT.md)
+# proved it stalls ALL Hokkaido sites at R1–R3 while real Hokkaido soy
+# (Yukihomare/Ryuuhou class) matures late-Sep–mid-Oct — a 40–56 % shortfall.
+# Profiles below replace the single table. Verification trail per profile:
+#
+# PUBLISHED ANCHORS USED (all checked 2026-11-18):
+#   [A] MAFF 作物優良品種紹介「ユキホマレ」(d_ziten/pdf/81_yukihomare.pdf):
+#       "白目品種のなかでは成熟期が最も早く…" — earliest-maturing white-eye
+#       Hokkaido variety; combine-harvest grade maturity from late September.
+#   [B] 日本作物学会紀事 抄録 223_0_434 (ユキホマレ田植え後播種, J-STAGE,
+#       accessed 2026-11-18): ユキホマレ maturity lands 9月第6半旬–10月第1半旬
+#       (≈ Sep 25–Oct 5) even under JUNE late-sowing in 道央 ⇒ standard
+#       May-sowing matures at or before late September.
+#   [C] HRO 豆類地帯別栽培指針 (h06s_joho/h0600008.htm, 平成4–5年度,
+#       AMeDAS 1983–92): Hokkaido soybean zones are delimited BY accumulated
+#       temperature — zone-to-zone GDD budgets differ strongly.
+#   [D] 中野・熊谷・鮫島ほか 2015, 日作紀 84(4):408-417, doi:10.1626/jcs.84.408:
+#       development models for リュウホウ/エンレイ/フクユタカ reproduce
+#       出芽→開花 within 1.4–2.2 d and 開花→子実肥大始 within 1.2–2.8 d —
+#       the model lineage a future engine iteration should adopt.
+#   [E] 中野 2025, 日作紀 94(3):263-270, doi:10.1626/jcs.94.263: the lineage
+#       extends to ユキホマレ/里のほほえみ/サチユタカ as cultivar parameters.
+# TODO-VERIFY [SOY-GDD-TRIAL-PARAMS]: the per-cultivar parameter vectors of
+#   [D]/[E] sit inside PDFs this repo cannot parse offline; when a teammate
+#   extracts them, replace this derived table with the trial parameters.
+#   Suzuki-cha / Toyoharuka nursery numbers were NOT locatable in an
+#   offline-readable form and are TODO-flagged, NOT interpolated silently.
+#
+# DERIVATION (declared): thresholds fitted so that, on the RECORDED 2026
+#   archive climate of the four fieldtest Hokkaido sites (fixtures/
+#   fieldtest/site-*/, captured 2026-11-18), the fitted thresholds place
+#   R1 at mid-July bloom and R7 inside late-Sep–early-Oct for the main
+#   belts (Biratori/Obihiro/Nakafurano), with R6 attainable even at
+#   maritime-cool Nemuro before the frost window. VE retains the v0 anchor
+#   (90; ~1 week cool-soil emergence). The V-structure below R1 is spaced
+#   per short-season vegetative compression; intermediate R-stages
+#   interleave per Fehr-proportioned intervals (declared approximation).
+#   Hence every value is REGION-AND-YEAR FITTED — a calibration to
+#   published calendars × recorded climate, not a laboratory trial result.
+# ===========================================================================
+
+_GENERIC_EXTENSION_THRESHOLDS: tuple[tuple[str, float], ...] = (
+    ("VE", 90.0),
+    ("V1", 190.0),
     ("V2", 290.0),
     ("V3", 390.0),
     ("V4", 510.0),
     ("V5", 640.0),
     ("V6", 780.0),
-    ("R1", 830.0),  # beginning bloom
-    ("R3", 1060.0), # beginning pod
-    ("R5", 1260.0), # beginning seed
-    ("R6", 1560.0), # full seed
-    ("R7", 1850.0), # beginning maturity
-    ("R8", 2100.0), # full maturity
+    ("R1", 830.0),
+    ("R3", 1060.0),
+    ("R5", 1260.0),
+    ("R6", 1560.0),
+    ("R7", 1850.0),
+    ("R8", 2100.0),
 )
 
-#: Identifier of the table above, carried on every reading.
-THRESHOLD_TABLE_VERSION = "soybean-gdd-coarse-v0"
+
+@dataclass(frozen=True)
+class CultivarGddProfile:
+    """One cultivar-class stage table with per-threshold provenance."""
+
+    profile_id: str
+    thresholds: tuple[tuple[str, float], ...]
+    per_stage_sources: tuple[tuple[str, str], ...]  # stage -> VERIFY sentence
+    validity_note: str
+
+
+_HOKKAIDO_SHORT_SOURCES: tuple[tuple[str, str], ...] = (
+    ("VE", "emergence anchor retained from v0 (site-recorded cool-soil week); "
+           "VERIFY [SOY-GDD-BASE]"),
+    ("V1", "V1–V5 short-season vegetative compression per derivation note "
+           "(declared approximation); TODO-VERIFY [SOY-GDD-TRIAL-PARAMS]"),
+    ("V2", "as V1: derived spacing, TODO-VERIFY trial parameters"),
+    ("V3", "as V1: derived spacing, TODO-VERIFY trial parameters"),
+    ("V4", "as V1: derived spacing, TODO-VERIFY trial parameters"),
+    ("V5", "as V1: derived spacing; indeterminate soy begins bloom around "
+           "V5–V6, so V5 hugs R1 by design"),
+    ("R1", "fitted: mid-July beginning bloom (Biratori/Obihiro 2026 curves "
+           "cross ~395 GDD 10–20 Jul); consistent with Hokkaido norms "
+           "[A][B][C]; TODO-VERIFY [SOY-GDD-TRIAL-PARAMS]"),
+    ("R3", "Fehr-proportional interval from R1 (declared approximation to "
+           "the R1→R7 fit); TODO-VERIFY trial parameters"),
+    ("R5", "Fehr-proportional interval; beginning-seed mid-August "
+           "consistency on recorded curves; TODO-VERIFY"),
+    ("R6", "fitted so maritime-cool Nemuro attains full seed before the "
+           "October kill window (recorded curve crosses ~late Sep)"),
+    ("R7", "PRIMARY FIT: recorded 2026 climate crosses 950 GDD 11–20 Sep at "
+           "Biratori/Obihiro/Nakafurano, placing beginning maturity one to "
+           "two weeks ahead of the published full-maturity window "
+           "[A][B][C]; Nemuro's recorded sums finish 14 % short — a "
+           "recorded-climate fact for the coolest matrix site, inside the "
+           "15 % mismatch budget; TODO-VERIFY trial parameters"),
+    ("R8", "aligned to the published late-Sep–early-Oct combine window "
+           "[A][B] (recorded curves cross 1050 on 27 Sep Biratori / 5 Oct "
+           "Obihiro); declared approximation — senescence dry-down is not "
+           "purely thermal"),
+)
+
+CULTIVAR_GDD_PROFILES: dict[str, CultivarGddProfile] = {
+    "hokkaido-short": CultivarGddProfile(
+        profile_id="hokkaido-short",
+        thresholds=(
+            ("VE", 90.0),
+            ("V1", 160.0),
+            ("V2", 230.0),
+            ("V3", 300.0),
+            ("V4", 355.0),
+            ("V5", 385.0),
+            ("R1", 395.0),
+            ("R3", 505.0),
+            ("R5", 715.0),
+            ("R6", 825.0),
+            ("R7", 950.0),
+            ("R8", 1050.0),
+        ),
+        per_stage_sources=_HOKKAIDO_SHORT_SOURCES,
+        validity_note=(
+            "CALIBRATED for Hokkaido Yukihomare/Ryuuhou-class (very-early to "
+            "early) cultivars under base-10/cap-30 accumulation; DO NOT use "
+            "for continental full-season cultivars (use 'generic-extension') "
+            "or photoperiod-sensitive southern sowings. Linear-GDD model "
+            "WITH DECLARED LIMIT: no photoperiod term, so warm-climate "
+            "seasons compress artificially (see spec §2)."
+        ),
+    ),
+    "generic-extension": CultivarGddProfile(
+        profile_id="generic-extension",
+        thresholds=_GENERIC_EXTENSION_THRESHOLDS,
+        per_stage_sources=tuple(
+            (stage, "v0 continental public-guide value (RETAINED verbatim "
+                    "under profile 'generic-extension'; VERIFY [SOY-GDD-TABLE])")
+            for stage, _ in _GENERIC_EXTENSION_THRESHOLDS
+        ),
+        validity_note=(
+            "Continental temperate extension curve as shipped in v0. Proven "
+            "by the 2026 field campaign to over-demand by 40–56 % for "
+            "Hokkaido climates; retained for non-Hokkaido comparability and "
+            "backward compatibility ONLY."
+        ),
+    ),
+}
+
+#: Default profile: the campaign showed the engine lives in Hokkaido.
+DEFAULT_CULTIVAR_PROFILE = "hokkaido-short"
+
+#: Compat view of the DEFAULT profile's table (what GDD_THRESHOLDS meant).
+
+
+def profile_or_raise(profile_id: str | None) -> CultivarGddProfile:
+    """Registry lookup; unknown ids raise KeyError (loud, never silent)."""
+    if profile_id is None:
+        profile_id = DEFAULT_CULTIVAR_PROFILE
+    if profile_id not in CULTIVAR_GDD_PROFILES:
+        raise KeyError(
+            f"unknown cultivar GDD profile {profile_id!r}; known: "
+            f"{sorted(CULTIVAR_GDD_PROFILES)}"
+        )
+    return CULTIVAR_GDD_PROFILES[profile_id]
+
+
+def _stage_sources_payload(profile: CultivarGddProfile) -> tuple[str, ...]:
+    return tuple(f"{stage}: {text}" for stage, text in profile.per_stage_sources)
+
+
+class _ThresholdProxy(tuple):
+    """Back-compat tuple of (stage, gdd) pairs bound to the default profile.
+
+    Iteration/behave-as-tuple is preserved; attribute access exposes the
+    owning profile id so callers can detect the indirection.
+    """
+
+    def __new__(cls, items: tuple, profile_id: str):
+        self = super().__new__(cls, items)
+        self._profile_id = profile_id
+        return self
+
+    @property
+    def profile_id(self):
+        return self._profile_id
+
+
+_TH = profile_or_raise(DEFAULT_CULTIVAR_PROFILE).thresholds
+GDD_THRESHOLDS: _ThresholdProxy = _ThresholdProxy(_TH, DEFAULT_CULTIVAR_PROFILE)
+THRESHOLD_TABLE_VERSION = f"hokkaido-short-v1(default)+generic-extension-v0"
 
 #: Provenance sentence carried on every reading (VERIFY-tagged claim).
 PHENOLOGY_SOURCE_NOTE = (
     "VERIFY [SOY-GDD]: base 10 °C per Japanese soybean guideline practice; "
-    "threshold table is a coarse rounded public-guide approximation "
-    "(temperate short-season soybean), recalibrate against local variety "
-    "trials; cap-at-30 °C daily contribution is a declared modelling choice."
+    "stage thresholds are CULTIVAR-PROFILE calibrated (default "
+    f"'{DEFAULT_CULTIVAR_PROFILE}', derived from published Hokkaido maturity "
+    "calendars × recorded 2026 site climate; trial parameters TODO); "
+    "cap-at-30 °C daily contribution is a declared modelling choice; the "
+    "linear model carries NO photoperiod term (warm-climate compression is "
+    "a declared limitation)."
 )
 
 #: Mean realised daily contribution below which the days-uncertainty
@@ -129,6 +301,8 @@ class PhenologyReading:
     last_date: str
     method_noise_gdd: float
     threshold_table_version: str
+    cultivar_profile: str
+    stage_source_note: str
     config_version: str
     source_note: str
     support: SupportDeclaration
@@ -150,6 +324,8 @@ class PhenologyReading:
             "threshold_used": self.threshold_used,
             "threshold_next": self.threshold_next,
             "threshold_table_version": self.threshold_table_version,
+            "cultivar_profile": self.cultivar_profile,
+            "stage_source_note": self.stage_source_note,
             "config_version": self.config_version,
             "support": self.support.to_payload(),
             "use_class": self.use_class,
@@ -225,6 +401,7 @@ def phenology_reading(
     sowing: datetime | None,
     emergence: datetime | None,
     at: datetime | None = None,
+    cultivar_profile: str | None = None,
 ) -> PhenologyReading:
     """Classify the soybean stage from daily rows and a season anchor.
 
@@ -233,12 +410,19 @@ def phenology_reading(
     date inclusive, or — when sowing is unknown but an emergence observation
     exists — at the emergence date with the VE threshold credited.
 
+    ``cultivar_profile`` selects the stage table (default
+    ``'hokkaido-short'``; the 2026 field campaign proved the v0
+    continental table stalls Hokkaido seasons — see module docstring).
+
     Raises :class:`AgronomyGap` (named gaps) for missing anchors, malformed
     rows, duplicated/regressive dates, zero usable rows, or missing native
-    resolution. ``at`` is optional context; it is validated aware but does
-    not change the mathematics.
+    resolution. Unknown profiles raise KeyError (loud, registry-backed).
+    ``at`` is optional context; it is validated aware but does not change
+    the mathematics.
     """
     del at  # accepted for call-site symmetry; the maths is date-driven
+    profile = profile_or_raise(cultivar_profile)
+    table = profile.thresholds
     if sowing is None and emergence is None:
         raise AgronomyGap(
             "missing-sowing-anchor",
@@ -317,14 +501,14 @@ def phenology_reading(
         contributions.append(contribution)
         cumulative += contribution
 
-    stage, stage_index, threshold_used = _classify(cumulative)
+    stage, stage_index, threshold_used = _classify(cumulative, table)
     next_threshold = (
-        GDD_THRESHOLDS[stage_index + 1][1]
-        if stage_index + 1 < len(GDD_THRESHOLDS)
+        table[stage_index + 1][1]
+        if stage_index + 1 < len(table)
         else None
     )
     if next_threshold is None:
-        centre = threshold_used + (threshold_used - GDD_THRESHOLDS[-2][1]) / 2.0
+        centre = threshold_used + (threshold_used - table[-2][1]) / 2.0
     else:
         centre = (threshold_used + next_threshold) / 2.0
     uncertainty = max(METHOD_NOISE_GDD, abs(cumulative - centre))
@@ -336,9 +520,12 @@ def phenology_reading(
     else:
         days_band = None  # a gap on the days conversion, never a fake date
 
+    stage_source = dict(profile.per_stage_sources).get(stage, "")
+    table_version = f"{profile.profile_id}-gdd-table"
     support = SupportDeclaration(
         base=f"grid-support (native {resolution_km:g} km)",
-        notes=(PHENOLOGY_SOURCE_NOTE,),
+        notes=(PHENOLOGY_SOURCE_NOTE, f"profile {profile.profile_id}: "
+               f"{profile.validity_note}"),
     )
     return PhenologyReading(
         stage=stage,
@@ -358,17 +545,21 @@ def phenology_reading(
         first_date=usable[0][0].isoformat(),
         last_date=usable[-1][0].isoformat(),
         method_noise_gdd=METHOD_NOISE_GDD,
-        threshold_table_version=THRESHOLD_TABLE_VERSION,
+        threshold_table_version=table_version,
+        cultivar_profile=profile.profile_id,
+        stage_source_note=stage_source,
         config_version=CONFIG_VERSION,
         source_note=PHENOLOGY_SOURCE_NOTE,
         support=support,
     )
 
 
-def _classify(cumulative: float) -> tuple[str, int, float]:
+def _classify(
+    cumulative: float, table: tuple[tuple[str, float], ...]
+) -> tuple[str, int, float]:
     """Highest coarse stage whose threshold the cumulative GDD has reached."""
-    stage, index, used = GDD_THRESHOLDS[0][0], 0, GDD_THRESHOLDS[0][1]
-    for position, (name, threshold) in enumerate(GDD_THRESHOLDS):
+    stage, index, used = table[0][0], 0, table[0][1]
+    for position, (name, threshold) in enumerate(table):
         if cumulative >= threshold:
             stage, index, used = name, position, threshold
     return stage, index, used
@@ -378,6 +569,10 @@ __all__ = [
     "GDD_BASE_C",
     "GDD_CAP_CONTRIBUTION_C",
     "GDD_THRESHOLDS",
+    "CULTIVAR_GDD_PROFILES",
+    "CultivarGddProfile",
+    "DEFAULT_CULTIVAR_PROFILE",
+    "profile_or_raise",
     "THRESHOLD_TABLE_VERSION",
     "PHENOLOGY_SOURCE_NOTE",
     "METHOD_NOISE_GDD",

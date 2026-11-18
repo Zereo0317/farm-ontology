@@ -38,6 +38,7 @@ from farm_ontology.agronomy.fertility import (
 )
 from farm_ontology.agronomy.irrigation import (
     DEFAULT_IRRIGATION_CONFIG,
+    KCB_ANCHOR_PROFILES,
     CoverageEligibility,
     CoverageLevel,
     IRRIGATION_CONFIG_SOURCE_NOTE,
@@ -45,17 +46,22 @@ from farm_ontology.agronomy.irrigation import (
     SoilProfile,
     has_calibrated_coverage,
     irrigation_advisory,
+    kcb_anchors_for,
 )
 from farm_ontology.agronomy.phenology import (
+    CULTIVAR_GDD_PROFILES,
+    DEFAULT_CULTIVAR_PROFILE,
     EMERGENCE_CREDIT_GDD,
     GDD_BASE_C,
     GDD_CAP_CONTRIBUTION_C,
     GDD_THRESHOLDS,
     PHENOLOGY_SOURCE_NOTE,
     THRESHOLD_TABLE_VERSION,
+    CultivarGddProfile,
     PhenologyReading,
     daily_gdd_contribution,
     phenology_reading,
+    profile_or_raise,
 )
 from farm_ontology.agronomy.recommendation import (
     KINDS,
@@ -90,6 +96,10 @@ __all__ = [
     "SupportDeclaration",
     "canonical_json",
     # phenology
+    "CULTIVAR_GDD_PROFILES",
+    "DEFAULT_CULTIVAR_PROFILE",
+    "CultivarGddProfile",
+    "profile_or_raise",
     "EMERGENCE_CREDIT_GDD",
     "GDD_BASE_C",
     "GDD_CAP_CONTRIBUTION_C",
@@ -101,6 +111,7 @@ __all__ = [
     "phenology_reading",
     # irrigation
     "DEFAULT_IRRIGATION_CONFIG",
+    "KCB_ANCHOR_PROFILES",
     "CoverageEligibility",
     "CoverageLevel",
     "IRRIGATION_CONFIG_SOURCE_NOTE",
@@ -108,6 +119,7 @@ __all__ = [
     "SoilProfile",
     "has_calibrated_coverage",
     "irrigation_advisory",
+    "kcb_anchors_for",
     # spray windows
     "MIN_RUN_HOURS",
     "RAINFAST_HOURS",
