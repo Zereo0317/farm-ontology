@@ -132,5 +132,112 @@ class I18nSchemaTests(unittest.TestCase):
         self.assertIn("th", py)
 
 
+class ReportCopyGuardTests(unittest.TestCase):
+    """Report v2 (biratori-1119) copy must be structurally complete.
+
+    Launched locales: zh-TW + ja (founder work-order 2026-11-18; zh-CN/en/th
+    deliberately deferred but the TYPE carries them, so filling them later is
+    compile-checked). Every locale dict must carry the same top-level keys and
+    the same array cardinalities — a translated-but-shorter array would push
+    English strings at readers otherwise.
+
+    The scanner is template-aware: `${...}` expressions inside template
+    literals are stripped before any brace counting, and each array's element
+    count comes from its own balanced `[...]` slice, not a shared window.
+    """
+
+    REPORT_LANGS = ["zh-TW", "ja"]
+    ARRAYS = {
+        # key -> regex matching the first line of each ELEMENT
+        "playbook": r"glyph:",
+        "invTranches": r"share:",
+        "invCalendar": r'^\s+"',
+        "invAssumptions": r'^\s+"',
+        "invSpine": r"num:",
+        "invLinks": r"label:",
+        "invRefs": r"label:",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        # Template placeholders never contain nested braces in this module.
+        cls.clean = re.sub(r"\$\{[^{}]*\}", "EXPR", (WEB / "lib" / "report-copy.ts").read_text(encoding="utf-8"))
+
+    def _balanced(self, text: str, open_pos: int, open_ch: str, close_ch: str) -> tuple[int, int]:
+        """Return (content_start, content_end) inside open/close at open_pos."""
+        depth = 0
+        for j in range(open_pos, len(text)):
+            if text[j] == open_ch:
+                depth += 1
+            elif text[j] == close_ch:
+                depth -= 1
+                if depth == 0:
+                    return open_pos + 1, j
+        raise AssertionError(f"unbalanced {open_ch}{close_ch} at {open_pos}")
+
+    def _locale_slice(self, clean: str, locale: str) -> str:
+        token = f'"{locale}": {{' if "-" in locale else f"{locale}: {{"
+        block = clean[clean.find("export const reportCopy"):]
+        lm = block.find(token)
+        self.assertGreaterEqual(lm, 0, f"{locale} dict missing from reportCopy")
+        start, end = self._balanced(block, block.index("{", lm), "{", "}")
+        return block[start:end]
+
+    def _array_elements(self, locale_slice: str, key: str) -> list[str]:
+        am = re.search(rf"\n\s+{key}: \[", locale_slice)
+        self.assertIsNotNone(am, f"{key} array missing")
+        start, end = self._balanced(locale_slice, am.end() - 1, "[", "]")
+        body = locale_slice[start:end]
+        sign = self.ARRAYS[key]
+        if sign.startswith("^"):
+            return re.findall(sign + r"[^\n]*", body, re.M)
+        return re.findall(sign, body)
+
+    def test_both_launched_locales_present_with_matching_key_sets(self):
+        baseline: set[str] | None = None
+        for locale in self.REPORT_LANGS:
+            current = set(re.findall(r"^\s{4}([a-zA-Z][a-zA-Z0-9]*):", self._locale_slice(self.clean, locale), re.M))
+            self.assertTrue(current, f"{locale} dict empty")
+            if baseline is None:
+                baseline = current
+            else:
+                self.assertEqual(current, baseline, f"{locale} diverges from zh-TW")
+        anchors = {"docTitle", "h1", "tabFarmer", "tabInvestor", "sceneTitle", "invRoiTitle", "invFooter"}
+        self.assertTrue(anchors.issubset(baseline or set()), f"missing anchors: {sorted(anchors - (baseline or set()))}")
+
+    def test_array_cardinality_matches_across_locales(self):
+        for key in self.ARRAYS:
+            counts = {}
+            for locale in self.REPORT_LANGS:
+                counts[locale] = len(self._array_elements(self._locale_slice(self.clean, locale), key))
+            self.assertGreater(counts[self.REPORT_LANGS[0]], 0, f"{key} must not be emptied")
+            self.assertEqual(counts[self.REPORT_LANGS[0]], counts[self.REPORT_LANGS[1]], f"{key} arrays differ between locales: {counts}")
+
+    def test_farmer_voice_avoids_internal_jargon(self):
+        # Founder: kill internal-compliance vocabulary from the farmer tab.
+        text = self.clean
+        for phrase in ("許可", "治理", "授權牆", "コンプライアンス", "情治"):
+            self.assertNotIn(phrase, text)
+        zh = self.clean[self.clean.find('"zh-TW": {'):self.clean.find("\n  ja: {")]
+        self.assertIn("農夫版", zh)
+        ja = self.clean[self.clean.find("\n  ja: {"):]
+        self.assertIn("生産者版", ja)
+
+    def test_investor_tab_stamps_the_single_compliance_line(self):
+        for locale in self.REPORT_LANGS:
+            slice_text = self._locale_slice(self.clean, locale)
+            fm = re.search(r"invFooter: \"(.+)\"", slice_text)
+            self.assertIsNotNone(fm, f"{locale} missing invFooter")
+            self.assertIn("非投資" if "zh-TW" == locale else "投資勧誘", fm.group(1))
+            self.assertIn("金融", fm.group(1))
+
+    def test_pages_never_hardcode_report_strings(self):
+        page = (WEB / "app" / "report" / "biratori-1119" / "page.tsx").read_text(encoding="utf-8")
+        # Numeric + structural literals only; prose arrives from reportCopy.
+        self.assertIn("reportCopy", page)
+        self.assertNotIn("農夫版", page)
+        self.assertNotIn("生産者版", page)
+
+
 if __name__ == "__main__":
     unittest.main()

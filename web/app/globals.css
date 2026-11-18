@@ -365,3 +365,196 @@ details li { margin: 0.65rem 0; }
 @media (min-width: 760px) {
   main { padding-top: 4.5rem; }
 }
+
+/* ===================== Report v2 — field theme (WS8 v2) ===================== */
+
+:root {
+  --wheat: #e8d8a8;
+  --sprout: #7fa05a;
+  --soil: #6b4f3a;
+  --frost: #dbe6ee;
+  --hay: #f2ead6;
+}
+
+/* Grain: two staggered radial-dot layers, pure CSS, no image assets. */
+.reportV2 {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2rem 1.1rem 4rem;
+  font-size: 18px;
+  line-height: 1.65;
+  background:
+    radial-gradient(rgba(107, 79, 58, 0.05) 1px, transparent 1.3px) 0 0 / 23px 23px,
+    radial-gradient(rgba(232, 216, 168, 0.28) 1px, transparent 1.4px) 11px 13px / 31px 31px,
+    var(--paper);
+}
+
+.reportV2 .hero h1 {
+  font-size: 2.1rem;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.reportV2 .card {
+  border-radius: 14px;
+  border-color: rgba(107, 79, 58, 0.22);
+  box-shadow: 0 1px 2px rgba(60, 50, 30, 0.08);
+  background: #fffefa;
+}
+
+.reportV2 .card h3 {
+  font-family: Palatino, "Songti TC", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: 1.12rem;
+}
+
+.reportV2 .intro { font-size: 0.92rem; opacity: 0.85; }
+
+/* Audience tabs */
+.tabs { margin: 0.4rem 0 0.6rem; }
+.tab {
+  appearance: none;
+  border: 1px solid rgba(107, 79, 58, 0.35);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--hay);
+  color: var(--ink);
+  min-height: 3rem;
+  padding: 0 1.3rem;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0.62;
+}
+.tab.active {
+  background: #fffefa;
+  opacity: 1;
+  box-shadow: 0 1px 2px rgba(60, 50, 30, 0.08);
+  font-weight: 600;
+}
+.pane { border-top: 1px solid rgba(107, 79, 58, 0.28); }
+
+/* Playbook cards */
+.plays { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.7rem; }
+.play {
+  border: 1px solid rgba(107, 79, 58, 0.22);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  background: #fffefa;
+  box-shadow: 0 1px 2px rgba(60, 50, 30, 0.08);
+  position: relative;
+}
+.play h4 { margin: 0.45rem 0 0.25rem; font-size: 1.02rem; }
+.play p { margin: 0; font-size: 0.9rem; }
+.playGlyph { font-size: 1.7rem; line-height: 1; }
+.badge {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.18rem 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.badge-go { background: #e4efdc; color: #3f5c2b; border: 1px solid #b7d3ad; }
+.badge-must { background: #f6ecc9; color: #7a5c14; border: 1px solid #dcc98a; }
+.badge-no { background: #f3dfd2; color: #8a4322; border: 1px solid #ddb598; }
+.badge-care { background: #e6eef5; color: #44607a; border: 1px solid #b9cede; }
+
+/* Evidence charts */
+.reportV2 figure { margin: 1.1rem 0 0.4rem; }
+.reportV2 .chart { width: 100%; height: auto; display: block; }
+.reportV2 figcaption { font-size: 0.76rem; opacity: 0.66; margin-top: 0.3rem; }
+
+/* Scene thumbnail */
+.sceneThumb {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  display: block;
+  margin: 0.5rem auto 0.4rem;
+  border-radius: 10px;
+  border: 1px solid rgba(107, 79, 58, 0.25);
+  box-shadow: 0 1px 3px rgba(60, 50, 30, 0.12);
+}
+
+/* Soil gap card */
+.reportV2 .card.soil { background: var(--hay); }
+
+/* Legend dots mirror badge semantics */
+.legendList { list-style: none; margin: 0.2rem 0 0.6rem; padding: 0; font-size: 0.9rem; }
+.legendList li { display: flex; align-items: center; gap: 0.55rem; margin: 0.3rem 0; }
+.dot { width: 0.8rem; height: 0.8rem; border-radius: 50%; flex: none; border: 1px solid rgba(107, 79, 58, 0.3); }
+.dot-0 { background: #cfe3c0; }
+.dot-1 { background: #f0dfa6; }
+.dot-2 { background: #eed0ba; }
+.dot-3 { background: #dde8f1; }
+
+/* Investor tables (tabular numerals) */
+.roi {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.6rem 0 0.4rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
+.roi th {
+  text-align: left;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  padding: 0.3rem 0.4rem;
+}
+.roi td { padding: 0.4rem 0.4rem; border-top: 1px dashed rgba(28, 27, 25, 0.16); vertical-align: top; }
+.roi td.pos { color: #3f6b2b; font-weight: 600; }
+.roi td.neg { color: #a04b22; font-weight: 600; }
+.roi td.smallCell { font-size: 0.82rem; opacity: 0.88; }
+.assumptions { font-size: 0.82rem; opacity: 0.85; margin: 0.4rem 0; padding-left: 1.1rem; }
+.assumptions li { margin: 0.25rem 0; }
+.cal { font-size: 0.88rem; }
+.riskNote { font-size: 0.85rem; background: #f4efe3; border-radius: 10px; padding: 0.6rem 0.8rem; margin: 0.6rem 0 0; }
+
+/* Trust spine */
+.spine { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 0.7rem 0 0.8rem; }
+.spineCell {
+  border: 1px solid rgba(107, 79, 58, 0.18);
+  border-radius: 12px;
+  background: #fbf8f1;
+  padding: 0.6rem 0.7rem;
+}
+.spineCell strong { display: block; font-size: 1.15rem; font-family: Palatino, Georgia, serif; color: var(--soil); }
+.spineCell span { font-size: 0.74rem; line-height: 1.4; display: block; margin-top: 0.15rem; opacity: 0.85; }
+.linkList, .refs { margin: 0.3rem 0; padding-left: 1.1rem; font-size: 0.88rem; }
+.linkList li, .refs li { margin: 0.3rem 0; }
+.refs .state { font-size: 0.76rem; opacity: 0.7; }
+.reportV2 a { color: #56693f; }
+
+.invFooter {
+  margin: 1.2rem 0 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border-left: 3px solid var(--wheat);
+  background: #faf6ea;
+  font-size: 0.8rem;
+  color: rgba(28, 27, 25, 0.75);
+  border-radius: 0 10px 10px 0;
+}
+
+/* Phones first: 375 px readability */
+@media (max-width: 480px) {
+  .reportV2 { font-size: 17px; padding: 1.2rem 0.8rem 3rem; }
+  .plays { grid-template-columns: 1fr; }
+  .spine { grid-template-columns: 1fr 1fr; }
+  .roi { font-size: 0.8rem; }
+  .roi td.smallCell { font-size: 0.74rem; }
+  .tab { padding: 0 0.85rem; min-height: 2.7rem; }
+}
+
+/* Printable: white background, no shadows, sane breaks */
+@media print {
+  .reportV2 { background: #fff; padding: 0; max-width: none; font-size: 12pt; }
+  .reportV2 .card, .play { box-shadow: none; break-inside: avoid; }
+  .tabs .tab { display: none; }
+  .pane[hidden] { display: none; }
+  .cta { break-before: page; }
+  a { color: inherit; }
+}
