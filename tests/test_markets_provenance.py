@@ -403,6 +403,75 @@ class PremiumCapRailTest(unittest.TestCase):
         return rl.PlaybookArtefact(**base)
 
 
+class BetterExceptionsTest(unittest.TestCase):
+    """D7 (markets half): contradictions raise RailError saying WHY+WHAT."""
+
+    def test_pre_monotonic_contribution_raises_rail_error(self) -> None:
+        artefact = loss_artefact(None)
+        late_informed = rl.PlaybookArtefact(
+            **{
+                **artefact.__dict__,
+                "contributions": (
+                    rl.Contribution(
+                        FEED_AMS_SOYBEAN_BID,
+                        "USDA AMS public report",
+                        "northwest cash print",
+                        "final report, not scored",
+                        contribution_time=datetime(2026, 11, 19, tzinfo=timezone.utc),
+                    ),
+                ),
+            }
+        )
+        try:
+            rl.validate_playbook_artefact(late_informed, AS_OF)
+        except rl.RailError as exc:
+            self.assertEqual(exc.rail, "R5-times")
+            self.assertIn("2026-11-19", exc.observed)
+            self.assertIn("2026-11-18", exc.observed)
+            self.assertIn("postdate", exc.constraint)
+        else:
+            self.fail("a contribution postdating as_of must raise RailError")
+
+    def test_contemporaneous_and_unset_times_still_validate(self) -> None:
+        # unarmed legacy path + a well-formed (valid-state) grant: the
+        # artefact passes, so ONLY the timing dimension is exercised
+        live = rl.GrantRef(
+            name="live",
+            issuer="i",
+            seat="s",
+            scope="x",
+            territory="*",
+            purpose="p",
+            expiry="2099-01-01T00:00:00+00:00",
+            evidence_url="https://x/e",
+            permits_financial_use=True,
+            permits_market_data_use=True,
+        )
+        contemporary = loss_artefact(live)
+        self.assertEqual(rl.validate_playbook_artefact(contemporary, AS_OF), ())
+        stamped = rl.PlaybookArtefact(
+            **{
+                **contemporary.__dict__,
+                "contributions": (
+                    rl.Contribution(
+                        FEED_AMS_SOYBEAN_BID,
+                        "USDA AMS public report",
+                        "northwest cash print",
+                        "final report, not scored",
+                        contribution_time=datetime(2026, 11, 17, tzinfo=timezone.utc),
+                    ),
+                ),
+            }
+        )
+        self.assertEqual(rl.validate_playbook_artefact(stamped, AS_OF), ())
+
+    def test_rail_error_message_carries_both_halves(self) -> None:
+        exc = rl.RailError.for_time("observed-stamp", "the rule text")
+        self.assertIn("observed-stamp", str(exc))
+        self.assertIn("the rule text", str(exc))
+        self.assertEqual(exc.rail, "R5-times")
+
+
 class RegistryUnitTest(unittest.TestCase):
     def test_empty_registry_valid_and_dead(self) -> None:
         empty = reg.RegisteredGrants()

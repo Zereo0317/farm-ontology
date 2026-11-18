@@ -91,13 +91,15 @@ class Lane1GrantWallTest(unittest.TestCase):
         )
         self.assertIn("2 R5 violations", verdict_step.detail)
 
-    def test_forged_grant_slips_and_is_caught_by_crosscheck(self) -> None:
+    def test_forged_grant_dies_on_armed_registry(self) -> None:
         step = next(step for step in self.report.step_log if step.name == "attack-forged-valid-looking-grant")
-        self.assertIn("PASSED rails", step.detail)
-        self.assertIn("unknown_feed", step.detail)
+        self.assertIn("died on armed registry", step.detail)
+        self.assertIn("fingerprint-not-in-registry", step.detail)
+        self.assertIn("legacy unarmed path unchanged", step.detail)
         defect = next(defect for defect in self.report.defects if defect.defect_id == "D1")
         self.assertEqual(defect.severity, "rough")
-        self.assertIn("fingerprint", defect.named_remedy)
+        self.assertIn("HISTORICAL (healed this sprint)", defect.finding)
+        self.assertIn("RESIDUAL", defect.finding)
 
     def test_expired_and_specimen_attacks_caught(self) -> None:
         self.assertIn("attack-expired-grant-caught", self.report.steps_ok)
@@ -136,7 +138,7 @@ class Lane3PrecisionTest(unittest.TestCase):
             for step in self.report.step_log
             if step.name == "collar-intent-demands-premium-budget-precisely"
         )
-        self.assertIn("rail='R3'", step.detail)
+        self.assertIn("rail='R6'", step.detail)
         self.assertIn("precise=True", step.detail)
 
     def test_self_authored_budget_is_the_crack(self) -> None:
@@ -173,16 +175,24 @@ class Lane4ChainTest(unittest.TestCase):
         )
         self.assertIn("ActuationGap", step.detail)
 
-    def test_verify_chain_void_crash_recorded_as_blocker(self) -> None:
+    def test_verify_chain_void_sentinel_registered(self) -> None:
         defect = next(defect for defect in self.report.defects if defect.defect_id == "D9")
         self.assertEqual(defect.severity, "blocker")
-        self.assertIn("KeyError", defect.finding)
+        # the sentinel speaks in the crash's voice while the bug is live,
+        # and in the regression-sentinel voice once actuation heals it
+        self.assertTrue(
+            "KeyError" in defect.finding or "REGRESSION SENTINEL" in defect.finding,
+            defect.finding,
+        )
         step = next(
             step
             for step in self.report.step_log
             if step.name == "ledger-tempdir-persistence-and-tamper"
         )
-        self.assertIn("CRASH -> D9", step.detail)
+        self.assertTrue(
+            "CRASH -> D9" in step.detail or "void-bearing chain verify: OK" in step.detail,
+            step.detail,
+        )
 
 
 class Lane5CrossVocabTest(unittest.TestCase):

@@ -55,7 +55,11 @@ from farm_ontology.agronomy.recommendation import (
     RationaleStep,
     draft_recommendation,
 )
-from farm_ontology.licences.grants import KNOWN_FEEDS, evaluate as licences_evaluate
+from farm_ontology.licences.grants import evaluate as licences_evaluate  # noqa: F401 (kept for attack cross-checks)
+from farm_ontology.markets.registry import (
+    RegisteredGrants,
+    bridge_licences_to_grantref as _registry_bridge,
+)
 from farm_ontology.markets import pit_dataset as pit
 from farm_ontology.markets import shock_watch as sw
 from farm_ontology.markets import rails as rl
@@ -141,69 +145,18 @@ def _report(lane: str, title: str, steps: list[RehearsalStep], defects: list[Def
 
 
 # --------------------------------------------------------------------------- #
-# The WS6-grant bridge, built BY the rehearsal (finding D-setup)              #
+# The WS6-grant bridge — now DELEGATING to the real one (fix sprint D1/D2)    #
 # --------------------------------------------------------------------------- #
 
 
-def bridge_licences_to_grantref(feed_id: str, at: datetime, grants_dir=None) -> tuple[rl.GrantRef | None, str]:
-    """Adapt a licences-engine verdict into a rails ``GrantRef``.
-
-    Returns ``(ref_or_None, reason)``. The mapping is deliberately
-    lossy-averse: the licences reason is embedded in the GrantRef fields
-    the rehearsal can reach, so the rails violation keeps as much of the
-    WHY as the current GrantRef shape allows (finding D2 in the report).
-    """
-    if feed_id not in KNOWN_FEEDS:
-        # The market-lane feeds (ams/wasde/fao/imf/pink) are not in the
-        # licences engine's feed universe at all.
-        return (
-            rl.GrantRef(
-                name=f"unregistered:{feed_id}",
-                issuer="n/a",
-                seat="n/a",
-                scope="market lane",
-                territory="n/a",
-                purpose=f"feed {feed_id} is not registered in licences.KNOWN_FEEDS",
-                expiry="2026-01-01T00:00:00+00:00",
-                evidence_url="https://invalid.example/unregistered",
-                permits_financial_use=False,
-                permits_market_data_use=False,
-            ),
-            "unknown_feed",
-        )
-    allowed, _grant, reason = licences_evaluate(feed_id, "commercial", at, grants_dir=grants_dir)
-    fin_allowed, _grant2, fin_reason = licences_evaluate(feed_id, "hedge", at, grants_dir=grants_dir)
-    if allowed and fin_allowed:
-        return (
-            rl.GrantRef(
-                name="bridged",
-                issuer="licences engine",
-                seat="bridged-seat",
-                scope=feed_id,
-                territory="*",
-                purpose="bridge probe",
-                expiry="2099-12-31T00:00:00+00:00",
-                evidence_url="https://invalid.example/bridged",
-                permits_financial_use=True,
-                permits_market_data_use=True,
-            ),
-            "ok",
-        )
-    return (
-        rl.GrantRef(
-            name=f"demoted:{feed_id}",
-            issuer="licences engine",
-            seat="bridged-seat",
-            scope=feed_id,
-            territory="*",
-            purpose=f"licences verdict: {reason or fin_reason}",
-            expiry="2099-12-31T00:00:00+00:00",
-            evidence_url="https://invalid.example/demoted",
-            permits_financial_use=False,
-            permits_market_data_use=False,
-        ),
-        reason or fin_reason,
-    )
+def bridge_licences_to_grantref(feed_id: str, at: datetime, grants_dir=None):
+    """Rehearsal shim: delegate to the REAL bridge in
+    ``farm_ontology.markets.registry`` (kept so the lane code and any
+    earlier callers read identically). The real bridge transplants the
+    licences verdict verbatim (D2) and carries the certificate
+    fingerprint (D1) — the flattening this module used to exhibit is
+    gone; the lanes below assert the healed behaviour."""
+    return _registry_bridge(feed_id, at, grants_dir=grants_dir)
 
 
 # --------------------------------------------------------------------------- #
@@ -211,7 +164,7 @@ def bridge_licences_to_grantref(feed_id: str, at: datetime, grants_dir=None) -> 
 # --------------------------------------------------------------------------- #
 
 
-def _l1_intent_artefact(grants: dict, text_clauses: bool = True) -> rl.PlaybookArtefact:
+def _l1_intent_artefact(grants: dict, text_clauses: bool = True, grant_registry=None) -> rl.PlaybookArtefact:
     physical_tonnes = SCENARIO_HECTARES * SCENARIO_EXPECTED_T_PER_HA
     lots = math.ceil(physical_tonnes / TONNES_PER_CONTRACT)
     text = (
@@ -253,6 +206,7 @@ def _l1_intent_artefact(grants: dict, text_clauses: bool = True) -> rl.PlaybookA
         ),
         grants_by_feed=grants,
         conduct_attestations={rid: True for rid in rl.CONDUCT_ATTESTATION_IDS},
+        grant_registry=grant_registry,
     )
 
 
@@ -305,9 +259,14 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
         )
         grants_named = sum("fails closed on grant state" in v.detail for v in violations)
         assert grants_named == 2, f"expected both feed grant-walls named, saw {violations}"
+        # D2 healed: the bridge transplants the licences verdict VERBATIM,
+        # so the wall's detail names the real reason ('no_grant'), not a
+        # generic 'closed'.
+        verbatim = all("no_grant" in v.detail for v in violations)
+        assert verbatim, f"reason transplant broken (expected verbatim no_grant): {violations}"
         return (
-            f"dies on grant state as expected: {grants_named} R5 violations "
-            f"(bridge reasons: {bridge_notes})"
+            f"dies on grant state as expected: {grants_named} R5 violations, "
+            f"licences reasons verbatim (bridge: {bridge_notes})"
         )
 
     steps.append(_step("rails-verdict-dies-on-grant-state", rails_verdict))
@@ -325,39 +284,58 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
             evidence_url="https://invalid.example/forged",
             permits_financial_use=True,
             permits_market_data_use=True,
+            fingerprint="0" * 64,  # plausible-looking, registered nowhere
         )
         forged_grants = {feed: forged_ref for feed in (pit.FEED_AMS_SOYBEAN_BID, pit.FEED_USDA_WASDE)}
-        artefact = _l1_intent_artefact(forged_grants)
-        violations = rl.validate_playbook_artefact(artefact, REHEARSAL_T)
-        slipped_through = not violations
-        # cross-check the claims against the licences engine at the same at
-        contradictions = []
-        for feed in forged_grants:
-            _ref, reason = bridge_licences_to_grantref(feed, REHEARSAL_T)
-            if reason != "ok":
-                contradictions.append((feed, reason))
-        assert contradictions, "forged grants matched the engine (attack inconclusive)"
+        # Post-fix world: with the provenance registry ARMED, the forgery
+        # dies on its fingerprint even though every visible field shines.
+        default_registry = RegisteredGrants.default()
+        armed = _l1_intent_artefact(forged_grants, grant_registry=default_registry)
+        armed_violations = rl.validate_playbook_artefact(armed, REHEARSAL_T)
+        provenance_hits = [
+            v for v in armed_violations if "fingerprint-not-in-registry" in v.detail
+        ]
+        assert provenance_hits, (
+            f"forgery must die on provenance when the registry is armed: "
+            f"{armed_violations}"
+        )
+        # Legacy opt-out documented: UNARMED validation still accepts
+        # well-formed refs (validate has no implicit IO), so production
+        # callers MUST arm registries — that residual is part of D1.
+        unarmed = _l1_intent_artefact(forged_grants)
+        unarmed_violations = rl.validate_playbook_artefact(unarmed, REHEARSAL_T)
+        legacy_passes = not unarmed_violations
+        assert legacy_passes, f"legacy unarmed path changed behaviour: {unarmed_violations}"
         defects.append(
             Defect(
                 lane="L1",
                 defect_id="D1",
                 severity="rough",
                 finding=(
-                    "a self-authored GrantRef with permits_* True sails through "
-                    "rails.validate_playbook_artefact with zero violations — rails "
-                    "cannot distinguish a forged grant from a bridged one "
-                    f"(caught only by cross-checking the licences engine: {contradictions})"
+                    "HISTORICAL (healed this sprint): a self-authored GrantRef with "
+                    "permits_* True used to sail through validate_playbook_artefact "
+                    "with zero violations — rails could not distinguish a forged "
+                    "grant from a bridged one. Post-fix, GrantRef carries a 64-hex "
+                    "fingerprint and an armed RegisteredGrants attestation rejects "
+                    "any ref whose fingerprint is not on it "
+                    "('fingerprint-not-in-registry'). RESIDUAL: validation arms the "
+                    "registry only when the artefact carries one — unarmed calls "
+                    "keep the legacy permissive path, so the caller discipline "
+                    "(always attach grant_registry) is load-bearing"
                 ),
                 named_remedy=(
-                    "GrantRef should carry the issuer/grant_id/fingerprint trio and "
-                    "rails should refuse grants lacking a bridge-produced fingerprint "
-                    "(mirror licences.Grant.fingerprint) — provenance or it didn't happen"
+                    "DONE for the engine (registry + fingerprints); the residual "
+                    "closes when artefact factories in the product path always "
+                    "attach RegisteredGrants.default() (or the FARM_GRANT_REGISTRY "
+                    "env file) before validating"
                 ),
             )
         )
         return (
-            f"forged grant {'PASSED rails' if slipped_through else 'was refused by rails'}; "
-            f"cross-check contradiction: {contradictions}"
+            "forgery died on armed registry ("
+            f"{len(provenance_hits)} provenance violations, first: "
+            f"{provenance_hits[0].detail[:70]}...); legacy unarmed path "
+            f"unchanged ({'passes' if legacy_passes else 'refused'})"
         )
 
     steps.append(_step("attack-forged-valid-looking-grant", forged))
@@ -388,40 +366,57 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
     def specimen():
         ref, reason = bridge_licences_to_grantref("earth-engine.export", REHEARSAL_T)
         assert reason == "specimen", f"expected the licences engine to say specimen, got {reason!r}"
+        assert ref.specimen is True and ref.state_detail == "specimen"
         ee_contribution = rl.Contribution(
             feed="earth-engine.export",
             licence_attribution="specimen certificate only",
             support_statement="export-scoped",
             error_statement="none recorded (specimen)",
         )
+        # Arm the DEFAULT registry: the EE specimen's certificate
+        # fingerprint IS registered (it sits on the WS6 state.json), so
+        # provenance ADMITS the ref and the SPECIMEN state itself must be
+        # what kills it — with the reason named, not flattened (D2 healed).
         artefact = rl.PlaybookArtefact(
             **{
                 **_l1_intent_artefact({"earth-engine.export": ref}).__dict__,
                 "market_decisive_feeds": ("earth-engine.export",),
                 "contributions": (ee_contribution,),
+                "grant_registry": RegisteredGrants.default(),
             }
         )
         violations = rl.validate_playbook_artefact(artefact, REHEARSAL_T)
         hit = [v for v in violations if v.rail == rl.RAIL_5_TRUTHFULNESS]
         assert hit, "specimen-fed artefact passed rails"
-        flattened = all("closed" in v.detail and "specimen" not in v.detail for v in hit)
+        verbatim = all("specimen" in v.detail for v in hit)
+        assert verbatim, f"D2 regression: specimen reason no longer verbatim: {hit}"
+        provenance_noise = [v for v in violations if "fingerprint-not-in-registry" in v.detail]
+        assert not provenance_noise, (
+            f"the registered specimen fingerprint should pass provenance: {provenance_noise}"
+        )
         defects.append(
             Defect(
                 lane="L1",
                 defect_id="D2",
                 severity="rough",
                 finding=(
-                    "reason-vocabulary flattening: the licences engine's precise "
-                    "'specimen' verdict becomes rails' generic 'closed' — the analyst "
-                    "must re-derive WHY the wall stood"
+                    "HISTORICAL (healed this sprint): the licences engine's precise "
+                    "'specimen' verdict used to flatten into rails' generic 'closed'. "
+                    "Post-fix the bridge transplants the verdict verbatim into "
+                    "GrantRef.state_detail and grant_state_at returns the DISTINCT "
+                    "GRANT_SPECIMEN state ('specimen grant never unlocks (licences "
+                    "verdict: specimen)'), so the analyst reads WHY the wall stood"
                 ),
                 named_remedy=(
-                    "bridge should transplant the licences reason (specimen/expired/"
-                    "no_grant) into the GrantRef purpose/detail field rails surfaces"
+                    "DONE: state_detail transplant + GRANT_SPECIMEN state; the "
+                    "rehearsal asserts the verbatim reason end-to-end"
                 ),
             )
         )
-        return f"caught (flat as 'closed'); flattening={flattened}"
+        return (
+            f"caught AS specimen (distinct state, reason verbatim: "
+            f"{hit[0].detail[:70]}...); flattening gone"
+        )
 
     steps.append(_step("attack-specimen-ref-caught", specimen))
 
@@ -431,8 +426,9 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
         steps,
         defects,
         verdict=(
-            "Intent dies on the grant wall exactly as designed (both feeds R5, named); "
-            "forged grants are the real crack (D1), specimen semantics flatten (D2)"
+            "Intent dies on the grant wall exactly as designed (both feeds R5, licences "
+            "reasons verbatim post-D2); forgeries now die on armed provenance (D1 healed, "
+            "unarmed legacy path documented as the residual); specimens die AS specimens"
         ),
     )
     return report, bridge_notes
@@ -485,13 +481,13 @@ def run_lane2() -> ArbrehearsalReport:
         with_term = rl.PlaybookArtefact(
             **{
                 **_gain_artefact().__dict__,
-                "upside_term": rl.UpsideShareTerm(0.3, "scenario farmer", "Founder", "contract-L2"),
+                "upside_term": rl.UpsideShareTerm(0.3, rl.Beneficiary.FARMER_CONTRACTED, "Founder", "contract-L2"),
             }
         )
         violations = rl.validate_playbook_artefact(with_term, REHEARSAL_T)
         assert not any(v.rail == rl.RAIL_2_UPSIDE_SHARE for v in violations), "R2 must clear with a term"
         assert any(v.rail == rl.RAIL_5_TRUTHFULNESS for v in violations), "grant wall still must stand"
-        return "upside-share obligation IS expressible via UpsideShareTerm (fraction+beneficiary+contract)"
+        return "upside-share obligation IS expressible via UpsideShareTerm (typed beneficiary + contract)"
 
     steps.append(_step("upside-share-obligation-expressible", upside_term_added))
 
@@ -502,7 +498,7 @@ def run_lane2() -> ArbrehearsalReport:
         naked = rl.PlaybookArtefact(
             **{
                 **_gain_artefact().__dict__,
-                "upside_term": rl.UpsideShareTerm(0.3, "farmer", "Founder", "contract-L2"),
+                "upside_term": rl.UpsideShareTerm(0.3, rl.Beneficiary.FARMER_CONTRACTED, "Founder", "contract-L2"),
             }
         )
         violations = rl.validate_playbook_artefact(naked, REHEARSAL_T)
@@ -532,29 +528,42 @@ def run_lane2() -> ArbrehearsalReport:
     steps.append(_step("r1-universal-clause-escape-probe", clause_escape))
 
     def beneficiary_weakness():
-        odd_term = rl.UpsideShareTerm(0.3, "someone-not-the-farmer", "no one", "contract-anybody")
-        probe = rl.UpsideShareTerm.__dataclass_fields__
-        has_beneficiary = "beneficiary" in probe
-        assert has_beneficiary
+        # D4 healed: the beneficiary is TYPED now; a free string dies at
+        # construction, and the typed members travel.
+        rejected = False
+        try:
+            rl.UpsideShareTerm(0.3, "someone-not-the-farmer", "no one", "contract-anybody")
+        except ValueError:
+            rejected = True
+        assert rejected, "free-string beneficiary should have been refused post-D4"
+        typed = rl.UpsideShareTerm(
+            0.3, rl.Beneficiary.FARMER_CONTRACTED, "Founder", "contract-L2"
+        )
+        assert isinstance(typed.beneficiary, rl.Beneficiary)
         defects.append(
             Defect(
                 lane="L2",
                 defect_id="D4",
                 severity="cosmetic",
                 finding=(
-                    "R2 checks the upside term EXISTS and is a fraction in (0,1), "
-                    "but 'beneficiary'/'negotiated_by' are free strings — the "
-                    "rail cannot see that the BENEFICIARY is the farmer or that "
-                    "negotiation happened"
+                    "HISTORICAL (healed this sprint): R2's beneficiary used to be a "
+                    "free string, so the rail could not see WHO accrued the share. "
+                    "Post-fix beneficiary is a typed Beneficiary member "
+                    "(OUR_BOOK | FARMER_CONTRACTED | FARMER_TRIAL) and free strings "
+                    "die at construction. RESIDUAL: the type distinguishes the "
+                    "DECLARED relationship class; tying the member to a specific "
+                    "farmer consent record stays the grants-side job"
                 ),
                 named_remedy=(
-                    "bind beneficiary to a farmer consent/party ref from the grants "
-                    "side (string match or explicit farmer-role type) in a later "
-                    "rails version"
+                    "DONE for the type; full binding happens when the consent-grant "
+                    "object (grants/ v2) carries a party ref rails can match"
                 ),
             )
         )
-        return f"weak-binding confirmed ({odd_term.beneficiary!r} accepted by the type)"
+        return (
+            "free-string beneficiary REJECTED at construction; typed members travel "
+            f"({typed.beneficiary.value})"
+        )
 
     steps.append(_step("r2-beneficiary-binding-probe", beneficiary_weakness))
 
@@ -633,21 +642,23 @@ def run_lane3() -> ArbrehearsalReport:
         budget_hits = [v for v in violations if "premium budget" in v.detail]
         assert budget_hits, f"collar without budget must be named: {violations}"
         named_rail = budget_hits[0].rail
-        precise = named_rail == rl.RAIL_3_TICKET and "human-set quarterly cap" in budget_hits[0].detail
+        # Fix-sprint D5 healed: the demand now carries its own rail id (R6)
+        # instead of hiding under the hedge-ticket rail (R3).
+        precise = named_rail == rl.RAIL_6_PREMIUM_CAP and "human-set quarterly cap" in budget_hits[0].detail
         defects.append(
             Defect(
                 lane="L3",
                 defect_id="D5",
                 severity="cosmetic",
                 finding=(
-                    "the premium-budget demand is NAMED precisely (rail R3 + 'written "
-                    "premium budget' + 'human-set quarterly cap') but lives under the "
-                    "hedge-ticket rail id rather than its own R-id; a reader auditing "
-                    "only R1/R2/R5 listings will miss the economic cap entirely"
+                    "HISTORICAL (healed this sprint): the premium-budget demand "
+                    "used to hide under the hedge-ticket rail id R3; the healed "
+                    "validator names it R6 (RAIL_6_PREMIUM_CAP) so cap audits "
+                    "have a catalogue anchor of their own"
                 ),
                 named_remedy=(
-                    "promote the premium budget to a dedicated rail id (e.g. R6) in a "
-                    "future rails revision so the cap table has an anchor of its own"
+                    "DONE: RAIL_6_PREMIUM_CAP exists and the rehearsal now "
+                    "asserts the budget demand fires under R6"
                 ),
             )
         )
@@ -656,9 +667,15 @@ def run_lane3() -> ArbrehearsalReport:
     steps.append(_step("collar-intent-demands-premium-budget-precisely", collar_intent))
 
     def self_authored_budget():
-        # The cap table exists ONLY as templates (playbook §4.3). Yet a
-        # fully-formed PremiumBudget built in-session satisfies rails…
-        budget = rl.PremiumBudget(1.0, 2.0, "2026Q4", "risk owner (self-declared)")
+        # Fix-sprint D6 healed: the budget must quote the sha256 of the
+        # SIGNED quarterly cap sheet AND that hash must sit on the
+        # artefact's cap-sheet registry. With no registry bound (and only
+        # the shipped SPECIMEN sheet registered), a self-authored budget
+        # can no longer pass — the pre-fix crack is closed and this step
+        # verifies the closed wall.
+        budget = rl.PremiumBudget(
+            1.0, 2.0, "2026Q4", "risk owner (self-declared)", cap_sheet_hash="a" * 64
+        )
         funded = rl.PlaybookArtefact(
             **{
                 **_uncertain_artefact().__dict__,
@@ -666,34 +683,44 @@ def run_lane3() -> ArbrehearsalReport:
             }
         )
         violations = rl.validate_playbook_artefact(funded, REHEARSAL_T)
-        budget_hits = [v for v in violations if "premium budget" in v.detail]
-        assert not budget_hits, "a self-authored budget satisfies the shape check"
+        budget_hits = [v for v in violations if v.rail == rl.RAIL_6_PREMIUM_CAP]
+        assert budget_hits, (
+            "post-fix, a self-authored budget without a registered sheet "
+            f"must be refused: {violations}"
+        )
+        assert any(
+            "cannot be bound" in v.detail or "registry" in v.detail for v in budget_hits
+        )
         defects.append(
             Defect(
                 lane="L3",
                 defect_id="D6",
                 severity="rough",
                 finding=(
-                    "PremiumBudget is self-authorable: rails validates the SHAPE "
-                    "(fraction under cap, human 'set_by', quarter) but there is no "
-                    "quarterly cap-SHEET record to check the budget AGAINST — the "
-                    "cap table in the playbook is a template, so today any session "
-                    "can mint its own 'human-approved' budget"
+                    "HISTORICAL (healed this sprint): PremiumBudget was "
+                    "self-authorable — rails validated only the SHAPE (fraction "
+                    "under cap, human 'set_by', quarter) with no quarterly "
+                    "cap-SHEET record to check the budget AGAINST, so any session "
+                    "could mint its own 'human-approved' budget. Post-fix the "
+                    "budget must carry cap_sheet_hash bound to a registered "
+                    "signed sheet; the shipped sheet is a SPECIMEN, so every "
+                    "real budget still waits for the human's signature (fail "
+                    "closed with the R6 rail named)"
                 ),
                 named_remedy=(
-                    "record the signed quarterly cap sheet as a hashed record "
-                    "(like grants/) and let PremiumBudget REQUIRE its id; the "
-                    "registry check is the missing half of the rail"
+                    "DONE: cap_sheet_hash is mandatory, RegisteredCapSheets is "
+                    "the registry, and the SPECIMEN sheet proves mechanics while "
+                    "never unlocking real caps"
                 ),
             )
         )
-        return "self-authored budget accepted (cap sheet absent) — defect recorded"
+        return "self-authored budget REFUSED (cap sheet unregistered) — wall confirmed"
 
     steps.append(_step("self-authored-budget-slips-through", self_authored_budget))
 
     def agent_guard():
         try:
-            rl.PremiumBudget(1.0, 2.0, "2026Q4", "ci-agent-42")
+            rl.PremiumBudget(1.0, 2.0, "2026Q4", "ci-agent-42", cap_sheet_hash="a" * 64)
         except ValueError as exc:
             return f"agent-set cap dies at construction: {exc}"
         raise AssertionError("an agent cap_set_by should have been refused")
@@ -886,8 +913,11 @@ def run_lane4(tmpdir) -> tuple[ArbrehearsalReport, CommandLedger]:
     def persistence():
         from pathlib import Path
 
-        # Blocker probe first: verify_chain over a chain CONTAINING a void
-        # event (the main ledger just wrote one, legally).
+        # Blocker sentinel: verify_chain over a chain CONTAINING a void
+        # event (the main ledger just wrote one, legally). Registered as
+        # defect D9 WHETHER OR NOT the crash reproduces — once actuation
+        # heals _replay_problems, the finding text flips to the
+        # regression-sentinel wording and the step keeps passing.
         crash = None
         try:
             outcome = ledger.verify_chain()
@@ -895,6 +925,26 @@ def run_lane4(tmpdir) -> tuple[ArbrehearsalReport, CommandLedger]:
             crash = f"{type(exc).__name__}: {exc}"
         if crash is None:
             assert outcome["ok"] is True, f"verify on void-chain noisy: {outcome}"
+            defects.append(
+                Defect(
+                    lane="L4",
+                    defect_id="D9",
+                    severity="blocker",
+                    finding=(
+                        "REGRESSION SENTINEL (was a live blocker at rehearsal "
+                        "time): CommandLedger.verify_chain() crashed on any chain "
+                        "containing a legal void event (KeyError: 'void'); this "
+                        "run recomputed the void-bearing chain CLEAN — the "
+                        "upstream fix holds. If this text ever says 'crashed' "
+                        "again, the sentinel has caught a regression."
+                    ),
+                    named_remedy=(
+                        "keep the void special-case ordered before the "
+                        "_TRANSITION_FROM lookup, with a regression test over a "
+                        "void-bearing chain"
+                    ),
+                )
+            )
         else:
             defects.append(
                 Defect(
