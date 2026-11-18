@@ -1,6 +1,9 @@
 #!/usr/bin/env pwsh
 # WS8 helper: stage a minimal docker build context for the web app and build
 # the image on Cloud Build (no local docker engine is required on this host).
+# Adopted by CI: .github/workflows/web-image.yml invokes this script on every
+# main push touching web/**, tagging images ci-<shortsha>; keep the staging
+# recipe single-sourced here so local and CI build byte-identical contexts.
 #
 # The root .gcloudignore excludes web/, and a repo-root `gcloud run deploy
 # --source .` cannot see the web app; the curated staging sidesteps that
