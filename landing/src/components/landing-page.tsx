@@ -96,6 +96,25 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
         </div>
       </section>
 
+      {audience === "hunger" && (
+        <section id="impact" className="scroll-mt-nav border-t border-line">
+          <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-20">
+            <h2 className="max-w-3xl font-display text-3xl leading-tight sm:text-4xl">{vision.impactTitle}</h2>
+            <p className="mt-4 max-w-2xl text-lg leading-relaxed">{vision.impactDeck}</p>
+            <div className="mt-8 grid grid-cols-3 border border-line bg-line">
+              {vision.impactStats.map(([figure, label]) => (
+                <article key={figure} className="bg-paper p-3 sm:p-5">
+                  <p className="text-stat font-display tabular-nums">{figure}</p>
+                  <h3 className="mt-2 text-xs leading-snug sm:mt-3 sm:text-sm">{label}</h3>
+                </article>
+              ))}
+            </div>
+            <p className="mt-6 max-w-3xl font-display text-xl leading-snug sm:text-2xl">{vision.impactModel}</p>
+            <p className="mt-3 text-xs text-muted">{vision.impactSource}</p>
+          </div>
+        </section>
+      )}
+
       <section>
         <figure>
           <img

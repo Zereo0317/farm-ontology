@@ -30,6 +30,11 @@ export type Vision = {
   navProof: string;
   openLedger: string;
   proofPitch: string;
+  impactTitle: string;
+  impactDeck: string;
+  impactStats: [string, string][];
+  impactModel: string;
+  impactSource: string;
   machineLine: string;
   hungerLine: string;
   gridName: string;
@@ -45,12 +50,17 @@ export type Vision = {
 
 export const VISION: Record<Locale, Vision> = {
   en: {
-    farmer: "I farm",
-    hunger: "Fund the mission",
+    farmer: "I want AI to farm for me",
+    hunger: "Solve famine together",
     switchLabel: "Who this page is for",
     farmerTitle: "If the machine hurts the field, you can still hold a position.",
     farmerDeck:
       "The crop is not your only way to be paid. What the sensor knew, and whether the valve should have opened, is the ground a position stands on.",
+    impactTitle: "Why fund this now",
+    impactDeck: "The information edge is real: fields the ledger reads before the market reacts. Put capital behind it, and the yield is shared on purpose.",
+    impactStats: [["673M", "people undernourished in 2024 — 8.2% of humanity"], ["2.6B", "cannot afford a healthy diet"], ["15–35%", "of our arbitrage profit goes to famine relief, sustainability and the environment"]],
+    impactModel: "You put money in; we trade on the information advantage. 15–35% of the profit funds famine relief, sustainability and the environment — the rest returns to investors.",
+    impactSource: "Hunger figures: FAO SOFI 2025 (2024 data).",
     hungerTitle: "Solve world hunger together.",
     hungerDeck:
       "Put capital behind the record. We operate the fields' data positions, and every allocation to food carries a birth certificate.",
@@ -88,11 +98,16 @@ export const VISION: Record<Locale, Vision> = {
     shapeNote: "The shape of one real mistake. Not a live reading of this hour.",
   },
   "zh-TW": {
-    farmer: "我種田",
-    hunger: "出資解決飢餓",
+    farmer: "想要 AI 幫我種田",
+    hunger: "一起解決飢荒",
     switchLabel: "這頁給誰看",
     farmerTitle: "機器把田做壞了，你還是站得住一個倉位。",
     farmerDeck: "收成不是你唯一的收入。感測器當時知道什麼、閥該不該開，就是倉位站上去的地面。",
+    impactTitle: "為什麼現在出資",
+    impactDeck: "資訊領先是真優勢：帳本比市場早讀到田。把資金放進來，收益的分配是刻意的。",
+    impactStats: [["6.73 億", "人營養不足（2024，占全球 8.2%）"], ["26 億", "人負擔不起健康飲食"], ["15–35%", "的套利利潤撥入飢荒、永續與環保"]],
+    impactModel: "你把錢投進來，我們用資訊領先優勢做金融套利；15–35% 的利潤撥給飢荒、永續與環保，其餘回到投資者口袋。",
+    impactSource: "飢餓數據：FAO SOFI 2025（2024 年資料）。",
     hungerTitle: "一起解決世界飢餓。",
     hungerDeck: "把資金放進這本帳。我們替你操作田間數據倉位，每一筆撥給食物的分配都帶出生證明。",
     farmerCta: "免費開始記錄我的田",
@@ -128,11 +143,16 @@ export const VISION: Record<Locale, Vision> = {
     shapeNote: "一個真實錯誤的形狀。不是這一小時的即時讀數。",
   },
   "zh-CN": {
-    farmer: "我种田",
-    hunger: "出资解决饥饿",
+    farmer: "想让 AI 帮我种田",
+    hunger: "一起解决饥荒",
     switchLabel: "这页给谁看",
     farmerTitle: "机器把田做坏了，你还是站得住一个仓位。",
     farmerDeck: "收成不是你唯一的收入。传感器当时知道什么、阀该不该开，就是仓位站上去的地面。",
+    impactTitle: "为什么现在出资",
+    impactDeck: "信息领先是真优势：账本比市场早读到田。把资金放进来，收益的分配是刻意的。",
+    impactStats: [["6.73 亿", "人营养不足（2024，占全球 8.2%）"], ["26 亿", "人负担不起健康饮食"], ["15–35%", "的套利利润拨入饥荒、可持续与环保"]],
+    impactModel: "你把钱投进来，我们用信息领先优势做金融套利；15–35% 的利润拨给饥荒、可持续与环保，其余回到投资者口袋。",
+    impactSource: "饥饿数据：FAO SOFI 2025（2024 年资料）。",
     hungerTitle: "一起解决世界饥饿。",
     hungerDeck: "把资金放进这本账。我们替你操作田间数据仓位，每一笔拨给食物的分配都带出生证明。",
     farmerCta: "免费开始记录我的田",
@@ -168,11 +188,16 @@ export const VISION: Record<Locale, Vision> = {
     shapeNote: "一个真实错误的形状。不是这一小时的即时读数。",
   },
   ja: {
-    farmer: "耕す",
-    hunger: "資金を提供する",
+    farmer: "AIにほ場を任せたい",
+    hunger: "ともに飢饉を解決する",
     switchLabel: "このページの相手",
     farmerTitle: "機械がほ場を傷めても、倉位は残る。",
     farmerDeck: "収穫だけが収入ではない。センサーが何を知り、弁を開くべきだったか。倉位が立つ地面はそこです。",
+    impactTitle: "いま出資する理由",
+    impactDeck: "情報の先行は本物の優位です。台帳は市場より早くほ場を読む。資金を預ければ、収益の配分は意図的です。",
+    impactStats: [["6.73億", "人が栄養不足（2024年・世界の8.2%）"], ["26億", "人が健康的な食事を買えない"], ["15～35%", "の裁定利益を飢餓・持続可能性・環境に充当"]],
+    impactModel: "資金を預ければ、私たちが情報優位でアービトラージを運用します。利益の15～35%を飢餓対策・持続可能性・環境に充当し、残りは投資家へ還元。",
+    impactSource: "飢餓データ：FAO SOFI 2025（2024年データ）。",
     hungerTitle: "ともに、世界の飢餓を解決する。",
     hungerDeck: "資金をこの台帳に預ける。私たちがほ場のデータポジションを運用し、食料への割り当てには出生証明書が付きます。",
     farmerCta: "無料でほ場の記録を始める",
@@ -208,11 +233,16 @@ export const VISION: Record<Locale, Vision> = {
     shapeNote: "実際に起きた誤りの形。この時間のライブ値ではない。",
   },
   th: {
-    farmer: "ฉันปลูก",
-    hunger: "ร่วมทุน",
+    farmer: "อยากให้ AI ช่วยทำนา",
+    hunger: "ร่วมขจัดความหิวโลก",
     switchLabel: "หน้านี้สำหรับใคร",
     farmerTitle: "ถ้าเครื่องทำให้แปลงเสีย คุณยังถือสถานะการลงทุนได้",
     farmerDeck: "ผลผลิตไม่ใช่รายทางเดียว สิ่งที่เซนเซอร์รู้ และว่าควรเปิดวาล์วหรือไม่ คือพื้นที่ยืนของสถานะนั้น",
+    impactTitle: "ทำไมต้องลงทุนตอนนี้",
+    impactDeck: "ความได้เปรียบด้านข้อมูลเป็นของจริง: บัญชีอ่านแปลงได้ก่อนตลาดตอบสนอง วางทุนเข้ามา แล้วผลตอบแทนถูกแบ่งอย่างตั้งใจ",
+    impactStats: [["673 ล้าน", "คนขาดสารอาหารในปี 2024 — 8.2% ของโลก"], ["2,600 ล้าน", "คนซื้ออาหารสุขภาพไม่ได้"], ["15–35%", "ของกำไรอาร์บิตราจจัดสรรเพื่อบรรเทาความหิว ความยั่งยืน และสิ่งแวดล้อม"]],
+    impactModel: "คุณวางเงิน เราใช้ความได้เปรียบด้านข้อมูลทำอาร์บิตราจ กำไร 15–35% จัดสรรเพื่อบรรเทาความหิว ความยั่งยืน และสิ่งแวดล้อม ที่เหลือคืนให้นักลงทุน",
+    impactSource: "ข้อมูลความหิว: FAO SOFI 2025 (ข้อมูลปี 2024)",
     hungerTitle: "ร่วมกันขจัดความหิวโลก",
     hungerDeck: "นำทุนเข้าสู่บัญชีนี้ เราบริหารตำแหน่งข้อมูลภาคสนามให้คุณ และทุกการจัดสรรเพื่ออาหารมีใบรับรองกำเนิด",
     farmerCta: "เริ่มบันทึกแปลงของฉันฟรี",
