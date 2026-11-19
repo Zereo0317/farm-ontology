@@ -35,6 +35,9 @@ export type Vision = {
   impactStats: [string, string][];
   impactModel: string;
   impactSource: string;
+  solutionTitle: string;
+  solutionDeck: string;
+  solutions: [string, string][];
   gridName: string;
   gridValue: string;
   plotName: string;
@@ -59,6 +62,9 @@ export const VISION: Record<Locale, Vision> = {
     impactStats: [["673M", "people undernourished in 2024 — 8.2% of humanity"], ["2.6B", "cannot afford a healthy diet"], ["15–35%", "of our arbitrage profit goes to famine relief, sustainability and the environment"]],
     impactModel: "You put money in; we trade on the information advantage. 15–35% of the profit funds famine relief, sustainability and the environment — the rest returns to investors.",
     impactSource: "Hunger figures: FAO SOFI 2025 (2024 data).",
+    solutionTitle: "Three answers, one infrastructure",
+    solutionDeck: "Dependable automation runs the field; the hedged position absorbs the bad day; the landlord's income shows up monthly.",
+    solutions: [["Reliable automation", "Self-evolving farm infrastructure: sensors watch, valves obey the record, and every correction is learned, not repeated."], ["Risk hedged", "A bad field decision does not leave you with only the damage — the position stands."], ["Landlord's passive income", "A salary arrives every month. The time you used to spend in the field goes to vacations and family."]],
     hungerTitle: "Solve world hunger together.",
     hungerDeck:
       "Put capital behind the record. We operate the fields' data positions, and every allocation to food carries a birth certificate.",
@@ -103,6 +109,9 @@ export const VISION: Record<Locale, Vision> = {
     impactStats: [["6.73 億", "人營養不足（2024，占全球 8.2%）"], ["26 億", "人負擔不起健康飲食"], ["15–35%", "的套利利潤撥入飢荒、永續與環保"]],
     impactModel: "你把錢投進來，我們用資訊領先優勢做金融套利；15–35% 的利潤撥給飢荒、永續與環保，其餘回到投資者口袋。",
     impactSource: "飢餓數據：FAO SOFI 2025（2024 年資料）。",
+    solutionTitle: "三個答案，一套基礎設施",
+    solutionDeck: "可靠自動化經營田間；避險倉位吸收壞日子；地主收入每月進帳。",
+    solutions: [["可靠自動化", "能自我演化的農田自動化基礎設施：感測器盯著、閥門聽紀錄的，每一次修正都被學住，不會重犯。"], ["風險對沖", "機器把田做壞了，你還是站得住一個倉位——損失不是你唯一的結局。"], ["地主被動收入", "每個月進帳薪資。原來種田的時間，拿來度假與陪伴家人。"]],
     hungerTitle: "一起解決世界飢餓。",
     hungerDeck: "把資金放進這本帳。我們替你操作田間數據倉位，每一筆撥給食物的分配都帶出生證明。",
     farmerCta: "免費開始記錄我的田",
@@ -146,6 +155,9 @@ export const VISION: Record<Locale, Vision> = {
     impactStats: [["6.73 亿", "人营养不足（2024，占全球 8.2%）"], ["26 亿", "人负担不起健康饮食"], ["15–35%", "的套利利润拨入饥荒、可持续与环保"]],
     impactModel: "你把钱投进来，我们用信息领先优势做金融套利；15–35% 的利润拨给饥荒、可持续与环保，其余回到投资者口袋。",
     impactSource: "饥饿数据：FAO SOFI 2025（2024 年资料）。",
+    solutionTitle: "三个答案，一套基础设施",
+    solutionDeck: "可靠自动化经营田间；避险仓位吸收坏日子；地主收入每月进账。",
+    solutions: [["可靠自动化", "能自我演化的农田自动化基础设施：传感器盯着、阀门听纪录的，每一次修正都被学住，不会重犯。"], ["风险对冲", "机器把田做坏了，你还是站得住一个仓位——损失不是你唯一的结局。"], ["地主被动收入", "每个月进账薪资。原来种田的时间，拿来度假与陪伴家人。"]],
     hungerTitle: "一起解决世界饥饿。",
     hungerDeck: "把资金放进这本账。我们替你操作田间数据仓位，每一笔拨给食物的分配都带出生证明。",
     farmerCta: "免费开始记录我的田",
@@ -189,6 +201,9 @@ export const VISION: Record<Locale, Vision> = {
     impactStats: [["6.73億", "人が栄養不足（2024年・世界の8.2%）"], ["26億", "人が健康的な食事を買えない"], ["15～35%", "の裁定利益を飢餓・持続可能性・環境に充当"]],
     impactModel: "資金を預ければ、私たちが情報優位でアービトラージを運用します。利益の15～35%を飢餓対策・持続可能性・環境に充当し、残りは投資家へ還元。",
     impactSource: "飢餓データ：FAO SOFI 2025（2024年データ）。",
+    solutionTitle: "三つの答え、一つのインフラ",
+    solutionDeck: "信頼できる自動化がほ場を運び、ヘッジが悪い日を吸収し、地主収入は毎月入る。",
+    solutions: [["信頼できる自動化", "自己進化するほ場インフラ。センサーが見守り、バルブは台帳に従い、修正は次に生きます。"], ["リスクをヘッジ", "機械がほ場を損ねても、ポジションは残る——損失だけが結末ではありません。"], ["地主のパッシブ収入", "毎月、給料が入る。ほ場に立っていた時間は、旅行と家族へ。"]],
     hungerTitle: "ともに、世界の飢餓を解決する。",
     hungerDeck: "資金をこの台帳に預ける。私たちがほ場のデータポジションを運用し、食料への割り当てには出生証明書が付きます。",
     farmerCta: "無料でほ場の記録を始める",
@@ -232,6 +247,9 @@ export const VISION: Record<Locale, Vision> = {
     impactStats: [["673 ล้าน", "คนขาดสารอาหารในปี 2024 — 8.2% ของโลก"], ["2,600 ล้าน", "คนซื้ออาหารสุขภาพไม่ได้"], ["15–35%", "ของกำไรอาร์บิตราจจัดสรรเพื่อบรรเทาความหิว ความยั่งยืน และสิ่งแวดล้อม"]],
     impactModel: "คุณวางเงิน เราใช้ความได้เปรียบด้านข้อมูลทำอาร์บิตราจ กำไร 15–35% จัดสรรเพื่อบรรเทาความหิว ความยั่งยืน และสิ่งแวดล้อม ที่เหลือคืนให้นักลงทุน",
     impactSource: "ข้อมูลความหิว: FAO SOFI 2025 (ข้อมูลปี 2024)",
+    solutionTitle: "สามคำตอบ โครงสร้างเดียว",
+    solutionDeck: "ระบบอัตโนมัติที่เชื่อถือได้ดูแลแปลง พอร์ตป้องกันความเสี่ยงรับวันที่แย่ รายได้เจ้าของที่ดินเข้าทุกเดือน",
+    solutions: [["ระบบอัตโนมัติที่เชื่อถือได้", "โครงสร้างพื้นฐานที่พัฒนาตัวเองได้: เซนเซอร์เฝ้าดู วาล์วฟังบัญชี ทุกการแก้ไขถูกเรียนรู้ ไม่วนซ้ำ"], ["ป้องกันความเสี่ยง", "เครื่องทำให้แปลงเสียหาย พอร์ตของคุณยังยืน — ความเสียหายไม่ใช่จุดจบเดียว"], ["รายได้เจ้าของที่ดิน", "เงินเดือนเข้าทุกเดือน เวลาที่เคยอยู่ในแปลง กลับไปให้การพักผ่อนและครอบครัว"]],
     hungerTitle: "ร่วมกันขจัดความหิวโลก",
     hungerDeck: "นำทุนเข้าสู่บัญชีนี้ เราบริหารตำแหน่งข้อมูลภาคสนามให้คุณ และทุกการจัดสรรเพื่ออาหารมีใบรับรองกำเนิด",
     farmerCta: "เริ่มบันทึกแปลงของฉันฟรี",

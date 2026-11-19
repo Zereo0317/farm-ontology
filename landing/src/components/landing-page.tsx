@@ -90,6 +90,54 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
         </figure>
       </section>
 
+      {/* Problem → Solution: the two-real-problems pitch, then the three answers */}
+      <section className="border-t border-line">
+        <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-20">
+          <h2 className="font-display text-3xl leading-tight sm:text-4xl">{copy.pains.title}</h2>
+          <p className="mt-3 max-w-2xl text-lg text-muted">{copy.pains.lede}</p>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {copy.pains.items.map((item, index) => (
+              <article key={index} className="rise rise-${index + 1} border border-line bg-paper-2 p-5 sm:p-6">
+                <h3 className="font-display text-xl leading-snug">{item.split("：")[0]}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {item.substring(item.indexOf("：") + 1)}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-line">
+        <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-20">
+          <h2 className="font-display text-3xl leading-tight sm:text-4xl">
+            {audience === "farmer" ? vision.solutionTitle : vision.impactTitle}
+          </h2>
+          <p className="mt-3 max-w-2xl text-lg leading-relaxed">
+            {audience === "farmer" ? vision.solutionDeck : vision.impactDeck}
+          </p>
+          {audience === "farmer" ? (
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {(vision.solutions ?? []).map(([name, body], index) => (
+                <article key={name} className="rise rise-${index + 1} border border-line bg-paper p-5 sm:p-6">
+                  <h3 className="font-display text-lg">{name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 grid grid-cols-3 border border-line bg-line">
+              {vision.impactStats.map(([figure, label]) => (
+                <article key={figure} className="bg-paper p-3 sm:p-5">
+                  <p className="text-stat font-display tabular-nums">{figure}</p>
+                  <h3 className="mt-2 text-xs leading-snug sm:mt-3 sm:text-sm">{label}</h3>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       <section id="flow" className="scroll-mt-nav">
         <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-24">
           <DecisionFlow audience={audience} financial={ledger.ok ? ledger.permitsFinancialUse : null} />
