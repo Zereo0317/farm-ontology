@@ -210,7 +210,7 @@ export const ja: Copy = {
   },
   footer: {
     legal:
-      "金融利用への変換は、すべて許諾状態で表示します。金融利用は現在、全域で false（Screening）です。正式な商用告知の後にだけ、個別に緑へ変わります。",
+      "",
     source: "公開の読み取り専用台帳",
   },
   start: {

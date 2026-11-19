@@ -236,7 +236,7 @@ export const en: Copy = {
   },
   footer: {
     legal:
-      "Every financial-use transform is marked by licence state. Financial use is currently false everywhere (Screening). Individual feeds flip only after a formal commercial notice.",
+      "",
     source: "Public read-only ledger",
   },
   start: {

@@ -134,9 +134,7 @@ export function SiteFooter() {
   const locale = useLocale();
   return (
     <footer className="border-t border-line">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6">
-        <p className="max-w-3xl text-sm leading-relaxed text-muted">{copy.footer.legal}</p>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6">        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
           <a href={LEDGER_URL} className="underline decoration-line underline-offset-4" rel="noreferrer">
             {copy.footer.source}
           </a>

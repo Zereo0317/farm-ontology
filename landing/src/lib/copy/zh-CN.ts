@@ -205,7 +205,7 @@ export const zhCN: Copy = {
   },
   footer: {
     legal:
-      "金融用途转换一律按授权状态标示。金融用途目前全域为 false（Screening）。正式商转公告之后，才会个别翻绿。",
+      "",
     source: "公开只读账本",
   },
   start: {

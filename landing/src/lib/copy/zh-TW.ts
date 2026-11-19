@@ -209,7 +209,7 @@ export const zhTW: Copy = {
   },
   footer: {
     legal:
-      "金融用途轉換一律按授權狀態標示。金融用途目前全域為 false（Screening）。正式商轉公告之後，才會個別翻綠。",
+      "",
     source: "公開唯讀帳本",
   },
   start: {
