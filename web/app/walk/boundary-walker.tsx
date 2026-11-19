@@ -129,8 +129,8 @@ const LABELS: Record<
   },
 };
 
-export function BoundaryWalker() {
-  const [lang, setLang] = useState<Lang>("zh-TW");
+export function BoundaryWalker({ initialLang = "zh-TW" }: { initialLang?: Lang }) {
+  const [lang, setLang] = useState<Lang>(initialLang);
   const [pins, setPins] = useState<Pin[]>(
     ORDER.map((c) => ({ corner: c, lat: "", lon: "", accuracy: "", pinned: false })),
   );

@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { LEDGER_URL } from "@/lib/copy";
 import { VISION, type Audience } from "@/lib/vision";
 import { HTML_LANG, LOCALES, suffixFromPath, type Locale } from "@/lib/locale";
@@ -28,6 +29,23 @@ export function SiteHeader() {
   const suffix = suffixFromPath(pathname);
   const to = destFor(suffix);
   const home = suffix === "";
+  const [activeHash, setActiveHash] = useState("");
+  useEffect(() => {
+    if (!home) return;
+    const ids = ["flow", "proof", "live"];
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setActiveHash(`#${e.target.id}`);
+      },
+      { rootMargin: "-40% 0px -50% 0px" },
+    );
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) obs.observe(el);
+    });
+    return () => obs.disconnect();
+  }, [home]);
+
   const audienceSearch: { for: Audience } | undefined =
     rawSearch.for === "hunger" || rawSearch.for === "farmer" ? { for: rawSearch.for } : undefined;
 
@@ -92,7 +110,8 @@ export function SiteHeader() {
               <a
                 key={item.hash}
                 href={`#${item.hash}`}
-                className="shrink-0 py-2 text-sm text-muted underline decoration-transparent underline-offset-8 transition-[color,text-decoration-color] duration-150 hover:text-ink hover:decoration-accent"
+                aria-current={activeHash === item.hash ? "true" : undefined}
+                className={`shrink-0 py-2 text-sm underline underline-offset-8 transition-[color,text-decoration-color] duration-150 ${activeHash === item.hash ? "font-semibold text-ink decoration-accent" : "text-muted decoration-transparent hover:text-ink hover:decoration-accent"}`}
               >
                 {item.label}
               </a>

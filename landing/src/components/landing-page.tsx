@@ -9,7 +9,7 @@ import type { LiveLedger } from "@/lib/live.functions";
 import { VISION, type Audience } from "@/lib/vision";
 
 const PHOTOS: Record<Audience, { hero: string; support: string; heroPos: string }> = {
-  farmer: { hero: "/photos/dawn.jpg", support: "/photos/machine.jpg", heroPos: "object-field" },
+  farmer: { hero: "/photos/dawn.jpg", support: "/photos/wheat.jpg", heroPos: "object-field" },
   hunger: { hero: "/photos/wheat.jpg", support: "/photos/rice.jpg", heroPos: "object-wheat" },
 };
 
@@ -18,6 +18,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
   const locale = useLocale();
   const vision = VISION[locale];
   const [showBar, setShowBar] = useState(false);
+  const [formVisible, setFormVisible] = useState(false);
   const title = audience === "farmer" ? vision.farmerTitle : vision.hungerTitle;
   const deck = audience === "farmer" ? vision.farmerDeck : vision.hungerDeck;
   const cta = audience === "farmer" ? vision.farmerCta : vision.hungerCta;
@@ -30,7 +31,16 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
       { threshold: [0, 1] },
     );
     observer.observe(target);
-    return () => observer.disconnect();
+    const form = document.getElementById("live");
+    let formObserver: IntersectionObserver | undefined;
+    if (form) {
+      formObserver = new IntersectionObserver(([e]) => setFormVisible(e.isIntersecting), { threshold: [0, 0.15] });
+      formObserver.observe(form);
+    }
+    return () => {
+      observer.disconnect();
+      formObserver?.disconnect();
+    };
   }, [audience]);
 
   return (
@@ -156,7 +166,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
         </div>
       </section>
 
-      {showBar ? (
+      {showBar && !formVisible ? (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper p-3 md:hidden">
           <ButtonLink to="/$locale/start" params={{ locale }} className="w-full">
             {cta}
