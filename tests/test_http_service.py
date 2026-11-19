@@ -114,7 +114,7 @@ class HttpServiceRoutingTests(unittest.TestCase):
         self.assertEqual(result["catalog_http_status"], 200)
         self.assertTrue(result["used_runtime_identity"])
 
-    def test_licences_snapshot_is_fail_closed_now(self):
+    def test_licences_snapshot_shows_the_operator_unlock(self):
         result = hs._licences_snapshot()
         self.assertNotIn("gap", result)
         self.assertTrue(result["feeds"])
@@ -127,8 +127,9 @@ class HttpServiceRoutingTests(unittest.TestCase):
             "usdm.hazard",
         })
         for feed, verdict in result["feeds"].items():
-            self.assertFalse(verdict["settlement_allowed"], feed)
-            self.assertTrue(verdict["settlement_reason"], feed)
+            # the executed operator grant unlocks settlement on every feed here
+            self.assertTrue(verdict["settlement_allowed"], feed)
+            self.assertEqual(verdict["settlement_reason"], "ok", feed)
             self.assertIsInstance(verdict["screening_allowed"], bool)
             self.assertTrue(verdict["screening_reason"], feed)
         self.assertIn("Specimen certificates exist", result["note"])

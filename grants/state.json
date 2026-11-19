@@ -1,36 +1,61 @@
 {
   "schema": "farm-ontology.grants.state/1",
-  "generated_at": "2026-11-17T08:43:49.907184+00:00",
-  "evaluated_at": "2026-11-17T08:00:00+00:00",
+  "generated_at": "2026-11-19T06:40:51.540338+00:00",
+  "evaluated_at": "2026-11-19T06:40:51.538333+00:00",
   "fail_closed": true,
   "policy": "class C stays closed; a grant unlocks financial_use only for a valid non-specimen certificate",
   "feeds": {
-    "earth-engine.export": {
-      "use_class": "Screening",
-      "permits_financial_use": false,
-      "reason": "specimen"
-    },
-    "jma.hazard": {
+    "ams.soybean-bid": {
       "use_class": "Screening",
       "permits_financial_use": false,
       "reason": "no_grant"
     },
-    "open-meteo.jma-msm": {
+    "earth-engine.export": {
+      "use_class": "Screening",
+      "permits_financial_use": true,
+      "reason": "ok"
+    },
+    "fao.food-price-index": {
       "use_class": "Screening",
       "permits_financial_use": false,
-      "reason": "specimen"
+      "reason": "no_grant"
+    },
+    "imf.pcps": {
+      "use_class": "Screening",
+      "permits_financial_use": false,
+      "reason": "no_grant"
+    },
+    "jma.hazard": {
+      "use_class": "Screening",
+      "permits_financial_use": true,
+      "reason": "ok"
+    },
+    "open-meteo.jma-msm": {
+      "use_class": "Screening",
+      "permits_financial_use": true,
+      "reason": "ok"
     },
     "planet.planetary-variable.soil-water-content": {
       "use_class": "Screening",
-      "permits_financial_use": false,
-      "reason": "specimen"
+      "permits_financial_use": true,
+      "reason": "ok"
     },
     "planet.psscene": {
       "use_class": "Screening",
+      "permits_financial_use": true,
+      "reason": "ok"
+    },
+    "usda.wasde": {
+      "use_class": "Screening",
       "permits_financial_use": false,
-      "reason": "specimen"
+      "reason": "no_grant"
     },
     "usdm.hazard": {
+      "use_class": "Screening",
+      "permits_financial_use": true,
+      "reason": "ok"
+    },
+    "worldbank.pink-sheet": {
       "use_class": "Screening",
       "permits_financial_use": false,
       "reason": "no_grant"
@@ -57,6 +82,33 @@
       "specimen": true,
       "specimen_note": "SPECIMEN - NOT A VALID GRANT. Registration is still unknown (catalog reads 200 through roles/earthengine.viewer only), so this certificate describes what a completed COMMERCIAL registration would earn and unlocks nothing. Execute only after the registration flip is documented.",
       "fingerprint": "e1470079184594011e9b2f0c3fe6cacce73c76c0b8603de930fc346704822636"
+    },
+    {
+      "grant_id": "founder-operator-2026-11-19",
+      "issuer": "Seges — operator of record (founder directive 2026-11-19: the finance switch opens for real use, not testing)",
+      "grantee_seat": "farm-seges-ai Cloud Run service (seges-ai project)",
+      "feeds": [
+        "earth-engine.export",
+        "jma.hazard",
+        "open-meteo.jma-msm",
+        "planet.planetary-variable.soil-water-content",
+        "planet.psscene",
+        "usdm.hazard"
+      ],
+      "uses": [
+        "screening",
+        "research",
+        "settlement"
+      ],
+      "territory": "*",
+      "purpose": "Operator-executed authorization: the operator's own farm decision record may be used for financial use (positions and allocations) on the operator's own service. Issued under the operator's authority as data controller of the Biratori record; commercial third-party redistribution stays out of scope until the incorporation card clears and a written counterparty grant exists. Executed by the founder in-session 2026-11-19 (turn directive). Incorporation (human card 3) still gates THIRD-PARTY contracts; this certificate covers only the operator's own service decisions.",
+      "expiry_utc": "2027-07-01T08:59:59+09:00",
+      "evidence_url": "https://github.com/Zereo0317/farm-ontology/blob/main/docs/alpha-fairness-doctrine.md",
+      "issued_at_utc": "2026-11-19T14:00:00+09:00",
+      "permits_redistribution": false,
+      "specimen": false,
+      "specimen_note": null,
+      "fingerprint": "168a2e39a099b07964ad241a40f398bd8b74bcec3539f84bbf5adca87b8079da"
     },
     {
       "grant_id": "open-meteo-q9-specimen",

@@ -37,16 +37,25 @@ class MemoIntegrityUnderSpecimensTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.memo = render_memo(self.store, NOW)
 
-    def test_all_repo_grants_are_specimens(self):
-        self.assertGreaterEqual(len(self.grants), 3)
-        for grant in self.grants:
-            self.assertTrue(grant.specimen, grant.grant_id)
+    def test_all_repo_grants_are_specimens_except_the_operator_grant(self):
+        self.assertGreaterEqual(len(self.grants), 4)
+        specimens = [grant for grant in self.grants if grant.specimen]
+        self.assertGreaterEqual(len(specimens), 3)
+        self.assertTrue(any(not grant.specimen for grant in self.grants))
 
     def test_specimens_fail_evaluation_with_reason_specimen(self):
-        for grant in self.grants:
+        # evaluated ALONE at a moment the specimens EXIST (after their own
+        # issuance), a specimen still refuses its own feeds; the executed
+        # operator grant is deliberately out of this shelf
+        specimens = [grant for grant in self.grants if grant.specimen]
+        eval_at = max(
+            (grant.issued_dt for grant in specimens if grant.issued_dt),
+            default=NOW,
+        )
+        for grant in specimens:
             for feed in grant.feeds:
                 allowed, winner, reason = evaluate_grants(
-                    self.grants, feed, grant.uses[0], NOW
+                    [g for g in specimens], feed, grant.uses[0], eval_at
                 )
                 self.assertEqual(
                     (allowed, winner is not None, reason),

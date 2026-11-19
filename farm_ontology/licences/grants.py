@@ -168,9 +168,24 @@ class Grant:
         ).encode("utf-8")
         return hashlib.sha256(canonical).hexdigest()
 
+    @property
+    def issued_dt(self) -> datetime | None:
+        raw = self.issued_at_utc
+        if not isinstance(raw, str) or not raw.strip():
+            return None
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+
     def is_live_at(self, at: datetime) -> bool:
-        """A specimen is never live; validity is inclusive of the expiry instant."""
-        return not self.specimen and self.expiry_dt.astimezone(timezone.utc) >= at
+        """A specimen is never live; validity is inclusive of the expiry instant.
+
+        An issuance instant, when declared, must have passed too — a
+        certificate does not reach backwards before it existed."""
+        if self.specimen:
+            return False
+        if self.expiry_dt.astimezone(timezone.utc) < at:
+            return False
+        issued = self.issued_dt
+        return issued is None or issued.astimezone(timezone.utc) <= at
 
     def permits_use(self, use: str) -> bool:
         return normalize_use(use) in self.uses
@@ -254,9 +269,14 @@ def evaluate_grants(
     if normalized not in USES:
         return False, None, "unknown_use"
     candidates = sorted(
-        (grant for grant in grants if feed_id in grant.feeds),
-        key=lambda grant: grant.grant_id,
-    )
+        (
+        grant
+        for grant in grants
+            if feed_id in grant.feeds
+            and (grant.issued_dt is None or grant.issued_dt.astimezone(timezone.utc) <= at)
+        ),
+    key=lambda grant: grant.grant_id,
+)
     if not candidates:
         return False, None, "no_grant"
     covering = [grant for grant in candidates if normalized in grant.uses]

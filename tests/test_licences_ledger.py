@@ -67,7 +67,8 @@ class MidTimelineDemotionTests(unittest.TestCase):
             self.assertFalse(effective_permits_financial_use(_REC_FALSE, [grant], at))
 
     def test_specimen_grants_never_unlock_even_mid_timeline(self):
-        specimens = load_grants(DEFAULT_GRANTS_DIR)
+        # the specimen SHELF only: the executed operator grant has its own era
+        specimens = [g for g in load_grants(DEFAULT_GRANTS_DIR) if g.specimen]
         for at, _ in TIMELINE:
             self.assertFalse(effective_permits_financial_use(_FIN_STATE, specimens, at))
 

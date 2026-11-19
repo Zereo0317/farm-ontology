@@ -27,9 +27,15 @@ class CliTests(unittest.TestCase):
         code, out, err = _run("list", "--at", NOW)
         self.assertEqual(code, 0)
         rows = [json.loads(line) for line in out.splitlines()]
-        self.assertEqual(len(rows), 3)
-        self.assertTrue(all(row["status"] == "SPECIMEN" for row in rows))
+        self.assertEqual(len(rows), 4)
         by_id = {row["grant_id"]: row for row in rows}
+        # three specimens + the executed operator grant
+        specimen_ids = {row["grant_id"] for row in rows if row["status"] == "SPECIMEN"}
+        self.assertEqual(
+            specimen_ids,
+            {"ee-commercial-specimen", "open-meteo-q9-specimen", "planet-trial-specimen"},
+        )
+        self.assertEqual(by_id["founder-operator-2026-11-19"]["status"], "executed")
         self.assertIn("planet-trial-specimen", by_id)
         self.assertIn(
             "2026-12-17T14:59:59+00:00", by_id["planet-trial-specimen"]["expiry_utc"]

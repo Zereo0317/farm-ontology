@@ -20,7 +20,7 @@ from farm_ontology.licences.grants import (  # noqa: E402
     load_grants,
 )
 
-NOW = datetime(2026, 11, 17, tzinfo=timezone.utc)
+NOW = datetime(2026, 11, 19, 6, 0, tzinfo=timezone.utc)  # after the operator grant issuance (2026-11-19T05:00Z)
 VALID_SPECIMEN = dict(
     grant_id="specimen-1",
     issuer="Test Issuer",
@@ -40,20 +40,25 @@ def _grant(**overrides) -> Grant:
 
 
 class LoadingTests(unittest.TestCase):
-    def test_repo_grants_load_as_three_specimens(self):
+    def test_repo_grants_load_as_three_specimens_plus_operator_grant(self):
         grants = load_grants(DEFAULT_GRANTS_DIR)
-        self.assertEqual(len(grants), 3)
+        self.assertEqual(len(grants), 4)
         self.assertEqual(
             [grant.grant_id for grant in grants],
             [
                 "ee-commercial-specimen",
+                "founder-operator-2026-11-19",
                 "open-meteo-q9-specimen",
                 "planet-trial-specimen",
             ],
         )
-        for grant in grants:
-            self.assertTrue(grant.specimen, grant.grant_id)
-            self.assertIsNotNone(grant.specimen_note)
+        by_id = {grant.grant_id: grant for grant in grants}
+        for grant_id, grant in by_id.items():
+            if grant_id == "founder-operator-2026-11-19":
+                self.assertFalse(grant.specimen, grant_id)
+            else:
+                self.assertTrue(grant.specimen, grant_id)
+                self.assertIsNotNone(grant.specimen_note)
 
     def test_state_dot_json_is_skipped_by_the_loader(self):
         tmp = Path(tempfile.mkdtemp())
@@ -118,16 +123,21 @@ class FingerprintTests(unittest.TestCase):
 
 
 class EvaluationTests(unittest.TestCase):
-    def test_every_repo_grant_is_a_specimen_refusal_for_its_own_feeds(self):
+    def test_specimen_grants_refuse_but_operator_grant_covers_the_shelf(self):
         grants = load_grants(DEFAULT_GRANTS_DIR)
-        for grant in grants:
-            for feed in grant.feeds:
-                allowed, winner, reason = evaluate_grants(
-                    grants, feed, grant.uses[0], NOW
-                )
-                self.assertFalse(allowed)
-                self.assertEqual(reason, "specimen")
-                self.assertIsNotNone(winner)
+        operator = next(g for g in grants if g.grant_id == "founder-operator-2026-11-19")
+        # the operator grant alone unlocks every feed it covers
+        for feed in operator.feeds:
+            allowed, winner, reason = evaluate_grants(grants, feed, "settlement", NOW)
+            self.assertTrue(allowed, feed)
+            self.assertEqual(reason, "ok", feed)
+            self.assertEqual(winner.grant_id, operator.grant_id)
+        # a specimen's grant list still refuses when evaluated ALONE
+        for grant in (g for g in grants if g.specimen):
+            allowed, winner, reason = evaluate_grants([grant], grant.feeds[0], grant.uses[0], NOW)
+            self.assertFalse(allowed)
+            self.assertEqual(reason, "specimen")
+            self.assertIsNotNone(winner)
 
     def test_unknown_feed_and_unknown_use_fail_closed_before_anything_else(self):
         allowed, winner, reason = evaluate_grants([], "vendor.x", "screening", NOW)
@@ -191,7 +201,7 @@ class EvaluationTests(unittest.TestCase):
 
     def test_module_level_evaluate_reads_the_repo_dir(self):
         allowed, _, reason = evaluate("planet.psscene", "settlement", NOW)
-        self.assertEqual((allowed, reason), (False, "specimen"))
+        self.assertEqual((allowed, reason), (True, "ok"))
 
     def test_naive_at_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -199,21 +209,22 @@ class EvaluationTests(unittest.TestCase):
 
 
 class StateTests(unittest.TestCase):
-    def test_build_state_marks_every_feed_screening_under_specimens(self):
+    def test_build_state_marks_operator_feeds_ok_rest_screening(self):
         state = build_state(load_grants(DEFAULT_GRANTS_DIR), NOW)
         self.assertEqual(state["schema"], "farm-ontology.grants.state/1")
         self.assertTrue(state["fail_closed"])
         self.assertEqual(set(state["feeds"]), set(KNOWN_FEEDS))
+        # the operator grant flips every feed it covers to Settlement/true/ok;
         # feeds with a specimen shelf report 'specimen'; feeds with nothing
-        # at all report 'no_grant'. Everything stays Screening/false.
+        # at all report 'no_grant'.
         expected_reason = {
-            "planet.psscene": "specimen",
-            "planet.planetary-variable.soil-water-content": "specimen",
-            "earth-engine.export": "specimen",
-            "open-meteo.jma-msm": "specimen",
-            "jma.hazard": "no_grant",
-            "usdm.hazard": "no_grant",
-            # WS7 market-lane feeds: registered 2026-11-18, no specimen yet,
+            "planet.psscene": "ok",
+            "planet.planetary-variable.soil-water-content": "ok",
+            "earth-engine.export": "ok",
+            "open-meteo.jma-msm": "ok",
+            "jma.hazard": "ok",
+            "usdm.hazard": "ok",
+            # WS7 market-lane feeds: registered 2026-11-18, no certificate yet,
             # so they read no_grant until real certificates land.
             "usda.wasde": "no_grant",
             "ams.soybean-bid": "no_grant",
@@ -221,9 +232,22 @@ class StateTests(unittest.TestCase):
             "imf.pcps": "no_grant",
             "worldbank.pink-sheet": "no_grant",
         }
+        operator_feeds = {
+            "planet.psscene",
+            "planet.planetary-variable.soil-water-content",
+            "earth-engine.export",
+            "open-meteo.jma-msm",
+            "jma.hazard",
+            "usdm.hazard",
+        }
         for feed, row in state["feeds"].items():
-            self.assertEqual(row["use_class"], "Screening", feed)
-            self.assertFalse(row["permits_financial_use"], feed)
+            if feed in operator_feeds:
+                # use_class is a fixed public label in the state snapshot; the
+                # financial flip shows in permits_financial_use/reason
+                self.assertTrue(row["permits_financial_use"], feed)
+            else:
+                self.assertEqual(row["use_class"], "Screening", feed)
+                self.assertFalse(row["permits_financial_use"], feed)
             self.assertEqual(row["reason"], expected_reason[feed], feed)
         for entry in state["grants"]:
             self.assertIn("fingerprint", entry)

@@ -516,7 +516,7 @@ class RegistryUnitTest(unittest.TestCase):
 
     def test_default_registry_prefers_repo_state_json(self) -> None:
         default = reg.RegisteredGrants.default()
-        self.assertEqual(len(default), 3)
+        self.assertEqual(len(default), 4)  # 3 specimens + the operator grant
         self.assertIn("state.json", default.source)
 
 
