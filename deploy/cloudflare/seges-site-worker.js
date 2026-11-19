@@ -7,7 +7,9 @@ var PLANNED_LOCALES = ["ja", "ko", "ms", "id", "hi", "sw", "th", "vi", "es", "pt
 var ROUTE_OVERRIDES = [
   { prefix: "/farm", redirect: "https://farm-seges-ai-web-451400509859.asia-east1.run.app/?next=%2F" },
 { prefix: "/fieldday", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
+{ prefix: "/walk", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
   { prefix: "/api", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
+{ prefix: "/_next", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
   { prefix: "/tools", origin: "https://seges-kadpjlgt4q-de.a.run.app" }
 ];
 function overrideOriginFor(pathname) {
