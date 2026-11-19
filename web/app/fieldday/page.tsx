@@ -21,37 +21,29 @@ const TOOLS: { href: string; label: string; note: string }[] = [
 
 export default function FieldDayPage() {
   return (
-    <main className="mx-auto max-w-2xl px-5 py-12 sm:px-8">
-      <h1 className="font-display text-3xl leading-tight sm:text-4xl">
-        田調日準備清單 · Field-day checklist
-      </h1>
-      <p className="mt-3 text-lg leading-relaxed text-ink">
-        睡過頭沒關係——這頁把明天的每一步都排好了。照著時間軸走，十分鐘的田間工作會變成
+    <main className="fieldday">
+      <h1 className="fdTitle">田調日準備清單 · Field-day checklist</h1>
+      <p className="fdIntro">
+        明天兩塊田：<strong>綠蔥田</strong>（收穫目標）＋
+        <strong>大豆田</strong>（真值驗證）。照著時間軸走，十分鐘的田間工作會變成
         系統裡的第一組「預測 vs 實際」。勾選進度會存在你的手機上。
       </p>
 
       <FieldDayChecklist />
 
-      <section className="mt-10 border border-line bg-paper p-5 sm:p-6">
-        <h2 className="font-display text-xl">工具連結 · Live tools（直接點）</h2>
-        <ul className="mt-3 space-y-3 text-sm">
+      <section className="fdTools">
+        <h2>工具連結 · Live tools（直接點）</h2>
+        <ul>
           {TOOLS.map((tool) => (
-            <li key={tool.href} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <a
-                href={tool.href}
-                className="font-medium underline decoration-accent underline-offset-4"
-              >
-                {tool.label}
-              </a>
-              <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">
-                {tool.note}
-              </span>
+            <li key={tool.href}>
+              <a href={tool.href}>{tool.label}</a>
+              <span className="fdNote">{tool.note}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-xs text-muted">
-          拍照清單備援：傳票照片、車斗全景、田邊全景、面積顯示器、水分計讀數（若有）。
-          明天作物：蔥（green onion）——捆數／公斤問清楚計價單位。
+        <p className="fdBackup">
+          拍照備援：傳票照片、車斗全景、田邊全景、面積顯示器、水分計讀數（若有）。
+          通行碼：f657cca4…cef56。
         </p>
       </section>
     </main>

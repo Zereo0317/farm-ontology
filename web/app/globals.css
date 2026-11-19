@@ -767,3 +767,214 @@ table.invTable td.lic { font-size: 0.76rem; color: #6f5a2e; }
   .pitchNav, .crosslinks { display: none; }
   .checkList { font-size: 10.5pt; }
 }
+
+/* ---- Field-day prep (green onion + soybean, founder field trip) ---- */
+
+.fieldday {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2rem 1.1rem 4rem;
+  background:
+    radial-gradient(rgba(107, 79, 58, 0.05) 1px, transparent 1.3px) 0 0 / 23px 23px,
+    radial-gradient(rgba(232, 216, 168, 0.28) 1px, transparent 1.4px) 11px 13px / 31px 31px,
+    var(--paper);
+}
+
+.fdTitle {
+  font-family: Palatino, "Songti TC", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.fdIntro {
+  margin: 0.9rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.fdIntro strong { color: var(--soil); }
+
+.fdCheck { margin-top: 1.6rem; }
+
+.fdProgress {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.55rem 0.9rem;
+  margin: 0 -1.1rem;
+  background: var(--hay);
+  border-bottom: 1px solid rgba(107, 79, 58, 0.25);
+}
+
+.fdBar {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(107, 79, 58, 0.15);
+  overflow: hidden;
+}
+
+.fdFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--sprout);
+  transition: width 0.3s ease-out;
+}
+
+.fdCount {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--soil);
+  font-weight: 600;
+}
+
+.fdSection {
+  margin: 1.3rem 0 0;
+  padding: 1rem 1.1rem 1.15rem;
+  border: 1px solid rgba(107, 79, 58, 0.22);
+  border-radius: 14px;
+  background: #fffefa;
+  box-shadow: 0 1px 2px rgba(60, 50, 30, 0.08);
+}
+
+.fdSection.fdDone {
+  border-color: #b7d3ad;
+  background: #f5faf0;
+}
+
+.fdHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.fdHead h3 {
+  margin: 0;
+  font-family: Palatino, "Songti TC", Georgia, serif;
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.fdDone .fdHead h3 { color: #3f5c2b; }
+
+.fdSecCount {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
+
+.fdSection ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.fdSection li {
+  margin: 0;
+  padding: 0.45rem 0;
+  border-top: 1px dashed rgba(107, 79, 58, 0.14);
+}
+
+.fdSection li:first-child { border-top: 0; }
+
+.fdSection label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin: 0;
+  cursor: pointer;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.fdSection input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  min-height: 0;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  accent-color: var(--sprout);
+  cursor: pointer;
+}
+
+.fdChecked .fdText { color: rgba(28, 27, 25, 0.55); text-decoration: line-through; }
+
+.fdText a {
+  color: #56693f;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--sprout);
+  text-underline-offset: 3px;
+}
+
+.fdCelebrate {
+  margin: 1.6rem 0 0;
+  padding: 1rem;
+  border: 1px solid #b7d3ad;
+  border-radius: 14px;
+  background: #e4efdc;
+  text-align: center;
+  font-family: Palatino, Georgia, serif;
+  font-size: 1.15rem;
+  color: #3f5c2b;
+}
+
+.fdTools {
+  margin: 2rem 0 0;
+  padding: 1rem 1.1rem 1.15rem;
+  border: 1px solid rgba(107, 79, 58, 0.22);
+  border-radius: 14px;
+  background: var(--hay);
+}
+
+.fdTools h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+
+.fdTools ul { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+
+.fdTools li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 0;
+  border-top: 1px dashed rgba(107, 79, 58, 0.14);
+}
+
+.fdTools a {
+  color: var(--soil);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgba(107, 79, 58, 0.35);
+  text-underline-offset: 3px;
+}
+
+.fdNote {
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  padding: 0.12rem 0.6rem;
+  border-radius: 999px;
+  background: #e4efdc;
+  color: #3f5c2b;
+  border: 1px solid #b7d3ad;
+}
+
+.fdBackup {
+  margin: 0.7rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: rgba(28, 27, 25, 0.68);
+}
+main.fieldday {
+  width: min(46rem, 100%);
+  padding: 2rem 1.1rem 4rem;
+}
