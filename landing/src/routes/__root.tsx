@@ -49,10 +49,9 @@ function RootDocument() {
       <head>
         <HeadContent />
         <script
-          // flip the print-media font stylesheet to all once it loads
           dangerouslySetInnerHTML={{
             __html:
-              "document.querySelector('link[href*=\\'fonts.googleapis\\']') && new IntersectionObserver(function(){},{});addEventListener('load',function(){var l=document.querySelector('link[href*=\\'fonts.googleapis\\']');if(l&&l.media==='print')l.media='all';},true);",
+              "var fl=function(){var l=document.querySelector('link[href*=\\'fonts.googleapis\\']');if(l&&l.media==='print')l.media='all';};if(document.readyState==='complete')fl();else addEventListener('load',fl,true);",
           }}
         />
       </head>
