@@ -21,6 +21,7 @@ function matchLocalePrefix(pathname, locales) {
 __name(matchLocalePrefix, "matchLocalePrefix");
 function isNonDocumentRequest(pathname) {
   if (pathname.startsWith("/_next/") || pathname === "/api" || pathname.startsWith("/api/")) return true;
+  if (pathname.startsWith("/_serverFn") || pathname.startsWith("/assets/") || pathname.startsWith("/_tanstack")) return true;
   return pathname.slice(pathname.lastIndexOf("/") + 1).includes(".");
 }
 __name(isNonDocumentRequest, "isNonDocumentRequest");
