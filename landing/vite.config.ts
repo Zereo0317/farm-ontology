@@ -167,6 +167,11 @@ export default defineConfig(({ command, isPreview }) => ({
       ? [
           nitro({
             preset: process.env.NITRO_PRESET ?? "node-server",
+            routeRules: {
+              "/assets/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
+              "/og-card.png": { headers: { "cache-control": "public, max-age=86400" } },
+              "/**": { headers: { "cache-control": "no-store, must-revalidate" } },
+            },
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.

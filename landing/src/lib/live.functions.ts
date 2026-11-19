@@ -78,7 +78,7 @@ async function pull(path: string): Promise<unknown | null> {
   try {
     const res = await fetch(`${BASE}${path}`, {
       headers: { accept: "application/json" },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(2500),
       cache: "no-store",
     });
     if (!res.ok) return null;
@@ -169,12 +169,20 @@ function parseLicences(raw: unknown): Extract<LiveLedger, { ok: true }>["licence
 let ledgerCache: { at: number; data: LiveLedger } | null = null;
 const LEDGER_TTL_MS = 60_000;
 
+const TIMEOUT_SENTINEL = Symbol("ledger-timeout");
 export const getLiveLedger = createServerFn({ method: "GET" }).handler(async (): Promise<LiveLedger> => {
   const now = Date.now();
   if (ledgerCache && now - ledgerCache.at < LEDGER_TTL_MS) return ledgerCache.data;
-  const data = await pullLiveLedger();
-  ledgerCache = { at: now, data };
-  return data;
+  const raced = await Promise.race([
+    pullLiveLedger(),
+    new Promise<typeof TIMEOUT_SENTINEL>((resolve) => setTimeout(() => resolve(TIMEOUT_SENTINEL), 1400)),
+  ]);
+  if (raced === TIMEOUT_SENTINEL) {
+    // paint now with the gap state; the card retries client-side
+    return { ok: false, fetchedAt: new Date().toISOString() };
+  }
+  ledgerCache = { at: now, data: raced };
+  return raced;
 });
 
 async function pullLiveLedger(): Promise<LiveLedger> {

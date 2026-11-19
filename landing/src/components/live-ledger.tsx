@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LEDGER_URL } from "@/lib/copy";
 import type { LiveLedger } from "@/lib/live.functions";
 import { getLiveLedger } from "@/lib/live.functions";
@@ -37,6 +37,13 @@ export function LiveLedgerCard({ initial }: { initial: LiveLedger }) {
   const copy = useCopy();
   const [data, setData] = useState(initial);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    if (!data.ok) {
+      const timer = setTimeout(() => { void retry(); }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [data]);
 
   async function retry() {
     setPending(true);
