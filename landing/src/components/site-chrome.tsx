@@ -53,7 +53,6 @@ export function SiteHeader() {
   const links = home
     ? [
         { hash: "flow", label: vision.navFlow },
-        { hash: "proof", label: vision.navProof },
         { hash: "live", label: copy.nav.live },
       ]
     : [];

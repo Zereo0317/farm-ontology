@@ -4,7 +4,7 @@ import { VISION, type Audience } from "@/lib/vision";
 
 const STEP_MS = 2400;
 
-export function DecisionFlow({ audience }: { audience: Audience }) {
+export function DecisionFlow({ audience, financial }: { audience: Audience; financial: boolean | null }) {
   const vision = VISION[useLocale()];
   const [step, setStep] = useState(0);
 
@@ -53,7 +53,7 @@ export function DecisionFlow({ audience }: { audience: Audience }) {
         <div className="mt-6">
           <p className="font-display text-5xl leading-none">{finance}</p>
           <p className="mt-4 inline-flex min-h-11 items-center border border-current px-3 font-display text-xl tracking-stamp uppercase">
-            {vision.falseLabel}
+            {financial === null ? vision.falseLabel : String(financial)}
           </p>
         </div>
       ),
