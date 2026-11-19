@@ -145,6 +145,13 @@ export function SiteFooter() {
             {copy.hero.primary}
           </Link>
         </div>
+        <div className="giant-letters" aria-hidden>
+          <span className="bg-paper-2">S</span>
+          <span className="bg-accent text-paper">E</span>
+          <span className="bg-paper-2">G</span>
+          <span className="bg-ink text-paper">E</span>
+          <span className="bg-paper-2">S</span>
+        </div>
         <p className="font-display text-sm">Seges</p>
       </div>
     </footer>

@@ -43,6 +43,7 @@ const SECTIONS: { time: string; key: string; items: Check[] }[] = [
       { id: "field-ticket", text: "④ 「JA 檢查票／出荷伝票可以拍照嗎？」（真值證據）" },
       { id: "field-soil", text: "⑤ 「土壤分析 PDF／Excel 有嗎？」（補 OM/N 缺口）" },
       { id: "field-which", text: "⑥ 「最有代表性、資料最齊的那塊田是哪塊？」（決定 /walk 目標）" },
+      { id: "field-soywalk", text: "⑦ 大豆田也釘界——前天還在收的那塊田，/walk 走四角（座標+Hiroki 的收穫數據 = 第一組真值驗證）" },
     ],
   },
   {

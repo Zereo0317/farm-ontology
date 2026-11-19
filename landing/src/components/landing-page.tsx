@@ -117,14 +117,27 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
             {audience === "farmer" ? vision.solutionDeck : vision.impactDeck}
           </p>
           {audience === "farmer" ? (
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {(vision.solutions ?? []).map(([name, body], index) => (
-                <article key={name} className="rise rise-${index + 1} border border-line bg-paper p-5 sm:p-6">
-                  <h3 className="font-display text-lg">{name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
-                </article>
-              ))}
-            </div>
+            <>
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                {(vision.solutions ?? []).map(([name, body], index) => (
+                  <article key={name} className={`rise rise-${index + 1} border border-line bg-paper p-5 sm:p-6`}>
+                    <h3 className="font-display text-lg">{name}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+                  </article>
+                ))}
+              </div>
+              {/* MakeGood-energy toggle strip: what ships today vs what comes next */}
+              <div className="mt-10 bg-ink text-on-ink">
+                <div className="px-5 py-4 sm:px-8">
+                  {(vision.solutionToggles ?? []).map(([headline, on]) => (
+                    <div key={headline} className="toggle-row">
+                      <p className={`font-display text-lg sm:text-xl ${on ? "" : "opacity-55"}`}>{headline}</p>
+                      <span aria-hidden className={`toggle-pill ${on ? "on" : "off"}`} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           ) : (
             <div className="mt-8 grid grid-cols-3 border border-line bg-line">
               {vision.impactStats.map(([figure, label]) => (
@@ -136,6 +149,31 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
             </div>
           )}
         </div>
+      </section>
+
+      {/* MakeGood-energy photo-stat tiles: the numbers land on real field photos */}
+      <section className="grid grid-cols-2 md:grid-cols-4">
+        <figure className="tile-photo h-60">
+          <img src="/photos/dawn.jpg" alt="" loading="lazy" />
+          <p className="tile-figure">{vision.impactStats[0]?.[0]}</p>
+          <figcaption className="tile-label">{vision.impactStats[0]?.[1]}</figcaption>
+        </figure>
+        <figure className="tile-photo h-60">
+          <img src="/photos/wheat.jpg" alt="" loading="lazy" />
+          <p className="tile-figure">{vision.impactStats[1]?.[0]}</p>
+          <figcaption className="tile-label">{vision.impactStats[1]?.[1]}</figcaption>
+        </figure>
+        <figure className="tile-photo h-60">
+          <img src="/photos/rice.jpg" alt="" loading="lazy" />
+          <p className="tile-figure">{vision.impactStats[2]?.[0]}</p>
+          <figcaption className="tile-label">{vision.impactStats[2]?.[1]}</figcaption>
+        </figure>
+        <figure className="tile-photo h-60 bg-field">
+          <p className="tile-figure">15–35%</p>
+          <figcaption className="tile-label">
+            {audience === "farmer" ? vision.impactModel : vision.impactModel}
+          </figcaption>
+        </figure>
       </section>
 
       <section id="flow" className="scroll-mt-nav">

@@ -38,6 +38,7 @@ export type Vision = {
   solutionTitle: string;
   solutionDeck: string;
   solutions: [string, string][];
+  solutionToggles: [string, boolean][];
   gridName: string;
   gridValue: string;
   plotName: string;
@@ -65,6 +66,7 @@ export const VISION: Record<Locale, Vision> = {
     solutionTitle: "Three answers, one infrastructure",
     solutionDeck: "Dependable automation runs the field; the hedged position absorbs the bad day; the landlord's income shows up monthly.",
     solutions: [["Reliable automation", "Self-evolving farm infrastructure: sensors watch, valves obey the record, and every correction is learned, not repeated."], ["Risk hedged", "A bad field decision does not leave you with only the damage — the position stands."], ["Landlord's passive income", "A salary arrives every month. The time you used to spend in the field goes to vacations and family."]],
+    solutionToggles: [["Reliable automation, provenance built in", true], ["Risk hedged, the position stands", true], ["Monthly salary, passive", true], ["Multi-field API, GA release", false]],
     hungerTitle: "Solve world hunger together.",
     hungerDeck:
       "Put capital behind the record. We operate the fields' data positions, and every allocation to food carries a birth certificate.",
@@ -103,7 +105,7 @@ export const VISION: Record<Locale, Vision> = {
     hunger: "一起解決飢荒",
     switchLabel: "這頁給誰看",
     farmerTitle: "讓糧食生產的利益，回到每個人身上的農業自動化基礎設施。",
-    farmerDeck: "已開發國家的農田人力短缺；糧食自產是國安問題。Seges 建可靠、能自我演化的自動化——倉位留住、月薪進帳、時間還給生活。",
+    farmerDeck: "Developed nations run short of farm hands; food sovereignty is national security. Seges builds the dependable, self-improving automation — you keep the position, the salary, and the holidays.",
     impactTitle: "為什麼現在出資",
     impactDeck: "資訊領先是真優勢：帳本比市場早讀到田。把資金放進來，收益的分配是刻意的。",
     impactStats: [["6.73 億", "人營養不足（2024，占全球 8.2%）"], ["26 億", "人負擔不起健康飲食"], ["15–35%", "的套利利潤撥入飢荒、永續與環保"]],
@@ -112,6 +114,7 @@ export const VISION: Record<Locale, Vision> = {
     solutionTitle: "三個答案，一套基礎設施",
     solutionDeck: "可靠自動化經營田間；避險倉位吸收壞日子；地主收入每月進帳。",
     solutions: [["可靠自動化", "能自我演化的農田自動化基礎設施：感測器盯著、閥門聽紀錄的，每一次修正都被學住，不會重犯。"], ["風險對沖", "機器把田做壞了，你還是站得住一個倉位——損失不是你唯一的結局。"], ["地主被動收入", "每個月進帳薪資。原來種田的時間，拿來度假與陪伴家人。"]],
+    solutionToggles: [["可靠自動化，監值內建", true], ["風險對沖，倉位站得住", true], ["每月薪資，被動進帳", true], ["多田 API，正式版", false]],
     hungerTitle: "一起解決世界飢餓。",
     hungerDeck: "把資金放進這本帳。我們替你操作田間數據倉位，每一筆撥給食物的分配都帶出生證明。",
     farmerCta: "免費開始記錄我的田",
@@ -149,7 +152,7 @@ export const VISION: Record<Locale, Vision> = {
     hunger: "一起解决饥荒",
     switchLabel: "这页给谁看",
     farmerTitle: "让粮食生产的利益，回到每个人身上的农业自动化基础设施。",
-    farmerDeck: "发达国家的农田人力短缺；粮食自产是国安问题。Seges 建可靠、能自我演化的自动化——仓位留住、月薪进账、时间还给生活。",
+    farmerDeck: "已開發國家的農田人力短缺；糧食自產是國安問題。Seges 建可靠、能自我演化的自動化——倉位留住、月薪進帳、時間還給生活。",
     impactTitle: "为什么现在出资",
     impactDeck: "信息领先是真优势：账本比市场早读到田。把资金放进来，收益的分配是刻意的。",
     impactStats: [["6.73 亿", "人营养不足（2024，占全球 8.2%）"], ["26 亿", "人负担不起健康饮食"], ["15–35%", "的套利利润拨入饥荒、可持续与环保"]],
@@ -158,6 +161,7 @@ export const VISION: Record<Locale, Vision> = {
     solutionTitle: "三个答案，一套基础设施",
     solutionDeck: "可靠自动化经营田间；避险仓位吸收坏日子；地主收入每月进账。",
     solutions: [["可靠自动化", "能自我演化的农田自动化基础设施：传感器盯着、阀门听纪录的，每一次修正都被学住，不会重犯。"], ["风险对冲", "机器把田做坏了，你还是站得住一个仓位——损失不是你唯一的结局。"], ["地主被动收入", "每个月进账薪资。原来种田的时间，拿来度假与陪伴家人。"]],
+    solutionToggles: [["可靠自动化，监值内建", true], ["风险对冲，仓位站得住", true], ["每月薪资，被动进账", true], ["多田 API，正式版", false]],
     hungerTitle: "一起解决世界饥饿。",
     hungerDeck: "把资金放进这本账。我们替你操作田间数据仓位，每一笔拨给食物的分配都带出生证明。",
     farmerCta: "免费开始记录我的田",
@@ -195,7 +199,7 @@ export const VISION: Record<Locale, Vision> = {
     hunger: "ともに飢饉を解決する",
     switchLabel: "このページの相手",
     farmerTitle: "食の生産の恩恵を、みんなへ。自律型農業インフラ。",
-    farmerDeck: "先進国の農地は人手不足。食料自給は国家安全保障。Seges は信頼でき自己進化する自動化を作ります——ポジションは残り、給料は毎月、時間は暮らしへ。",
+    farmerDeck: "发达国家的农田人力短缺；粮食自产是国安问题。Seges 建可靠、能自我演化的自动化——仓位留住、月薪进账、时间还给生活。",
     impactTitle: "いま出資する理由",
     impactDeck: "情報の先行は本物の優位です。台帳は市場より早くほ場を読む。資金を預ければ、収益の配分は意図的です。",
     impactStats: [["6.73億", "人が栄養不足（2024年・世界の8.2%）"], ["26億", "人が健康的な食事を買えない"], ["15～35%", "の裁定利益を飢餓・持続可能性・環境に充当"]],
@@ -204,6 +208,7 @@ export const VISION: Record<Locale, Vision> = {
     solutionTitle: "三つの答え、一つのインフラ",
     solutionDeck: "信頼できる自動化がほ場を運び、ヘッジが悪い日を吸収し、地主収入は毎月入る。",
     solutions: [["信頼できる自動化", "自己進化するほ場インフラ。センサーが見守り、バルブは台帳に従い、修正は次に生きます。"], ["リスクをヘッジ", "機械がほ場を損ねても、ポジションは残る——損失だけが結末ではありません。"], ["地主のパッシブ収入", "毎月、給料が入る。ほ場に立っていた時間は、旅行と家族へ。"]],
+    solutionToggles: [["信頼できる自動化、来歴内蔵", true], ["リスクヘッジ、ポジションは残る", true], ["毎月の給料、パッシブ", true], ["複数ほ場 API、正式版", false]],
     hungerTitle: "ともに、世界の飢餓を解決する。",
     hungerDeck: "資金をこの台帳に預ける。私たちがほ場のデータポジションを運用し、食料への割り当てには出生証明書が付きます。",
     farmerCta: "無料でほ場の記録を始める",
@@ -241,7 +246,7 @@ export const VISION: Record<Locale, Vision> = {
     hunger: "ร่วมขจัดความหิวโลก",
     switchLabel: "หน้านี้สำหรับใคร",
     farmerTitle: "โครงสร้างพื้นฐานการเกษตรอัตโนมัติ เพื่อให้ประโยชน์ของอาหารกลับสู่ทุกคน",
-    farmerDeck: "ประเทศพัฒนาแล้วขาดแคลนแรงงานเกษตร ความมั่นคงทางอาหารคือความมั่นคงปลอดภัยของชาติ Seges สร้างระบบอัตโนมัติที่เชื่อถือได้และพัฒนาตัวเอง - พอร์ตได้อยู่ เงินเดือนเข้าบัญชี เวลาคืนให้ชีวิต",
+    farmerDeck: "先進国の農地は人手不足。食料自給は国家安全保障。Seges は信頼でき自己進化する自動化を作ります——ポジションは残り、給料は毎月、時間は暮らしへ。",
     impactTitle: "ทำไมต้องลงทุนตอนนี้",
     impactDeck: "ความได้เปรียบด้านข้อมูลเป็นของจริง: บัญชีอ่านแปลงได้ก่อนตลาดตอบสนอง วางทุนเข้ามา แล้วผลตอบแทนถูกแบ่งอย่างตั้งใจ",
     impactStats: [["673 ล้าน", "คนขาดสารอาหารในปี 2024 — 8.2% ของโลก"], ["2,600 ล้าน", "คนซื้ออาหารสุขภาพไม่ได้"], ["15–35%", "ของกำไรอาร์บิตราจจัดสรรเพื่อบรรเทาความหิว ความยั่งยืน และสิ่งแวดล้อม"]],
@@ -250,6 +255,7 @@ export const VISION: Record<Locale, Vision> = {
     solutionTitle: "สามคำตอบ โครงสร้างเดียว",
     solutionDeck: "ระบบอัตโนมัติที่เชื่อถือได้ดูแลแปลง พอร์ตป้องกันความเสี่ยงรับวันที่แย่ รายได้เจ้าของที่ดินเข้าทุกเดือน",
     solutions: [["ระบบอัตโนมัติที่เชื่อถือได้", "โครงสร้างพื้นฐานที่พัฒนาตัวเองได้: เซนเซอร์เฝ้าดู วาล์วฟังบัญชี ทุกการแก้ไขถูกเรียนรู้ ไม่วนซ้ำ"], ["ป้องกันความเสี่ยง", "เครื่องทำให้แปลงเสียหาย พอร์ตของคุณยังยืน — ความเสียหายไม่ใช่จุดจบเดียว"], ["รายได้เจ้าของที่ดิน", "เงินเดือนเข้าทุกเดือน เวลาที่เคยอยู่ในแปลง กลับไปให้การพักผ่อนและครอบครัว"]],
+    solutionToggles: [["ระบบอัตโนมัติเชื่อถือได้ มี provenance", true], ["ป้องกันความเสี่ยง พอร์ตยังยืน", true], ["เงินเดือนรายเดือน แบบพาสซิฟ", true], ["API หลายแปลง เวอร์ชันเต็ม", false]],
     hungerTitle: "ร่วมกันขจัดความหิวโลก",
     hungerDeck: "นำทุนเข้าสู่บัญชีนี้ เราบริหารตำแหน่งข้อมูลภาคสนามให้คุณ และทุกการจัดสรรเพื่ออาหารมีใบรับรองกำเนิด",
     farmerCta: "เริ่มบันทึกแปลงของฉันฟรี",
