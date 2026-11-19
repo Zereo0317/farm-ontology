@@ -115,20 +115,6 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
         </section>
       )}
 
-      <section>
-        <figure>
-          <img
-            src={audience === "farmer" ? PHOTOS.farmer.support : PHOTOS.hunger.support}
-            alt=""
-            className="support-photo w-full object-cover"
-          />
-          <figcaption className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-            <p className="font-display text-2xl leading-snug sm:text-4xl">
-              {audience === "farmer" ? vision.machineLine : vision.hungerLine}
-            </p>
-          </figcaption>
-        </figure>
-      </section>
 
 
       <section id="live" className="scroll-mt-nav border-t border-line">

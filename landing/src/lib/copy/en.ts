@@ -120,7 +120,7 @@ export const en: Copy = {
   },
   pains: {
     title: "Why this, now",
-    lede: "Five frictions. Each one maps to a pillar below. Same order.",
+    lede: "Two real problems. The pillars answer them one by one.",
     answered: "Answered by",
     pillarName: {
       A: "Native resolution",
@@ -129,11 +129,8 @@ export const en: Copy = {
       D: "Honest uncertainty",
     },
     items: [
-      "The weather the government publishes is a 5 km grid — your field is 0.4 ha.",
-      "The charts a vendor gave you vanish, with the data, when the lease ends.",
-      "On claim day, your truth and the insurer’s never meet.",
-      "A spreadsheet has no birth certificate — three years on, nobody remembers where the number came from.",
-      "Want to hedge? The contract quietly forbade that use long ago.",
+      "Labour: developed nations run chronic shortages of farm workers — automation is not optional, it is inevitable.",
+      "Sovereignty: home-grown food is national security — the more a nation imports, the weaker its seat at the negotiating table.",
     ],
   },
   pillars: {

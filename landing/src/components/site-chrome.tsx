@@ -148,7 +148,6 @@ export function SiteFooter() {
           </Link>
         </div>
         <p className="font-display text-sm">Seges</p>
-        <p className="text-xs text-muted">{VISION[locale].credit}</p>
       </div>
     </footer>
   );
