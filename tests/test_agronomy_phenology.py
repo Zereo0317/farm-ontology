@@ -12,11 +12,10 @@ from farm_ontology.agronomy.phenology import (
     METHOD_NOISE_GDD,
     THRESHOLD_TABLE_VERSION,
     daily_gdd_contribution,
-    phenology_reading,
     profile_or_raise,
 )
 from farm_ontology.agronomy.common import AgronomyGap, CONFIG_VERSION
-from tests.agronomy_fixtures import daily_season_rows
+from tests.agronomy_fixtures import daily_season_rows, synthetic_phenology_reading as phenology_reading
 
 SOWING = datetime(2026, 5, 20, tzinfo=timezone.utc)
 EMERGENCE = datetime(2026, 6, 2, tzinfo=timezone.utc)
@@ -279,6 +278,46 @@ class NumericAndTimeRegressionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             phenology_reading([row], sowing=SOWING, emergence=None,
                               at=datetime(2026, 5, 22))
+
+
+class ObservationAvailabilityRegressionTests(unittest.TestCase):
+    def setUp(self):
+        self.at = datetime(2026, 5, 22, 12, tzinfo=timezone.utc)
+        self.row = {"date": "2026-05-20", "t_mean_c": 20, "native_resolution_km": 5,
+                    "source_kind": "observation", "availability_time": "2026-05-21T00:00:00+00:00"}
+
+    def test_missing_as_of_and_missing_source_metadata_refuse(self):
+        from farm_ontology.agronomy.phenology import phenology_reading as actual
+        with self.assertRaises(AgronomyGap) as ctx:
+            actual([self.row], sowing=SOWING, emergence=None)
+        self.assertEqual(ctx.exception.gap, "missing-as-of")
+        for key, expected in (("source_kind", "missing-observation-source"),
+                              ("availability_time", "missing-row-availability")):
+            row = dict(self.row); del row[key]
+            with self.subTest(key=key), self.assertRaises(AgronomyGap) as ctx:
+                actual([row], sowing=SOWING, emergence=None, at=self.at)
+            self.assertEqual(ctx.exception.gap, expected)
+
+    def test_unavailable_forecast_and_incomplete_observation_refuse(self):
+        from farm_ontology.agronomy.phenology import phenology_reading as actual
+        for changes, expected in (({"availability_time": "2026-05-23T00:00:00+00:00"}, "unavailable-row"),
+                                  ({"availability_time": "2026-05-21T00:00:00"}, "missing-row-availability"),
+                                  ({"source_kind": "forecast"}, "missing-observation-source"),
+                                  ({"date": "2026-05-22"}, "missing-anchor-day")):
+            row = dict(self.row, **changes)
+            with self.subTest(changes=changes), self.assertRaises(AgronomyGap) as ctx:
+                actual([row], sowing=SOWING, emergence=None, at=self.at)
+            self.assertEqual(ctx.exception.gap, expected)
+        rows = [dict(self.row, date=f"2026-05-{day:02d}") for day in (20, 21, 22)]
+        with self.assertRaises(AgronomyGap) as ctx:
+            actual(rows, sowing=SOWING, emergence=None, at=self.at)
+        self.assertEqual(ctx.exception.gap, "incomplete-day")
+
+    def test_result_records_as_of_and_source_availability(self):
+        from farm_ontology.agronomy.phenology import phenology_reading as actual
+        result = actual([self.row], sowing=SOWING, emergence=None, at=self.at).to_payload()
+        self.assertEqual(result["as_of"], self.at.isoformat())
+        self.assertEqual(result["latest_source_availability"], self.row["availability_time"])
 
 
 class CultivarProfileTests(unittest.TestCase):

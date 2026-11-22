@@ -126,12 +126,12 @@ class HarnessOfflineTests(unittest.TestCase):
     def test_run_site_produces_chain_and_no_blocker_defects(self):
         result = run_site(get_site("obihiro-tokachi"), days=140, fixtures_root=self.tmp)
         self.assertEqual(result.site, "obihiro-tokachi")
-        self.assertIsNotNone(result.phenology_stage)
-        # Historical fixtures do not prove an initial balance or point-in-time
-        # availability. The operational adviser refuses instead of guessing.
+        self.assertIsNone(result.phenology_stage)
+        # Archive fixtures do not prove per-observation availability.
+        # The operational adviser refuses instead of guessing.
         self.assertIsNone(result.irrigation_net_mm)
         self.assertIsNone(result.recommendation_id)
-        self.assertIn("gap:missing-initial-state", {row.rule for row in result.defects})
+        self.assertIn("gap:missing-observation-source", {row.rule for row in result.defects})
 
     def test_irrigation_never_implies_parcel_support_without_sensors(self):
         for site in SITES:
@@ -145,9 +145,10 @@ class HarnessOfflineTests(unittest.TestCase):
     def test_hot_control_earlier_stages_than_nemuro(self):
         hot = run_site(get_site("tsuruoka-shonai"), days=150, fixtures_root=self.tmp)
         cool = run_site(get_site("nemuro-hanasaki"), days=150, fixtures_root=self.tmp)
-        self.assertIsNotNone(hot.cumulative_gdd)
-        self.assertIsNotNone(cool.cumulative_gdd)
-        self.assertGreater(hot.cumulative_gdd, cool.cumulative_gdd)
+        self.assertIsNone(hot.cumulative_gdd)
+        self.assertIsNone(cool.cumulative_gdd)
+        for result in (hot, cool):
+            self.assertIn("gap:missing-observation-source", {row.rule for row in result.defects})
 
     def test_wind_scale_triple_keeps_chain_alive_but_records_sanity(self):
         result = run_site(get_site("nemuro-hanasaki"), days=150, fixtures_root=self.tmp)
@@ -162,9 +163,9 @@ class HarnessOfflineTests(unittest.TestCase):
         save_site_fixture(envelope, "obihiro-tokachi", self.tmp)
         result = run_site(get_site("obihiro-tokachi"), days=140, fixtures_root=self.tmp)
         rules = {row.rule for row in result.defects}
-        # Missing initial-state evidence is the first refusal, before the
-        # archive row can be treated as an operational input.
-        self.assertIn("gap:missing-initial-state", rules)
+        # Source evidence is missing, so no stage or irrigation advice is made.
+        self.assertIn("gap:missing-observation-source", rules)
+        self.assertIn("gap:missing-stage", rules)
 
     def test_transport_error_fixture_becomes_defect_not_crash(self):
         (self.tmp / "site-nemuro-hanasaki" / "year2026.json").unlink()
@@ -257,9 +258,10 @@ class HarnessOfflineTests(unittest.TestCase):
     def test_days_trims_the_drive_window(self):
         short = run_site(get_site("obihiro-tokachi"), days=30, fixtures_root=self.tmp)
         long = run_site(get_site("obihiro-tokachi"), days=150, fixtures_root=self.tmp)
-        self.assertIsNotNone(short.cumulative_gdd)
-        self.assertIsNotNone(long.cumulative_gdd)
-        self.assertLess(short.cumulative_gdd, long.cumulative_gdd)
+        self.assertIsNone(short.cumulative_gdd)
+        self.assertIsNone(long.cumulative_gdd)
+        for result in (short, long):
+            self.assertIn("gap:missing-observation-source", {row.rule for row in result.defects})
         self.assertEqual(DEFAULT_DRIVE_DAYS, 165)
 
 

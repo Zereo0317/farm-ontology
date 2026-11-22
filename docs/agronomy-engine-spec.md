@@ -292,14 +292,19 @@ still requires a trusted verification boundary before operational use.
 
 ### Phenology and spray time guards
 
-Phenology now refuses nonfinite temperatures, nonpositive/nonfinite native
-resolution, missing anchor days, and gaps in the daily sequence. When an
-as-of instant is supplied, it must be aware and rows or anchors after that
-instant's UTC calendar date are refused. This date check does not establish
-that an observation was published by the instant or that its current-day
-value is complete; source availability and a trusted reading provenance
-remain required before operational reliance. Offline calls without `at` are
-not point-in-time validation.
+Phenology refuses nonfinite temperatures, nonpositive/nonfinite native
+resolution, missing anchor days, and gaps in the daily sequence. An aware
+as-of instant is required; each row must declare itself an observation
+with an aware availability time no later than that instant, and its calendar
+date must precede the instant's UTC date. Forecasts, current/future dates,
+missing metadata and unavailable data refuse. The resulting reading carries
+the as-of instant and latest declared source availability; irrigation
+refuses readings whose timestamps cannot support its own decision instant.
+These are caller-supplied assertions, not authenticated provenance or a
+verification of the source's local-day cutoff. A trusted source registry and
+local-calendar semantics remain required before operational reliance.
+Legacy archive fixtures lacking this metadata refuse; synthetic test-only
+metadata is never assigned to real archive captures.
 
 Spray scans use earlier hours only as context: candidate windows include
 only complete hourly slots whose starts are at or after the scan instant.

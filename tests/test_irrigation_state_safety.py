@@ -6,7 +6,8 @@ from farm_ontology.agronomy.common import AgronomyGap
 from farm_ontology.agronomy.irrigation import IrrigationInitialState, irrigation_advisory
 
 AT = datetime(2026, 8, 10, 12, tzinfo=timezone.utc)
-READING = SimpleNamespace(stage="R1", cultivar_profile="hokkaido-short")
+READING = SimpleNamespace(stage="R1", cultivar_profile="hokkaido-short", as_of=AT.isoformat(),
+                          latest_source_availability=AT.isoformat(), last_date="2026-08-09")
 STATE = IrrigationInitialState("2026-08-06", 250, 30, 10, "synthetic initial state")
 
 def rows():
@@ -24,6 +25,15 @@ class IrrigationStateSafetyTests(unittest.TestCase):
                       IrrigationInitialState("2026-08-06", float("nan"), 30, 10, "evidence")):
             with self.subTest(state=state), self.assertRaises(AgronomyGap):
                 self.call(rows(), state)
+
+    def test_unavailable_phenology_reading_cannot_drive_irrigation(self):
+        for reading in (SimpleNamespace(stage="R1", cultivar_profile="hokkaido-short"),
+                        SimpleNamespace(stage="R1", cultivar_profile="hokkaido-short",
+                                        as_of="2026-08-11T00:00:00+00:00",
+                                        latest_source_availability=AT.isoformat(), last_date="2026-08-09")):
+            with self.subTest(reading=reading), self.assertRaises(AgronomyGap) as ctx:
+                irrigation_advisory(rows(), reading=reading, at=AT, initial_state=STATE)
+            self.assertEqual(ctx.exception.gap, "unavailable-stage")
 
     def test_temperature_and_availability_are_required(self):
         for field in ("t_mean_c", "availability_time", "source_kind"):

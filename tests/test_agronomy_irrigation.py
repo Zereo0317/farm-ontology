@@ -12,8 +12,8 @@ from farm_ontology.agronomy.irrigation import (
     SoilProfile,
     has_calibrated_coverage,
 )
-from farm_ontology.agronomy.phenology import phenology_reading
 from tests.agronomy_fixtures import (
+    synthetic_phenology_reading as phenology_reading,
     synthetic_irrigation_advisory as irrigation_advisory,
     daily_season_rows,
     sensor_projection_rows,
@@ -28,7 +28,7 @@ ROWS = daily_season_rows()
 
 
 def _reading():
-    return phenology_reading(ROWS, sowing=SOWING, emergence=None)
+    return phenology_reading([row for row in ROWS if row["date"] < AT.date().isoformat()], sowing=SOWING, emergence=None, at=AT)
 
 
 def _window_rows(last_days: int = 14):

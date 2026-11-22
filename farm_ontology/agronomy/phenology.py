@@ -308,10 +308,14 @@ class PhenologyReading:
     source_note: str
     support: SupportDeclaration
     use_class: str = USE_CLASS_FIELD_OPS
+    as_of: str = ""
+    latest_source_availability: str = ""
 
     def to_payload(self) -> dict:
         return {
             "stage": self.stage,
+            "as_of": self.as_of,
+            "latest_source_availability": self.latest_source_availability,
             "stage_index": self.stage_index,
             "cumulative_gdd": self.cumulative_gdd,
             "uncertainty_gdd": self.uncertainty_gdd,
@@ -425,9 +429,9 @@ def phenology_reading(
     Raises :class:`AgronomyGap` (named gaps) for missing anchors, malformed
     rows, duplicated/regressive dates, zero usable rows, or missing native
     resolution. Unknown profiles raise KeyError (loud, registry-backed).
-    When ``at`` is provided it must be aware; rows and anchors after its
-    UTC calendar date are refused. Source availability is not verified by
-    this interface; callers must verify it before operational reliance.
+    ``at`` is required and must be aware. Every row must be a completed
+    observation with an aware ``availability_time`` no later than ``at``;
+    callers must independently authenticate those metadata and the source.
     """
     moment = ensure_utc(at, "at") if at is not None else None
     profile = profile_or_raise(cultivar_profile)
@@ -452,6 +456,8 @@ def phenology_reading(
             "no daily temperature rows were supplied",
             missing=("rows",),
         )
+    if moment is None:
+        raise AgronomyGap("missing-as-of", "phenology requires an aware as-of instant", missing=("at",))
     resolution_km = _require_native_resolution(rows)
 
     anchor_at = (sowing if sowing is not None else emergence)
@@ -496,6 +502,23 @@ def phenology_reading(
     for index in range(1, len(usable)):
         if usable[index][0] - usable[index - 1][0] != timedelta(days=1):
             raise AgronomyGap("daily-sequence-hole", f"daily temperature series has a gap before {usable[index][0].isoformat()}")
+
+    source_availabilities: list[datetime] = []
+    for index, row in enumerate(rows):
+        if row.get("source_kind") != "observation":
+            raise AgronomyGap("missing-observation-source", f"row {index}: phenology requires an observation, not an unstated or forecast value")
+        raw_available = row.get("availability_time")
+        try:
+            if not isinstance(raw_available, str):
+                raise ValueError("availability_time must be an aware ISO timestamp")
+            available = ensure_utc(datetime.fromisoformat(raw_available.replace("Z", "+00:00")), "availability_time")
+        except (TypeError, ValueError) as error:
+            raise AgronomyGap("missing-row-availability", f"row {index}: a valid aware availability_time is required") from error
+        if available > moment:
+            raise AgronomyGap("unavailable-row", f"row {index}: source was unavailable at the as-of instant")
+        if ordered[index][0] >= moment.date():
+            raise AgronomyGap("incomplete-day", f"row {index}: observation day is not completed at the as-of instant")
+        source_availabilities.append(available)
 
     anchor = "sowing" if sowing is not None else "emergence"
     anchor_conflict = False
@@ -547,6 +570,8 @@ def phenology_reading(
                f"{profile.validity_note}"),
     )
     return PhenologyReading(
+        as_of=moment.isoformat(),
+        latest_source_availability=max(source_availabilities).isoformat(),
         stage=stage,
         stage_index=stage_index,
         cumulative_gdd=round(cumulative, 1),

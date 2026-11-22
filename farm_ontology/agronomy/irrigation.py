@@ -476,6 +476,16 @@ def irrigation_advisory(
             "no-usable-rows", "no daily ET0/rainfall rows were supplied",
             missing=("rows",),
         )
+    reading_as_of = _phenomenon_end({"as_of": getattr(reading, "as_of", None)}, "as_of")
+    reading_available = _phenomenon_end({"available": getattr(reading, "latest_source_availability", None)}, "available")
+    try:
+        reading_last_day = date.fromisoformat(getattr(reading, "last_date", ""))
+    except (ValueError, TypeError):
+        reading_last_day = None
+    if (reading_as_of is None or reading_available is None or reading_last_day is None or
+        reading_as_of > moment or reading_available > reading_as_of or
+        reading_last_day >= reading_as_of.date()):
+        raise AgronomyGap("unavailable-stage", "phenology reading must have completed observations and source availability at or before the irrigation decision")
     support = _grid_support(daily_rows)
 
     # The basal curve walks the DAY's running cumulative GDD (D-ENGINE-2):
