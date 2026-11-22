@@ -245,7 +245,8 @@ def list_notes() -> dict:
 # centre; accuracy travels verbatim per pin (never averaged); tenure stays
 # unknown until a human sources it. Points are recorded as OBSERVATIONS
 # (reuse of the governed obs pipeline), the assembled polygon is a separate
-# boundary-walk document — one walk, one file, replay-safe by content.
+# boundary-walk document — one walk, one file; retry deduplication requires
+# an explicit request id and is not yet provided.
 
 
 def record_boundary_walk(
@@ -364,11 +365,9 @@ def record_boundary_walk(
         "trade_signal": False,
     }
     store = _store()
-    name_ = f"boundary/walk-{_stamp(moment)}-{abs(hash(name)) % 10000:04d}.json"
-    if store.exists(name_):
-        name_ = name_.replace(".json", "-2.json")
+    name_ = f"boundary/walk-{_stamp(moment)}-{uuid.uuid4().hex}.json"
     if not dry_run:
-        store.write(name_, (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+        store.write_once(name_, (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
     return {"file": PurePosixPath(name_).name, "walk": document}
 
 
@@ -389,3 +388,4 @@ def list_boundary_walks() -> dict:
             }
         )
     return {"walks": walks}
+

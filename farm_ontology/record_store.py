@@ -89,9 +89,27 @@ class LocalBackend:
     def write(self, rel: str, data: bytes) -> None:
         path = self._path(rel)
         path.parent.mkdir(parents=True, exist_ok=True)
-        staging = path.with_name(path.name + ".part")
-        staging.write_bytes(data)
-        os.replace(staging, path)
+        # A per-write staging name prevents concurrent writers from stealing
+        # each other's .part file. Replacement is atomic, but remains last-
+        # writer-wins for mutable objects; it is not a read-modify-write lock.
+        fd, staging = tempfile.mkstemp(prefix=".record-", dir=path.parent)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            # Windows can transiently deny competing atomic replacements.
+            for attempt in range(8):
+                try:
+                    os.replace(staging, path)
+                    break
+                except PermissionError:
+                    if os.name != "nt" or attempt == 7:
+                        raise
+                    time.sleep(0.01 * (attempt + 1))
+        finally:
+            if os.path.exists(staging):
+                os.unlink(staging)
 
     def write_once(self, rel: str, data: bytes) -> None:
         """Atomically create an immutable record; never replace an existing one."""

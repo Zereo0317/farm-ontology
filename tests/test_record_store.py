@@ -201,6 +201,14 @@ class LocalBackendTests(unittest.TestCase):
         self.assertEqual(sum(results), 1)
         self.assertIn(self.backend.read_bytes("same.json"), [str(i).encode() for i in range(8)])
 
+    def test_concurrent_mutable_writes_use_independent_staging_files(self):
+        from concurrent.futures import ThreadPoolExecutor
+        payloads = [str(i).encode() * 10000 for i in range(20)]
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda data: self.backend.write("mutable.json", data), payloads))
+        self.assertIn(self.backend.read_bytes("mutable.json"), payloads)
+        self.assertFalse(list(Path(self.tmp.name).glob(".record-*")))
+
     def test_exists_and_mtime_match_the_file(self):
         self.backend.write("obs-a.json", b"{}")
         path = Path(self.tmp.name) / "obs-a.json"

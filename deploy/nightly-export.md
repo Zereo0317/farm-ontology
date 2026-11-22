@@ -16,11 +16,12 @@ Cloud Run job **`farm-nightly-export`**):
    seam the services use (`field-notes/**`, both roots),
 2. composes one deterministic gzipped tar (sorted members, fixed
    mtime/uid/gid ⇒ byte-identical for identical inputs):
-   `field-archive/<UTC-day>/record-snapshot-<UTC-stamp>.tar.gz`,
+   `field-archive/<UTC-day>/record-snapshot-<UTC-stamp>-<sha256>.tar.gz`,
 3. verifies the written object by reading it back and comparing
    sha256 AND the member list before declaring success,
-4. appends one row per snapshot to `field-archive/manifest/<day>.ndjson`
-   (dedup on the object name ⇒ idempotent re-runs),
+4. creates one immutable JSON row per snapshot under
+   `field-archive/manifest/<day>/`; the historical daily NDJSON remains readable,
+   and identical inputs at the same timestamp deduplicate,
 5. logs the run under `pipelines/run-log/<day>-record-export.json`
    (job `record-export`) — inheriting WS2's run-log + 3-strike alert
    machinery (`on_run_finished`) unchanged. A failed export STILL
@@ -52,7 +53,7 @@ tar lists exactly the expected members, individual members parse.
 ```bash
 gcloud run jobs execute farm-nightly-export --project=seges-ai \
   --region=asia-east1 --wait
-gcloud storage cat gs://farm-seges-ai-records/field-archive/manifest/$(date -u +%Y%m%d).ndjson
+gcloud storage ls "gs://<archive-bucket>/field-archive/manifest/$(date -u +%Y%m%d)/*.json"
 gcloud storage ls -lr gs://farm-seges-ai-records/field-archive/
 # image refresh after code changes (see deploy/scheduler-setup.md §1):
 gcloud builds submit --region=asia-east1 \
@@ -70,7 +71,7 @@ ONLY — no lifecycle rule is active; this job deletes nothing).
 
 ## Remaining release gates
 
-The manifest is a mutable per-day file, not an independently verified ledger.
+Manifest rows are individually create-only; they are not an independently verified ledger.
 Provision a separate archive bucket with restricted access and retention, configure
 the job, and perform a timed isolated restore with member hashes and a documented
 RPO/RTO. Alert rows are artifacts only; real notification delivery and a missing-

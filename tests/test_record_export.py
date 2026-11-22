@@ -74,7 +74,7 @@ class CompositionTests(ExportCase):
         first = self._successful_run()
         second = self._successful_run()
         self.assertTrue(first["ok"] and second["ok"])
-        expected_name = "20261118/record-snapshot-20261118T183000Z.tar.gz"
+        expected_name = f"20261118/record-snapshot-20261118T183000Z-{first['sha256']}.tar.gz"
         self.assertEqual(first["archive_object"], expected_name)
         self.assertEqual(first["members"], len(MEMBERS))
         self.assertGreater(first["bytes"], 0)
@@ -94,10 +94,38 @@ class CompositionTests(ExportCase):
         rows = record_export._read_manifest_lines(self.archive, "20261118")
         self.assertEqual(len(rows), 1)
         row = rows[0]
-        self.assertEqual(row["archive_object"], "20261118/record-snapshot-20261118T183000Z.tar.gz")
+        self.assertEqual(row["archive_object"], f"20261118/record-snapshot-20261118T183000Z-{row['sha256']}.tar.gz")
         self.assertEqual(row["members"], len(MEMBERS))
         self.assertIn("sha256", row)
         self.assertIn("record-retention-policy.md", row["manifest_note"])
+
+    def test_changed_contents_same_second_preserve_both_snapshots_and_manifests(self):
+        first = self._successful_run()
+        self.record.write("new.json", b'{"new": true}')
+        second = self._successful_run()
+        self.assertNotEqual(first["archive_object"], second["archive_object"])
+        self.assertTrue(self.archive.exists(first["archive_object"]))
+        self.assertTrue(self.archive.exists(second["archive_object"]))
+        self.assertEqual(len(record_export._read_manifest_lines(self.archive, "20261118")), 2)
+
+    def test_simultaneous_identical_exports_share_one_snapshot_and_manifest(self):
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            results = list(pool.map(lambda _: self._successful_run(), range(5)))
+        self.assertEqual(len({item["archive_object"] for item in results}), 1)
+        self.assertEqual(len(record_export._read_manifest_lines(self.archive, "20261118")), 1)
+        self.assertEqual(len(run_rows(self.pipe, job="record-export")), 5)
+
+    def test_conflicting_immutable_manifest_is_refused(self):
+        first = self._successful_run()
+        self.archive.write(first["manifest"], b"not the expected manifest")
+        with self.assertRaisesRegex(RuntimeError, "immutable object conflict"):
+            self._successful_run()
+
+    def test_legacy_manifest_rows_are_still_readable(self):
+        self.archive.write("manifest/20261118.ndjson", b'{"archive_object":"old"}\n')
+        self._successful_run()
+        self.assertEqual(len(record_export._read_manifest_lines(self.archive, "20261118")), 2)
 
     def test_second_run_at_a_different_time_appends_a_row(self):
         self._successful_run()
@@ -113,13 +141,13 @@ class CompositionTests(ExportCase):
         self.assertTrue(rows[0]["ok"])
         self.assertEqual(rows[0]["row_count"], len(MEMBERS))
         self.assertEqual(
-            rows[0]["archive_object"], "20261118/record-snapshot-20261118T183000Z.tar.gz"
+            rows[0]["archive_object"], f"20261118/record-snapshot-20261118T183000Z-{rows[0]['sha256']}.tar.gz"
         )
 
     def test_byte_integrity_is_verified_by_readback(self):
         class MutatingArchive(LocalBackend):
-            def write(self, rel, data):
-                super().write(rel, data[:-1])
+            def write_once(self, rel, data):
+                super().write_once(rel, data[:-1])
 
         archive = MutatingArchive(Path(self.tmp.name) / "field-archive-mutant")
         with self.assertRaisesRegex(RuntimeError, "does not match the composed bytes"):
