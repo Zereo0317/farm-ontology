@@ -8,7 +8,8 @@ fixtures, and the live-fetch seam is tested for its GUARDS, not called.
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from dataclasses import replace
 
 from farm_ontology.markets import backtest as bt
 from farm_ontology.markets.pit_dataset import SUBJECT_AMS_BID, SUBJECT_FAO
@@ -87,6 +88,27 @@ class EngineBehaviourTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.result = bt.run_backtest(bt.simulated_seasons())
+
+    def test_external_data_refused_without_verified_backtest(self) -> None:
+        frame = replace(bt.simulated_seasons()[0], source="external", captured_live=True)
+        with self.assertRaisesRegex(ValueError, "synthetic frames only"):
+            bt.run_season("2021", frame, yield_t_per_ha=3.0)
+
+    def test_drawdown_uses_only_sale_window(self) -> None:
+        frame = bt.simulated_seasons()[0]
+        outside = dict(frame.rows[0], date=date(2021, 1, 1), close=10000.0)
+        outcome = bt.run_season("2021", replace(frame, rows=(outside, *frame.rows)), yield_t_per_ha=3.0)
+        expected = bt.run_season("2021", frame, yield_t_per_ha=3.0)
+        self.assertEqual(outcome.window_max_drawdown, expected.window_max_drawdown)
+
+    def test_one_shot_frames_work_across_seasons(self) -> None:
+        result = bt.run_backtest(iter(bt.simulated_seasons()))
+        self.assertEqual(len(result.per_season), 5)
+
+    def test_first_trading_session_after_harvest_is_used(self) -> None:
+        frame = bt.simulated_seasons()[0]
+        result = bt.run_backtest((replace(frame, rows=frame.rows[1:]),), years=("2021",))
+        self.assertEqual(result.per_season[0].executions[0].day, frame.rows[1]["date"])
 
     def test_weights_sum_to_one(self) -> None:
         self.assertAlmostEqual(

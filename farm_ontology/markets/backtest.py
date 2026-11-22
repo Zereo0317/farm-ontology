@@ -304,6 +304,10 @@ def _take_next(rows, *, start_index: int, predicate):
 
 def run_season(year: str, frame: PriceSeriesFrame, *, yield_t_per_ha: float) -> SeasonOutcome:
     """The 40/30/30 walk over ONE season window, against all-at-once."""
+    # This scaffold has neither a historical signal manifest nor verified quote
+    # units. Never silently label external price series as synthetic evidence.
+    if frame.source != "sim-declared" or frame.captured_live:
+        raise ValueError("external prices require a verified point-in-time backtest; this scaffold accepts synthetic frames only")
     calendar = SEASON_CALENDAR[year]
     bu_per_ha = bushels_per_ha(yield_t_per_ha)
     rows = sorted(frame.rows, key=lambda row: row["date"])
@@ -425,7 +429,8 @@ def run_season(year: str, frame: PriceSeriesFrame, *, yield_t_per_ha: float) -> 
 
     total_weighted = sum(exec.weight * exec.price for exec in execs)
     staged_rev = total_weighted * bu_per_ha
-    dd = frame.max_drawdown_of_closes()
+    dd = PriceSeriesFrame(source=frame.source, symbol=frame.symbol, interval=frame.interval,
+                          rows=tuple(window_rows)).max_drawdown_of_closes()
     drawdown = dd["drawdown"] if dd else None
     return SeasonOutcome(
         season=year,
@@ -447,11 +452,12 @@ def run_backtest(
     limits: Sequence[str] = (),
 ) -> BacktestResult:
     """Run the staged-vs-all-at-once comparison across seasons."""
+    frames = tuple(frames)  # allow one-shot iterators across multiple seasons
     by_year: dict[str, PriceSeriesFrame] = {}
     for year in years:
         harvest_day = SEASON_CALENDAR[year]["harvest_day"]
         for frame in frames:
-            if any(row["date"] == harvest_day for row in frame.rows):
+            if any(harvest_day <= row["date"] <= SEASON_CALENDAR[year]["window_end"] for row in frame.rows):
                 by_year[year] = frame
                 break
     missing = [year for year in years if year not in by_year]
