@@ -8,9 +8,9 @@ name: web-image
 # Pipeline shape:
 #   push to main touching web/** or Dockerfile.web or this file
 #     → build image via Cloud Build (web/tools/web-image-build.ps1)
-#     → build only. Forward production deployment remains blocked until a web
-#       staging service and same-digest promotion verification are in place.
-#   workflow_dispatch WITHOUT image_ref: build only.
+#     → run the web security suite, then deploy that exact digest to production
+#       with traffic verification, smoke checks, and rollback.
+#   workflow_dispatch WITHOUT image_ref: build and deploy from main.
 #   workflow_dispatch WITH image_ref (digest only): PIN job only —
 #     rolls the service back to that exact image (explicit digest per
 #     ops discipline; see deploy/web-rollback.md).
@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       image_ref:
-        description: "PIN ONLY: farm web sha256 digest. Leave EMPTY for build only."
+        description: "PIN ONLY: farm web sha256 digest. Leave EMPTY to build and deploy from main."
         required: false
         default: ""
 
@@ -90,8 +90,49 @@ jobs:
           echo "image_digest=$DIGEST" >> "$GITHUB_OUTPUT"
           echo "::notice::Image $IMAGE_BASE@$DIGEST (tag $TAG)"
 
-  # Forward deployment is intentionally absent until web staging and a
-  # verified same-digest promotion pipeline are implemented.
+  deploy-web:
+    needs: build-push
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.image_ref == '')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
+          service_account: 451400509859-compute@developer.gserviceaccount.com
+          project_id: seges-ai
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy tested digest and verify production
+        env:
+          IMAGE_DIGEST: ${{ needs.build-push.outputs.image_digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          IMAGE="$IMAGE_BASE@$IMAGE_DIGEST"
+          BASE="https://farm-seges-ai-web-451400509859.asia-east1.run.app"
+          gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web-before.json"
+          PREVIOUS="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; a=[x for x in t if x.get("percent",0)>0]; assert len(a)==1 and a[0]["percent"]==100; print(a[0]["revisionName"])' "$RUNNER_TEMP/web-before.json")"
+          gcloud run deploy farm-seges-ai-web --project=seges-ai --region=asia-east1 --image "$IMAGE" --no-traffic
+          CANDIDATE="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format='value(status.latestReadyRevisionName)')"
+          test -n "$CANDIDATE" && test "$CANDIDATE" != "$PREVIOUS"
+          ACTUAL_IMAGE="$(gcloud run revisions describe "$CANDIDATE" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
+          test "$ACTUAL_IMAGE" = "$IMAGE"
+          rollback() { gcloud run services update-traffic farm-seges-ai-web --project=seges-ai --region=asia-east1 --to-revisions "${PREVIOUS}=100"; }
+          trap rollback ERR
+          gcloud run services update-traffic farm-seges-ai-web --project=seges-ai --region=asia-east1 --to-revisions "${CANDIDATE}=100"
+          gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web-after.json"
+          python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; a=[x for x in t if x.get("percent",0)>0]; assert len(a)==1 and a[0]["percent"]==100 and a[0]["revisionName"]==sys.argv[2]' "$RUNNER_TEMP/web-after.json" "$CANDIDATE"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 "$BASE/livez" > /dev/null
+          test "$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "$BASE/")" = 307
+          curl --fail --silent --show-error --max-time 20 "$BASE/report/biratori-1119" > /dev/null
+          test "$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "$BASE/api/boundaries")" = 401
+          trap - ERR
+          echo "::notice::Deployed $IMAGE to $CANDIDATE and passed production smoke checks"
 
   pin-rollback:
     # Dispatch-only: pin the live service to an EXPLICIT older image ref.
