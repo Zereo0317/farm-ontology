@@ -288,3 +288,20 @@ fixtures may declare synthetic evidence; this does not validate a field
 state, a forecast source, or an agronomic model. A caller-provided evidence
 string is not independent verification, and phenology reading provenance
 still requires a trusted verification boundary before operational use.
+
+
+### Phenology and spray time guards
+
+Phenology now refuses nonfinite temperatures, nonpositive/nonfinite native
+resolution, missing anchor days, and gaps in the daily sequence. When an
+as-of instant is supplied, it must be aware and rows or anchors after that
+instant's UTC calendar date are refused. This date check does not establish
+that an observation was published by the instant or that its current-day
+value is complete; source availability and a trusted reading provenance
+remain required before operational reliance. Offline calls without `at` are
+not point-in-time validation.
+
+Spray scans use earlier hours only as context: candidate windows include
+only complete hourly slots whose starts are at or after the scan instant.
+This does not establish product-label suitability, source availability,
+or forecast accuracy.

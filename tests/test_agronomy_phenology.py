@@ -244,6 +244,43 @@ class MalformedInputTests(unittest.TestCase):
         self.assertEqual(ctx.exception.gap, "grid-resolution-mixed")
 
 
+class NumericAndTimeRegressionTests(unittest.TestCase):
+    def test_nonfinite_temperatures_and_invalid_resolutions_refuse(self):
+        for key, value in (("t_mean_c", float("nan")), ("t_mean_c", float("inf")),
+                           ("native_resolution_km", float("nan")),
+                           ("native_resolution_km", float("inf")),
+                           ("native_resolution_km", 0), ("native_resolution_km", -5)):
+            row = {"date": "2026-05-20", "t_mean_c": 20.0, "native_resolution_km": 5}
+            row[key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(AgronomyGap):
+                phenology_reading([row], sowing=SOWING, emergence=None)
+        for value in (float("nan"), float("inf")):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                daily_gdd_contribution(value)
+
+    def test_missing_anchor_day_and_missing_intermediate_day_refuse(self):
+        for dates, reason in ((["2026-05-21"], "missing-anchor-day"),
+                              (["2026-05-20", "2026-05-22"], "daily-sequence-hole")):
+            rows = [{"date": day, "t_mean_c": 20, "native_resolution_km": 5} for day in dates]
+            with self.subTest(dates=dates), self.assertRaises(AgronomyGap) as ctx:
+                phenology_reading(rows, sowing=SOWING, emergence=None)
+            self.assertEqual(ctx.exception.gap, reason)
+
+    def test_as_of_refuses_future_rows_and_future_anchor(self):
+        row = {"date": "2026-05-22", "t_mean_c": 20.0, "native_resolution_km": 5}
+        with self.assertRaises(AgronomyGap) as ctx:
+            phenology_reading([row], sowing=SOWING, emergence=None,
+                              at=datetime(2026, 5, 21, tzinfo=timezone.utc))
+        self.assertEqual(ctx.exception.gap, "future-row")
+        with self.assertRaises(AgronomyGap) as ctx:
+            phenology_reading([row], sowing=SOWING, emergence=None,
+                              at=datetime(2026, 5, 19, tzinfo=timezone.utc))
+        self.assertEqual(ctx.exception.gap, "future-anchor")
+        with self.assertRaises(ValueError):
+            phenology_reading([row], sowing=SOWING, emergence=None,
+                              at=datetime(2026, 5, 22))
+
+
 class CultivarProfileTests(unittest.TestCase):
     """D-ENGINE-1: profiles, provenance, and the campaign fit target."""
 

@@ -574,6 +574,9 @@ def run_site(
     )
 
     p_rows = _trim_rows_by_date(adapted["phenology_rows"], "date", sowing.date(), drive_end)
+    # The evaluation instant predates the final fixture day. Do not use later
+    # climate rows when announcing the stage at that instant.
+    p_rows = [row for row in p_rows if _row_day(row, "date") <= at_final.date()]
     i_rows = _trim_rows_by_date(adapted["irrigation_rows"], "date", sowing.date(), drive_end)
     h_rows = _trim_rows_by_date(adapted["hourly_rows"], "time", sowing.date(), drive_end)
 

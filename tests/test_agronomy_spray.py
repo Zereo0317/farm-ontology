@@ -32,6 +32,27 @@ class InvalidWeatherRegressionTests(unittest.TestCase):
                 self.assertEqual(ctx.exception.gap, "invalid-hour-field")
 
 
+class ActionableTimeRegressionTests(unittest.TestCase):
+    def test_past_windows_are_not_offered(self):
+        rows = [{"time": (AT + timedelta(hours=i)).isoformat(),
+                 "wind_ms": 1 if i < 0 else 4, "precip_mm": 0,
+                 "temp_c": 20, "native_resolution_km": 5}
+                for i in range(-8, 8)]
+        windows, _ = scan_spray_windows(rows, at=AT)
+        self.assertEqual(windows, ())
+
+    def test_straddling_window_starts_at_next_full_hour(self):
+        query = AT + timedelta(minutes=30)
+        rows = [{"time": (AT + timedelta(hours=i)).isoformat(),
+                 "wind_ms": 1 if i < 4 else 4, "precip_mm": 0,
+                 "temp_c": 20, "native_resolution_km": 5}
+                for i in range(-2, 10)]
+        windows, _ = scan_spray_windows(rows, at=query)
+        self.assertEqual(len(windows), 1)
+        self.assertEqual(windows[0].start, (AT + timedelta(hours=1)).isoformat())
+        self.assertEqual(windows[0].hours, 3)
+
+
 class ScanBehaviourTests(unittest.TestCase):
     def test_fixture_series_produces_ordered_verdict_windows(self):
         windows, summary = scan_spray_windows(HOURS, at=AT)

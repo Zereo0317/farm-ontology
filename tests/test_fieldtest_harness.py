@@ -32,8 +32,8 @@ def synth_fixture(
     ecto_null_row: int | None = None,
     duplicate_day: str | None = None,
 ) -> dict:
-    """A tiny but engine-real 2026 season: May 20 .. Oct 30 daily + hourly."""
-    start = date(2026, 5, 20)
+    """A synthetic 2026 season: May 1 .. Oct 30 daily + hourly."""
+    start = date(2026, 5, 1)
     daily, hourly = [], []
     day = start
     step = 0
@@ -89,7 +89,7 @@ def synth_fixture(
         },
     }
     return {
-        "captured_live": True,
+        "captured_live": False,
         "transport_error": None,
         "fetched_at": NOW.isoformat(),
         "endpoint": "https://archive-api.open-meteo.com/v1/archive",
@@ -232,7 +232,7 @@ class HarnessOfflineTests(unittest.TestCase):
         self.assertEqual(path.name, "year2026.json")
         self.assertEqual(path.parent.name, "site-obihiro-tokachi")
         loaded = load_site_fixture(get_site("obihiro-tokachi"), self.tmp)
-        self.assertTrue(loaded["captured_live"])
+        self.assertFalse(loaded["captured_live"])
 
     def test_fetch_gate_refuses_when_offline(self):
         previous = {ONLINE_ENV: __import__("os").environ.get(ONLINE_ENV)}

@@ -274,6 +274,12 @@ def scan_spray_windows(
 
     windows: list[SprayWindow] = []
     for start, end in runs:
+        # Only full hours starting at or after the query are actionable.
+        # Past context helps verify input continuity, not create past GO windows.
+        while start < end and stamps[start] < moment:
+            start += 1
+        if end - start < MIN_RUN_HOURS:
+            continue
         evidence: list[dict] = []
         run_wind = max(wind[start:end])
         run_temp_bad = [
