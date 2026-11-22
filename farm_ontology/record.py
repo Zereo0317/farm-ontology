@@ -388,4 +388,3 @@ def list_boundary_walks() -> dict:
             }
         )
     return {"walks": walks}
-

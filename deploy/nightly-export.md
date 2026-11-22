@@ -77,3 +77,28 @@ the job, and perform a timed isolated restore with member hashes and a documente
 RPO/RTO. Alert rows are artifacts only; real notification delivery and a missing-
 run watchdog remain unimplemented. None of these live operations was performed
 by the code change.
+
+## Format and archive-bucket migration
+
+Previous deployments wrote tarballs and `manifest/YYYYMMDD.ndjson` in the
+primary `farm-seges-ai-records` bucket. New deployments require a distinct
+archive bucket and create tarballs whose names include the full content digest,
+with one JSON manifest object per snapshot in `manifest/YYYYMMDD/`. No code
+automatically copies prior snapshots, deletes them, or searches across buckets.
+The internal manifest reader can combine historical NDJSON and new JSON rows
+only when they are present in the same configured backend. Consumers that read
+the old NDJSON path directly must be updated to enumerate both formats; scripts
+that assume the old tarball name must use each manifest's `archive_object`.
+
+Before cutover, operators should inventory the old bucket and choose whether to
+copy historical snapshots and NDJSON into the independently protected archive.
+For any copy, verify each manifest and archived object's SHA-256 and counts,
+retain the source until the restore drill is accepted, and document access and
+retention. The repository contains no completed archive restore tool or
+end-to-end restore drill for either format. The code change itself performs no
+migration, provisioning, retention configuration, or restore.
+
+Observation, note, and boundary creation use unique IDs but do not yet accept
+client idempotency keys. A caller retry after a lost response can create a
+duplicate. Mutable pipeline state remains last-writer-wins; neither limitation
+is resolved by the archive changes.
