@@ -1,0 +1,104 @@
+name: landing-image
+
+# Build and release the apex landing on main. The public site is promoted only
+# after typecheck, its hermetic tests, the production build, and Cloud Build.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing/**"
+      - "Dockerfile.landing"
+      - ".github/workflows/landing-image.yml"
+
+concurrency:
+  group: landing-image-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_BASE: asia-east1-docker.pkg.dev/seges-ai/cloud-run-source-deploy/farm-seges-ai-landing
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image_digest: ${{ steps.image.outputs.image_digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+      - name: Install and verify landing
+        working-directory: landing
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm test
+          NITRO_PRESET=node-server npx vite build
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
+          service_account: 451400509859-compute@developer.gserviceaccount.com
+          project_id: seges-ai
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build and push with Cloud Build
+        shell: pwsh
+        run: ./landing/tools/landing-image-build.ps1 -TagSuffix "ci-${{ github.sha }}"
+      - name: Resolve immutable image digest
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="ci-${GITHUB_SHA}"
+          DIGEST="$(gcloud artifacts docker images describe "$IMAGE_BASE:$TAG" --project=seges-ai --format='value(digest)')"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "image_digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "::notice::Built $IMAGE_BASE@$DIGEST"
+
+  deploy-landing:
+    needs: build-push
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
+          service_account: 451400509859-compute@developer.gserviceaccount.com
+          project_id: seges-ai
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy tested digest, shift traffic, and smoke the apex
+        env:
+          IMAGE_DIGEST: ${{ needs.build-push.outputs.image_digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          IMAGE="$IMAGE_BASE@$IMAGE_DIGEST"
+          BASE="https://farm-seges-ai-landing-451400509859.asia-east1.run.app"
+          gcloud run services describe farm-seges-ai-landing --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/landing-before.json"
+          PREVIOUS="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; a=[x for x in t if x.get("percent",0)>0]; assert len(a)==1 and a[0]["percent"]==100; print(a[0]["revisionName"])' "$RUNNER_TEMP/landing-before.json")"
+          gcloud run deploy farm-seges-ai-landing --project=seges-ai --region=asia-east1 --image "$IMAGE" --no-traffic
+          CANDIDATE="$(gcloud run services describe farm-seges-ai-landing --project=seges-ai --region=asia-east1 --format='value(status.latestReadyRevisionName)')"
+          test -n "$CANDIDATE" && test "$CANDIDATE" != "$PREVIOUS"
+          ACTUAL_IMAGE="$(gcloud run revisions describe "$CANDIDATE" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
+          test "$ACTUAL_IMAGE" = "$IMAGE"
+          rollback() { gcloud run services update-traffic farm-seges-ai-landing --project=seges-ai --region=asia-east1 --to-revisions "${PREVIOUS}=100"; }
+          trap rollback ERR
+          gcloud run services update-traffic farm-seges-ai-landing --project=seges-ai --region=asia-east1 --to-revisions "${CANDIDATE}=100"
+          gcloud run services describe farm-seges-ai-landing --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/landing-after.json"
+          python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; a=[x for x in t if x.get("percent",0)>0]; assert len(a)==1 and a[0]["percent"]==100 and a[0]["revisionName"]==sys.argv[2]' "$RUNNER_TEMP/landing-after.json" "$CANDIDATE"
+          for route in /en /ja /zh-TW; do curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 20 "$BASE$route" > /dev/null; done
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 20 https://seges.ai/ > /dev/null
+          trap - ERR
+          echo "::notice::Deployed $IMAGE to $CANDIDATE; locale routes and seges.ai passed"
