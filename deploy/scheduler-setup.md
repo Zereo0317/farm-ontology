@@ -73,8 +73,9 @@ owns the binding, retries (`max-retries=1`), and the task timeout.
 ## 5. Artifact layout in `gs://farm-seges-ai-records/pipelines/`
 
 ```
-run-log/YYYYMMDD-<job>.json        one dated row per job per UTC day:
-                                   {job, started, finished, ok, row_count, error, ...}
+run-log/<timestamp>-<id>-<job>.json   one row per execution:
+                                      {job, started, finished, ok, row_count, error, ...}
+run-log/YYYYMMDD-<job>.json           legacy daily row; overwritten events cannot be recovered
 alerts/YYYYMMDD-<job>-ALERT.json   3 consecutive failures (evidence trail inside)
 alerts/YYYYMMDD-<job>-acquisitions-*.json   new Planet scene ids
 alerts/YYYYMMDD-<job>-warnings-*.json       unseen hazard signatures
@@ -132,7 +133,7 @@ webhook, no credentials (house rules). Two consumers already exist:
 ```bash
 gcloud run jobs execute farm-worker-weather-hourly --project=seges-ai \
   --region=asia-east1 --wait
-gsutil cat "gs://farm-seges-ai-records/pipelines/run-log/$(date -u +%Y%m%d)-weather-hourly.json"
+gsutil ls "gs://farm-seges-ai-records/pipelines/run-log/*-weather-hourly.json"
 gcloud run jobs execute farm-worker-weather-hourly --project=seges-ai \
   --region=asia-east1 --wait     # AGAIN: row_count must read 0 (dedupe)
 gsutil ls gs://farm-seges-ai-records/pipelines/state/
@@ -147,3 +148,23 @@ the env afterwards.
 Status surface: `GET /farm/ingest-status` on the deployed service sums
 up last runs, strikes, and standing alerts per job from the same
 bucket — gaps when a job has never run.
+
+## Readiness follow-up: execution freshness watchdog
+
+`python -m pipelines.ingest_watchdog` checks run history, including the record
+export job, against last-success age limits (weather 2 h, daily jobs/export
+30 h, NDVI 8 days) and flags three consecutive failed executions. Missing,
+stale, malformed or future-dated evidence is unhealthy. A successful execution
+does not prove that underlying data are live or fresh; the hazards job may
+replay fixtures and NDVI may not be armed. Old daily-overwritten history cannot
+be reconstructed.
+
+The runner does not send by default. `--deliver` explicitly requires a valid
+HTTPS `FARM_WATCHDOG_RECEIVER`; it posts unhealthy reports and exits nonzero
+on missing configuration or delivery failure. There is no silent fallback and
+redirects are refused. This code is not scheduled or provisioned: configure a
+receiver and credentials through the deployment's approved operational
+channel, independently monitor the watchdog itself, and run a witnessed
+delivery and acknowledgement drill before claiming alert coverage. Do not put
+secrets in the receiver URL. The existing disabled Cloud Monitoring webhook
+placeholder remains separate.
