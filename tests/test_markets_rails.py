@@ -365,10 +365,11 @@ class Ws6GrantSeamTests(unittest.TestCase):
 
         grant = self._ws6(expiry="2099-01-01T00:00:00+00:00")
         state, ref = grant_ref_from_ws6_grant(grant, at=datetime(2026, 11, 18, tzinfo=timezone.utc))
-        self.assertEqual(state, GRANT_VALID)
+        self.assertEqual(state, "closed")
         self.assertIsNotNone(ref)
-        self.assertTrue(ref.permits_financial_use)
-        self.assertTrue(ref.permits_market_data_use)
+        self.assertFalse(ref.permits_financial_use)
+        self.assertFalse(ref.permits_market_data_use)
+        self.assertEqual(ref.state_detail, "provider_rights_unverified")
         self.assertIn("planet.psscene", ref.scope)
         self.assertEqual(ref.expiry, "2099-01-01T00:00:00+00:00")
 

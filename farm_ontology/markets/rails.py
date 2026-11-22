@@ -328,9 +328,8 @@ def grant_ref_from_ws6_grant(grant, *, at=None) -> tuple[str, GrantRef | None]:
     - a SPECIMEN grant is never live ⇒ ``GRANT_CLOSED`` with the specimen
       reason and no ref — specimen paper must never unlock a rail;
     - an expired grant ⇒ ``GRANT_EXPIRED`` and no ref;
-    - a live grant ⇒ ``GRANT_VALID`` plus the adapted ref, with
-      ``permits_financial_use`` true iff the grant carries any financial
-      use (the class-C family) and ``permits_market_data_use`` mirroring it.
+    - a live grant ⇒ ``GRANT_CLOSED`` plus a non-permitting adapted ref:
+      the grant's claims alone do not prove independent provider rights.
 
     Returns ``(state, ref_or_None)``; never raises for judged states —
     a malformed WS6 grant object is ``GRANT_UNPARSEABLE``.
@@ -344,7 +343,6 @@ def grant_ref_from_ws6_grant(grant, *, at=None) -> tuple[str, GrantRef | None]:
         return GRANT_UNPARSEABLE, f"ws6 grant is_live_at failed: {error}"
     if not live:
         return GRANT_EXPIRED, None
-    financial = bool(getattr(grant, "financial_uses", ()) or ())
     ref = GrantRef(
         name=str(getattr(grant, "grant_id", "")),
         issuer=str(getattr(grant, "issuer", "")),
@@ -357,10 +355,11 @@ def grant_ref_from_ws6_grant(grant, *, at=None) -> tuple[str, GrantRef | None]:
         purpose=str(getattr(grant, "purpose", "")),
         expiry=str(getattr(grant, "expiry_utc", "")),
         evidence_url=str(getattr(grant, "evidence_url", "")),
-        permits_financial_use=financial,
-        permits_market_data_use=financial,
+        permits_financial_use=False,
+        permits_market_data_use=False,
+        state_detail="provider_rights_unverified",
     )
-    return GRANT_VALID, ref
+    return GRANT_CLOSED, ref
 
 
 # ----------------------- doctrine section 4 rails ---------------------- #
