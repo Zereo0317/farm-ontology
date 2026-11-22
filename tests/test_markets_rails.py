@@ -135,7 +135,7 @@ class GrantStateTest(unittest.TestCase):
 class FailClosedTest(unittest.TestCase):
     def test_expired_grant_flips_validation_to_violations(self) -> None:
         healthy = rl.validate_playbook_artefact(artefact(), AS_OF)
-        self.assertEqual(healthy, ())
+        self.assertTrue(any(v.rail == "R5-provenance" for v in healthy))
         broken = artefact(grants_by_feed={SUBJECT_AMS_BID: grant(expiry="2026-11-01T00:00:00+00:00")})
         violations = rl.validate_playbook_artefact(broken, AS_OF)
         self.assertTrue(any(v.rail == rl.RAIL_5_TRUTHFULNESS and "expired" in v.detail for v in violations))
@@ -154,7 +154,7 @@ class FailClosedTest(unittest.TestCase):
         # the SAME artefact validated later, after expiry, must flip
         g = grant(expiry="2026-12-31T00:00:00+00:00")
         a = artefact(grants_by_feed={SUBJECT_AMS_BID: g})
-        self.assertEqual(rl.validate_playbook_artefact(a, AS_OF), ())
+        self.assertTrue(any(v.rail == "R5-provenance" for v in rl.validate_playbook_artefact(a, AS_OF)))
         later = datetime(2027, 1, 5, tzinfo=timezone.utc)
         self.assertTrue(rl.validate_playbook_artefact(a, later))
 

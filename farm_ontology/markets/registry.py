@@ -238,14 +238,10 @@ def bridge_licences_to_grantref(
         if shelf_grant is not None
         else "https://invalid.example/no-certificate"
     )
-    # The certificate's OWN use list decides what it permits; the
-    # verdict (specimen/expiry/registry) is layered on top by the rails
-    # and the state engine. That way an EXPIRED financial certificate
-    # dies as 'expired', not as a generic 'closed'.
-    cert_permits_market = (
-        shelf_grant is not None and "commercial" in shelf_grant.uses
-    )
-    cert_permits_financial = shelf_grant is not None and "hedge" in shelf_grant.uses
+    # Use the actual licence verdict, not the certificate's claims.
+    # The rails preserve expired and missing-grant reasons separately.
+    cert_permits_market = _allowed_commercial
+    cert_permits_financial = _allowed_financial
     ref = GrantRef(
         name=f"bridged:{licences_feed}",
         issuer=shelf_grant.issuer if shelf_grant is not None else "licences engine",

@@ -273,9 +273,8 @@ def grant_state_at(
             GRANT_SPECIMEN,
             f"specimen grant never unlocks (licences verdict: {detail})",
         )
-    if not grant.permits_financial_use or not grant.permits_market_data_use:
-        suffix = f" (licences verdict: {grant.state_detail})" if grant.state_detail else ""
-        return GRANT_CLOSED, "the recorded grant does not permit this use" + suffix
+    if grant.state_detail in {"no_grant", "unknown_feed", "use_not_granted", "provider_rights_unverified"}:
+        return GRANT_CLOSED, f"the recorded grant does not permit this use (licences verdict: {grant.state_detail})"
     try:
         expiry = parse_time(grant.expiry)
     except (TypeError, ValueError):
@@ -285,6 +284,9 @@ def grant_state_at(
     moment = ensure_utc(as_of, "as_of")
     if expiry <= moment:
         return GRANT_EXPIRED, f"the grant expired at {expiry.isoformat()}"
+    if not grant.permits_financial_use or not grant.permits_market_data_use:
+        suffix = f" (licences verdict: {grant.state_detail})" if grant.state_detail else ""
+        return GRANT_CLOSED, "the recorded grant does not permit this use" + suffix
     return GRANT_VALID, "permit provably alive"
 
 
@@ -589,6 +591,10 @@ def provenance_check(
     violations: list[RailViolation] = []
     registry = artefact.grant_registry
     if registry is None:
+        if artefact.grants_by_feed or artefact.market_decisive_feeds:
+            violations.append(RailViolation(
+                "R5-provenance", "no trusted provider-rights registry is configured"
+            ))
         return violations
     if not hasattr(registry, "contains"):
         violations.append(
@@ -604,6 +610,13 @@ def provenance_check(
         grant = artefact.grants_by_feed.get(feed)
         if grant is None:
             continue
+        # Membership in a caller-supplied fingerprint set is not authority:
+        # even a specimen fingerprint can be copied into an altered GrantRef.
+        # No verified provider-rights registry exists, so no ref may unlock.
+        violations.append(RailViolation(
+            "R5-provenance",
+            f"feed {feed}: provider rights are unverified; caller-supplied registry cannot authorize use",
+        ))
         if not grant.fingerprint:
             violations.append(
                 RailViolation(
@@ -927,6 +940,13 @@ def premium_budget_check(artefact: "PlaybookArtefact") -> list[RailViolation]:
     violations: list[RailViolation] = []
     registry = artefact.cap_sheet_registry
     budget = artefact.premium_budget
+    # A hash in a caller-supplied registry authenticates neither the signer
+    # nor the cap values. Keep this gate closed until verified, trusted cap
+    # sheets and numeric-limit checks are available.
+    violations.append(RailViolation(
+        RAIL_6_PREMIUM_CAP,
+        "verified signed cap sheet and numeric cap are unavailable",
+    ))
     if registry is None:
         violations.append(
             RailViolation(

@@ -255,7 +255,7 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
         violations = rl.validate_playbook_artefact(artefact, REHEARSAL_T)
         assert violations, "L1 intent unexpectedly passed rails (grant wall absent?!)"
         rails_named = [v.rail for v in violations]
-        assert all(rail == rl.RAIL_5_TRUTHFULNESS for rail in rails_named), (
+        assert all(rail in (rl.RAIL_5_TRUTHFULNESS, "R5-provenance") for rail in rails_named), (
             f"unexpected non-R5 killers: {violations}"
         )
         grants_named = sum("fails closed on grant state" in v.detail for v in violations)
@@ -263,7 +263,7 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
         # D2 healed: the bridge transplants the licences verdict VERBATIM,
         # so the wall's detail names the real reason ('no_grant'), not a
         # generic 'closed'.
-        verbatim = all("no_grant" in v.detail for v in violations)
+        verbatim = all("no_grant" in v.detail for v in violations if v.rail == rl.RAIL_5_TRUTHFULNESS)
         assert verbatim, f"reason transplant broken (expected verbatim no_grant): {violations}"
         return (
             f"dies on grant state as expected: {grants_named} R5 violations, "
@@ -300,13 +300,11 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
             f"forgery must die on provenance when the registry is armed: "
             f"{armed_violations}"
         )
-        # Legacy opt-out documented: UNARMED validation still accepts
-        # well-formed refs (validate has no implicit IO), so production
-        # callers MUST arm registries — that residual is part of D1.
+        # Missing registries must fail closed, just like untrusted ones.
         unarmed = _l1_intent_artefact(forged_grants)
         unarmed_violations = rl.validate_playbook_artefact(unarmed, REHEARSAL_T)
         legacy_passes = not unarmed_violations
-        assert legacy_passes, f"legacy unarmed path changed behaviour: {unarmed_violations}"
+        assert not legacy_passes, f"unarmed path must fail closed: {unarmed_violations}"
         defects.append(
             Defect(
                 lane="L1",
@@ -319,24 +317,20 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
                     "grant from a bridged one. Post-fix, GrantRef carries a 64-hex "
                     "fingerprint and an armed RegisteredGrants attestation rejects "
                     "any ref whose fingerprint is not on it "
-                    "('fingerprint-not-in-registry'). RESIDUAL: validation arms the "
-                    "registry only when the artefact carries one — unarmed calls "
-                    "keep the legacy permissive path, so the caller discipline "
-                    "(always attach grant_registry) is load-bearing"
+                    "('fingerprint-not-in-registry'). RESIDUAL: provider rights "
+                    "still require independent verification; both unarmed and "
+                    "caller-attested inputs now fail closed."
                 ),
                 named_remedy=(
-                    "DONE for the engine (registry + fingerprints); the residual "
-                    "closes when artefact factories in the product path always "
-                    "attach RegisteredGrants.default() (or the FARM_GRANT_REGISTRY "
-                    "env file) before validating"
+                    "Implement server-trusted, verified provider rights and canonical "
+                    "grant resolution before enabling financial use."
                 ),
             )
         )
         return (
             "forgery died on armed registry ("
             f"{len(provenance_hits)} provenance violations, first: "
-            f"{provenance_hits[0].detail[:70]}...); legacy unarmed path "
-            f"unchanged ({'passes' if legacy_passes else 'refused'})"
+            f"{provenance_hits[0].detail[:70]}...); unarmed path refused"
         )
 
     steps.append(_step("attack-forged-valid-looking-grant", forged))

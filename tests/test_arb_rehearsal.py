@@ -107,7 +107,7 @@ class Lane1GrantWallTest(unittest.TestCase):
         step = next(step for step in self.report.step_log if step.name == "attack-forged-valid-looking-grant")
         self.assertIn("died on armed registry", step.detail)
         self.assertIn("fingerprint-not-in-registry", step.detail)
-        self.assertIn("legacy unarmed path unchanged", step.detail)
+        self.assertIn("unarmed path refused", step.detail)
         defect = next(defect for defect in self.report.defects if defect.defect_id == "D1")
         self.assertEqual(defect.severity, "rough")
         self.assertIn("HISTORICAL (healed this sprint)", defect.finding)

@@ -128,8 +128,8 @@ class HttpServiceRoutingTests(unittest.TestCase):
         })
         for feed, verdict in result["feeds"].items():
             # the executed operator grant unlocks settlement on every feed here
-            self.assertTrue(verdict["settlement_allowed"], feed)
-            self.assertEqual(verdict["settlement_reason"], "ok", feed)
+            self.assertFalse(verdict["settlement_allowed"], feed)
+            self.assertEqual(verdict["settlement_reason"], "provider_rights_unverified", feed)
             self.assertIsInstance(verdict["screening_allowed"], bool)
             self.assertTrue(verdict["screening_reason"], feed)
         self.assertIn("Specimen certificates exist", result["note"])

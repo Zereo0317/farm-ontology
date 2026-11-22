@@ -129,8 +129,8 @@ class EvaluationTests(unittest.TestCase):
         # the operator grant alone unlocks every feed it covers
         for feed in operator.feeds:
             allowed, winner, reason = evaluate_grants(grants, feed, "settlement", NOW)
-            self.assertTrue(allowed, feed)
-            self.assertEqual(reason, "ok", feed)
+            self.assertFalse(allowed, feed)
+            self.assertEqual(reason, "provider_rights_unverified", feed)
             self.assertEqual(winner.grant_id, operator.grant_id)
         # a specimen's grant list still refuses when evaluated ALONE
         for grant in (g for g in grants if g.specimen):
@@ -168,8 +168,8 @@ class EvaluationTests(unittest.TestCase):
         allowed, winner, reason = evaluate_grants(
             [late, soon], KNOWN_FEEDS[0], "settlement", NOW
         )
-        self.assertTrue(allowed)
-        self.assertEqual((winner.grant_id, reason), ("soon", "ok"))
+        self.assertFalse(allowed)
+        self.assertEqual((winner.grant_id, reason), ("soon", "provider_rights_unverified"))
 
     def test_expired_beats_specimen_when_a_real_candidate_exists(self):
         expired = _grant(
@@ -201,7 +201,7 @@ class EvaluationTests(unittest.TestCase):
 
     def test_module_level_evaluate_reads_the_repo_dir(self):
         allowed, _, reason = evaluate("planet.psscene", "settlement", NOW)
-        self.assertEqual((allowed, reason), (True, "ok"))
+        self.assertEqual((allowed, reason), (False, "provider_rights_unverified"))
 
     def test_naive_at_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -218,12 +218,12 @@ class StateTests(unittest.TestCase):
         # feeds with a specimen shelf report 'specimen'; feeds with nothing
         # at all report 'no_grant'.
         expected_reason = {
-            "planet.psscene": "ok",
-            "planet.planetary-variable.soil-water-content": "ok",
-            "earth-engine.export": "ok",
-            "open-meteo.jma-msm": "ok",
-            "jma.hazard": "ok",
-            "usdm.hazard": "ok",
+            "planet.psscene": "provider_rights_unverified",
+            "planet.planetary-variable.soil-water-content": "provider_rights_unverified",
+            "earth-engine.export": "provider_rights_unverified",
+            "open-meteo.jma-msm": "provider_rights_unverified",
+            "jma.hazard": "provider_rights_unverified",
+            "usdm.hazard": "provider_rights_unverified",
             # WS7 market-lane feeds: registered 2026-11-18, no certificate yet,
             # so they read no_grant until real certificates land.
             "usda.wasde": "no_grant",
@@ -244,7 +244,7 @@ class StateTests(unittest.TestCase):
             if feed in operator_feeds:
                 # use_class is a fixed public label in the state snapshot; the
                 # financial flip shows in permits_financial_use/reason
-                self.assertTrue(row["permits_financial_use"], feed)
+                self.assertFalse(row["permits_financial_use"], feed)
             else:
                 self.assertEqual(row["use_class"], "Screening", feed)
                 self.assertFalse(row["permits_financial_use"], feed)
@@ -260,14 +260,14 @@ class StateTests(unittest.TestCase):
             expiry_utc="2027-06-30T00:00:00+00:00",
         )
         state = build_state([live], NOW)
-        self.assertTrue(state["feeds"]["planet.psscene"]["permits_financial_use"])
-        self.assertEqual(state["feeds"]["planet.psscene"]["reason"], "ok")
+        self.assertFalse(state["feeds"]["planet.psscene"]["permits_financial_use"])
+        self.assertEqual(state["feeds"]["planet.psscene"]["reason"], "provider_rights_unverified")
         flipped = {
             feed
             for feed, row in state["feeds"].items()
             if row["permits_financial_use"]
         }
-        self.assertEqual(flipped, {"planet.psscene"})
+        self.assertEqual(flipped, set())
 
 
 if __name__ == "__main__":
