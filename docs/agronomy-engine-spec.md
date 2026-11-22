@@ -103,8 +103,8 @@ soybean basal coefficients (ini 0.15 / mid 1.15 / end 0.50; VERIFY
 [FAO-56-T17]) placed on the profile's own stage thresholds; the daily
 GDD input is `t_mean_c` when the row carries it, else the
 `(t_max+t_min)/2` textbook mean from the SAME row (the basis used is
-declared per trace row); days with no temperature at all contribute
-zero GDD, published in the trace, never interpolated.
+declared per trace row); days with no temperature at all now refuse with a named gap; they never
+contribute an assumed zero GDD.
 
 Remaining declared simplifications (all in `IRRIGATION_CONFIG_SOURCE_NOTE`):
 flat 20 % runoff haircut (conservative: never hides water need), no
@@ -267,3 +267,24 @@ Pipeline obligations implied by this contract, in priority order:
 Failure posture: if WS2 emits a row violating the contract, the engine
 raises a NAMED gap citing the offending index/field — the pipeline gets a
 machine-readable complaint, not a silent degradation.
+
+
+### Irrigation state and point-in-time migration
+
+Operational irrigation calls require `IrrigationInitialState` with the
+end-of-day date immediately before the first trace row, cumulative GDD,
+root and surface depletion, and an evidence reference. Each row must
+declare `source_kind` as `observation` or `forecast` and an aware
+`availability_time` no later than the query instant. Observations must be
+completed before the query date. Missing temperature, non-contiguous
+dates, and missing or future availability refuse with named gaps. The
+returned `ending_state` can seed a contiguous next trace without losing
+the development or water balance.
+
+Legacy archive fixtures lack state and point-in-time availability evidence;
+the fieldtest harness now reports `gap:missing-initial-state` instead of
+turning those rows into an operational recommendation. Test-only synthetic
+fixtures may declare synthetic evidence; this does not validate a field
+state, a forecast source, or an agronomic model. A caller-provided evidence
+string is not independent verification, and phenology reading provenance
+still requires a trusted verification boundary before operational use.

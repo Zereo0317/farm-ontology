@@ -8,7 +8,6 @@ from farm_ontology.agronomy.common import AgronomyGap, AgronomyRefusal
 from farm_ontology.agronomy.fertility import soil_fertility_note
 from farm_ontology.agronomy.irrigation import (
     CoverageLevel,
-    irrigation_advisory,
 )
 from farm_ontology.agronomy.phenology import phenology_reading
 from farm_ontology.agronomy.recommendation import (
@@ -18,6 +17,7 @@ from farm_ontology.agronomy.recommendation import (
 )
 from farm_ontology.agronomy.spray_windows import scan_spray_windows
 from tests.agronomy_fixtures import (
+    synthetic_irrigation_advisory as irrigation_advisory,
     daily_season_rows,
     hourly_rows,
     sensor_projection_rows,

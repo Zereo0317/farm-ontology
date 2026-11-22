@@ -31,3 +31,22 @@ def soil_rows(full: bool = True) -> list[dict]:
 
 def sensor_projection_rows() -> list[dict]:
     return load_agronomy("sensor-coverage-rows.json")["rows"]
+
+
+def synthetic_irrigation_advisory(rows, **kwargs):
+    """Adapt only synthetic test rows to the explicit v1 safety contract."""
+    from datetime import date, timedelta
+    from farm_ontology.agronomy.irrigation import IrrigationInitialState, SoilProfile, irrigation_advisory
+
+    if not rows or kwargs.get("reading") is None:
+        return irrigation_advisory(rows, **kwargs)
+    at = kwargs["at"]
+    prepared = [dict(row, source_kind="observation" if date.fromisoformat(row["date"]) < at.date() else "forecast",
+                     availability_time=at.isoformat()) for row in rows]
+    soil = kwargs.get("soil", SoilProfile())
+    cfg = kwargs.get("cfg")
+    root = cfg.initial_root_depletion_mm if cfg and cfg.initial_root_depletion_mm is not None else soil.raw_mm
+    surface = cfg.initial_surface_depletion_mm if cfg and cfg.initial_surface_depletion_mm is not None else (cfg.tew_mm if cfg else 12.0)
+    state = IrrigationInitialState((date.fromisoformat(prepared[0]["date"]) - timedelta(days=1)).isoformat(),
+                                   0, root, surface, "synthetic test setup; not field evidence")
+    return irrigation_advisory(prepared, initial_state=state, **kwargs)

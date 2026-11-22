@@ -1222,7 +1222,7 @@ def _probe_edges(
 
     expect(
         "missing-eto",
-        "malformed-row" if reading is not None else "missing-stage",
+        "missing-initial-state" if reading is not None else "missing-stage",
         _e4,
     )
     # E5: a hole in the hourly series.

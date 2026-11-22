@@ -127,18 +127,11 @@ class HarnessOfflineTests(unittest.TestCase):
         result = run_site(get_site("obihiro-tokachi"), days=140, fixtures_root=self.tmp)
         self.assertEqual(result.site, "obihiro-tokachi")
         self.assertIsNotNone(result.phenology_stage)
-        self.assertIsNotNone(result.irrigation_net_mm)
-        self.assertIsNotNone(result.recommendation_id)
-        self.assertFalse(result.recommendation_permits_financial_use)
-        self.assertTrue(result.recommendation_requires_signoff)
-        self.assertEqual(result.irrigation_coverage_level, "none")
-        self.assertIn("grid-support", result.support_rendered or "")
-        blockers = [row for row in result.defects if row.severity == "blocker"]
-        self.assertEqual(
-            blockers,
-            [],
-            [row.to_payload() for row in blockers],
-        )
+        # Historical fixtures do not prove an initial balance or point-in-time
+        # availability. The operational adviser refuses instead of guessing.
+        self.assertIsNone(result.irrigation_net_mm)
+        self.assertIsNone(result.recommendation_id)
+        self.assertIn("gap:missing-initial-state", {row.rule for row in result.defects})
 
     def test_irrigation_never_implies_parcel_support_without_sensors(self):
         for site in SITES:
@@ -169,7 +162,9 @@ class HarnessOfflineTests(unittest.TestCase):
         save_site_fixture(envelope, "obihiro-tokachi", self.tmp)
         result = run_site(get_site("obihiro-tokachi"), days=140, fixtures_root=self.tmp)
         rules = {row.rule for row in result.defects}
-        self.assertIn("gap:malformed-row", rules)
+        # Missing initial-state evidence is the first refusal, before the
+        # archive row can be treated as an operational input.
+        self.assertIn("gap:missing-initial-state", rules)
 
     def test_transport_error_fixture_becomes_defect_not_crash(self):
         (self.tmp / "site-nemuro-hanasaki" / "year2026.json").unlink()

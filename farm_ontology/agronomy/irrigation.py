@@ -13,8 +13,8 @@ pulse fed by rainfall. SIMPLIFICATIONS — all declared:
   (RUNOFF_LOSS_FRACTION), biasing the balance toward MORE irrigation
   demand — the conservative direction for a water-stress adviser. Deep
   percolation is whatever pushes root depletion below zero (discarded).
-* Initial conditions are declared, not measured: the season starts at
-  INITIAL_ROOT_DEPLETION_MM and a dry surface (De = TEW).
+* Initial conditions must be supplied as a dated, evidence-bearing state;
+  no season start or zero-GDD assumption is silently made.
 
 THE HONEST-CLAIMS LADDER
 ------------------------
@@ -433,6 +433,17 @@ def _grid_support(rows: Sequence[Mapping]) -> SupportDeclaration:
     return SupportDeclaration(base=f"grid-support (native {resolution:g} km)")
 
 
+@dataclass(frozen=True)
+class IrrigationInitialState:
+    """Dated end-of-day balance state; callers must supply its provenance."""
+
+    as_of_date: str
+    cumulative_gdd: float
+    root_depletion_mm: float
+    surface_depletion_mm: float
+    evidence: str
+
+
 def irrigation_advisory(
     daily_rows: Sequence[Mapping],
     *,
@@ -442,6 +453,7 @@ def irrigation_advisory(
     at: datetime,
     cfg: IrrigationCfg = DEFAULT_IRRIGATION_CONFIG,
     soil: SoilProfile = SoilProfile(),
+    initial_state: IrrigationInitialState | None = None,
 ) -> "IrrigationAdvice":
     """Run the dual-Kc balance and answer with mm + stamped claims.
 
@@ -472,18 +484,22 @@ def irrigation_advisory(
     profile_id = getattr(reading, "cultivar_profile", None)
     anchors = kcb_anchors_for(profile_id if profile_id else None)
 
-    initial_root = (
-        cfg.initial_root_depletion_mm
-        if cfg.initial_root_depletion_mm is not None
-        else soil.raw_mm
-    )
-    surface = (
-        cfg.initial_surface_depletion_mm
-        if cfg.initial_surface_depletion_mm is not None
-        else cfg.tew_mm
-    )
-    root = float(initial_root)
-    cumulative = 0.0  # running GDD through THIS trace only
+    if initial_state is None:
+        raise AgronomyGap("missing-initial-state", "irrigation requires a dated starting balance and cumulative GDD", missing=("initial_state",))
+    try:
+        initial_day = date.fromisoformat(initial_state.as_of_date)
+        first_day = date.fromisoformat(daily_rows[0]["date"])
+    except (ValueError, TypeError, KeyError) as error:
+        raise AgronomyGap("malformed-initial-state", "state date and first row date must be ISO calendar dates") from error
+    state_numbers = tuple(_number(x) for x in (initial_state.cumulative_gdd, initial_state.root_depletion_mm, initial_state.surface_depletion_mm))
+    if (initial_day + timedelta(days=1) != first_day or
+        not isinstance(initial_state.evidence, str) or not initial_state.evidence.strip() or
+        any(x is None or x < 0 for x in state_numbers)):
+        raise AgronomyGap("malformed-initial-state", "state must precede the first row by one day, name evidence, and have finite nonnegative values")
+    cumulative, root, surface = state_numbers
+    assert cumulative is not None and root is not None and surface is not None
+    if surface > cfg.tew_mm:
+        raise AgronomyGap("malformed-initial-state", "initial surface depletion exceeds TEW")
 
     trace: list[dict] = []
     previous_day = None
@@ -495,8 +511,7 @@ def irrigation_advisory(
         # it; else derived as (t_max_c + t_min_c)/2 — the textbook daily
         # mean, computed from the SAME row's publisher values, never from
         # neighbouring rows or a climatology. The basis used is DECLARED
-        # on every trace row; absent both, the day contributes zero GDD
-        # (published in the trace, never interpolated).
+        # on every trace row; absent both, refuse the trace.
         t_mean = _number(row.get("t_mean_c"))
         t_mean_basis = "given" if t_mean is not None else None
         if t_mean is None:
@@ -505,9 +520,9 @@ def irrigation_advisory(
             if t_max is not None and t_min is not None:
                 t_mean = (t_max + t_min) / 2.0
                 t_mean_basis = "max-min-average"
-        t_contrib = (
-            daily_gdd_contribution(t_mean) if t_mean is not None else None
-        )
+        if t_mean is None:
+            raise AgronomyGap("missing-temperature", f"daily row {index} lacks a finite mean or min/max temperature")
+        t_contrib = daily_gdd_contribution(t_mean)
         missing = [
             name
             for name, value in (
@@ -531,6 +546,14 @@ def irrigation_advisory(
         if previous_day is not None and parsed_day - previous_day != timedelta(days=1):
             raise AgronomyGap("daily-sequence-hole", f"daily row {index} is not the next calendar day")
         previous_day = parsed_day
+        kind = row.get("source_kind")
+        if kind not in ("observation", "forecast"):
+            raise AgronomyGap("missing-source-kind", f"daily row {index} must declare observation or forecast")
+        available = _phenomenon_end(row, "availability_time")
+        if available is None or available > moment:
+            raise AgronomyGap("unavailable-row", f"daily row {index} lacks valid availability at the decision time")
+        if kind == "observation" and parsed_day >= moment.date():
+            raise AgronomyGap("future-observation", f"daily row {index} is not a completed historical day")
         if eto < 0 or rain < 0:
             raise AgronomyGap("malformed-row", f"daily row {index} contains negative ET0 or rainfall")
         effective_rain = max(0.0, rain * (1.0 - cfg.runoff_loss_fraction))
@@ -554,6 +577,8 @@ def irrigation_advisory(
         trace.append(
             {
                 "date": day,
+                "source_kind": kind,
+                "availability_time": available.isoformat(),
                 "eto_mm": eto,
                 "rain_mm": rain,
                 "t_mean_c": (round(t_mean, 2) if t_mean is not None else None),
@@ -647,6 +672,9 @@ def irrigation_advisory(
         config_version=CONFIG_VERSION,
         source_note=IRRIGATION_CONFIG_SOURCE_NOTE,
         use_class=USE_CLASS_FIELD_OPS,
+        initial_state=initial_state,
+        ending_state=IrrigationInitialState(day, cumulative, root, surface,
+                                            "derived from initial evidence: " + initial_state.evidence),
     )
 
 
@@ -669,10 +697,20 @@ class IrrigationAdvice:
     config_version: str
     source_note: str
     use_class: str
+    initial_state: IrrigationInitialState
+    ending_state: IrrigationInitialState
 
     def to_payload(self) -> dict:
         return {
             "kind": "irrigation-advice",
+            "initial_state": {"as_of_date": self.initial_state.as_of_date, "cumulative_gdd": self.initial_state.cumulative_gdd,
+                              "root_depletion_mm": self.initial_state.root_depletion_mm,
+                              "surface_depletion_mm": self.initial_state.surface_depletion_mm,
+                              "evidence": self.initial_state.evidence},
+            "ending_state": {"as_of_date": self.ending_state.as_of_date, "cumulative_gdd": self.ending_state.cumulative_gdd,
+                             "root_depletion_mm": self.ending_state.root_depletion_mm,
+                             "surface_depletion_mm": self.ending_state.surface_depletion_mm,
+                             "evidence": self.ending_state.evidence},
             "net_irrigation_requirement_mm": self.net_irrigation_requirement_mm,
             "recommend": self.recommend,
             "why": self.why,
@@ -702,6 +740,7 @@ __all__ = [
     "CoverageEligibility",
     "SoilProfile",
     "IrrigationAdvice",
+    "IrrigationInitialState",
     "IrrigationCfg",
     "has_calibrated_coverage",
     "irrigation_advisory",

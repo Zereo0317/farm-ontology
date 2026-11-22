@@ -11,10 +11,10 @@ from farm_ontology.agronomy.irrigation import (
     DEFAULT_IRRIGATION_CONFIG,
     SoilProfile,
     has_calibrated_coverage,
-    irrigation_advisory,
 )
 from farm_ontology.agronomy.phenology import phenology_reading
 from tests.agronomy_fixtures import (
+    synthetic_irrigation_advisory as irrigation_advisory,
     daily_season_rows,
     sensor_projection_rows,
 )
@@ -152,11 +152,9 @@ class BalanceMathTests(unittest.TestCase):
         rows = [dict(row) for row in _window_rows()]
         for key in ("t_mean_c", "t_max_c", "t_min_c"):
             rows[0].pop(key, None)
-        advice = irrigation_advisory(rows, reading=_reading(), at=AT)
-        first = advice.daily_trace[0]
-        self.assertIsNone(first["t_mean_c"])
-        self.assertIsNone(first["t_mean_basis"])
-        self.assertIsNone(first["gdd_contribution"])  # declared, not guessed
+        with self.assertRaises(AgronomyGap) as ctx:
+            irrigation_advisory(rows, reading=_reading(), at=AT)
+        self.assertEqual(ctx.exception.gap, "missing-temperature")
 
     def test_runoff_haircut_is_conservative_direction(self):
         reading = _reading()
