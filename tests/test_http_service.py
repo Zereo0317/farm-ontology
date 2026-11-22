@@ -178,9 +178,9 @@ class ObservationsRouteTests(unittest.TestCase):
     def _with_reader(self, stamps):
         return mock.patch.object(hs, "_latest_observations", return_value=list(stamps))
 
-    def test_good_token_query_param_returns_stamped_observations(self):
+    def test_header_returns_stamped_observations(self):
         with self._with_reader(self.stamps):
-            status, payload, kind = handle_target("/farm/observations?token=" + self.expected)
+            status, payload, kind = handle_target("/farm/observations", token=self.expected)
         self.assertEqual(status, 200)
         self.assertEqual(kind, "json")
         self.assertEqual(payload["count"], 1)
@@ -192,6 +192,13 @@ class ObservationsRouteTests(unittest.TestCase):
         self.assertEqual(row["use_class"], "Screening")
         self.assertFalse(row["permits_financial_use"])
 
+    def test_query_tokens_are_rejected_even_with_valid_header(self):
+        for path in ("/farm/observations?token=secret", "/leads?token=", "/leads?token=secret"):
+            with self.subTest(path=path):
+                status, payload, _ = handle_target(path, token=self.expected)
+                self.assertEqual(status, 400)
+                self.assertIn("query-string credentials", payload["gap"])
+
     def test_header_token_honoured(self):
         with self._with_reader(self.stamps):
             status, payload, _kind = handle_target("/farm/observations", token=self.expected)
@@ -199,7 +206,7 @@ class ObservationsRouteTests(unittest.TestCase):
         self.assertEqual(payload["count"], 1)
 
     def test_bad_token_is_401_gap(self):
-        status, payload, kind = handle_target("/farm/observations?token=WRONG")
+        status, payload, kind = handle_target("/farm/observations", token="WRONG")
         self.assertEqual(status, 401)
         self.assertEqual(kind, "json")
         self.assertIn("gap", payload)
@@ -213,21 +220,21 @@ class ObservationsRouteTests(unittest.TestCase):
     def test_unmounted_secret_fails_closed_even_with_any_token(self):
         with mock.patch.dict(hs.os.environ, clear=False):
             hs.os.environ.pop("WEB_ACCESS_TOKEN", None)
-            status, payload, _kind = handle_target("/farm/observations?token=whatever")
+            status, payload, _kind = handle_target("/farm/observations", token="whatever")
         self.assertEqual(status, 401)
         self.assertIn("fails closed", payload["gap"])
 
     def test_limit_is_parsed_capped_and_floor_safe(self):
         with self._with_reader([]):
-            _status, payload, _k = handle_target("/farm/observations?token=" + self.expected + "&limit=999")
+            _status, payload, _k = handle_target("/farm/observations?limit=999", token=self.expected)
         self.assertEqual(payload["limit"], hs.OBSERVATIONS_MAX_LIMIT)
         with self._with_reader([]):
-            _status, payload, _k = handle_target("/farm/observations?token=" + self.expected + "&limit=nonsense")
+            _status, payload, _k = handle_target("/farm/observations?limit=nonsense", token=self.expected)
         self.assertEqual(payload["limit"], hs.OBSERVATIONS_DEFAULT_LIMIT)
 
     def test_backend_failure_is_a_gap_not_a_crash(self):
         with mock.patch.object(hs, "_latest_observations", side_effect=OSError("backend down")):
-            status, payload, kind = handle_target("/farm/observations?token=" + self.expected)
+            status, payload, kind = handle_target("/farm/observations", token=self.expected)
         self.assertEqual(status, 200)
         self.assertEqual(kind, "json")
         self.assertIn("gap", payload)

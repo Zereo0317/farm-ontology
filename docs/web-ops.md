@@ -251,3 +251,14 @@ source/licence list). Implementation notes for the next operator:
   branch protection story.
 * `web/node_modules` stays out of git; reproducibility rides on
   `web/package-lock.json` (`npm ci`).
+
+## Pilot security containment (source change; deployment required)
+
+`/walk` and `/api/boundaries` require the existing shared access cookie. If
+`WEB_ACCESS_TOKEN` is missing, protected routes return 503 instead of opening.
+The backend accepts access credentials only via `X-Access-Token`; query-string
+credentials on observations and leads are rejected. Update clients before
+rollout, review platform logs for exposed tokens, and rotate exposed secrets.
+The shared gate is temporary: it does not implement individual identities,
+farm-level authorization, revocation, or cross-farm isolation. Do not onboard
+multiple farms until those controls are implemented and tested end to end.

@@ -19,13 +19,13 @@ GET /farm/ingest-status
                      WS2 ingest workers' last-run summaries from the
                      record backend (pipelines/run-log); jobs without
                      runs are reported as gaps
-GET /farm/observations?token=T&limit=N
+GET /farm/observations?limit=N
                      authenticated read of the latest N field
                      observations with their birth-certificate stamps
                      (file, recorded time, support, use class); the
                      token is the same `web-access-token` Secret the
                      web gate uses (WEB_ACCESS_TOKEN), given as the
-                     query parameter or the X-Access-Token header.
+                     X-Access-Token header.
                      Bad/absent token or unmounted secret: 401 + gap
                      shape. Missing/unreadable record backend: gap.
 
@@ -455,7 +455,7 @@ def _observations_route(token: str | None, limit_raw: str | None) -> tuple[int, 
     if not given or not hmac.compare_digest(given, expected):
         return (
             401,
-            {"gap": "observations not served: a valid access token is required (query ?token= or X-Access-Token)"},
+            {"gap": "observations not served: a valid access token is required (X-Access-Token)"},
             "json",
         )
     try:
@@ -507,15 +507,17 @@ def handle_target(path: str, *, token: str | None = None) -> tuple[int, dict | s
         return 200, _licences_snapshot(), "json"
     if path == "/farm/ingest-status":
         return 200, _ingest_status_snapshot(), "json"
+    if path in (OBSERVATIONS_ROUTE, "/leads") and "token" in urllib.parse.parse_qs(split.query, keep_blank_values=True):
+        return 400, {"gap": "query-string credentials are not accepted; use X-Access-Token"}, "json"
     if path == OBSERVATIONS_ROUTE:
         return _observations_route(
-            token=(query.get("token") or [None])[0] or token,
+            token=token,
             limit_raw=(query.get("limit") or [None])[0],
         )
     if path == "/farm/memo":
         return 200, _memo_text(), "text"
     if path == "/leads":
-        return _leads_admin(token=(query.get("token") or [None])[0] or token)
+        return _leads_admin(token=token)
     return 404, {"error": f"no route {path}"}, "json"
 
 
@@ -534,7 +536,7 @@ def _leads_admin(*, token: str | None) -> tuple[int, dict | str, str]:
     if not _token_ok(token):
         return (
             401,
-            {"gap": "leads are an admin route: pass the access token (?token= or X-Access-Token)"},
+            {"gap": "leads are an admin route: pass the access token (X-Access-Token)"},
             "json",
         )
     try:

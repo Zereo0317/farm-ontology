@@ -1,5 +1,8 @@
 # Final verification report — the iteration loop closed (2026-11-18)
 
+> **2026-11-22 evidence hold:** This is a historical verification record, not a current production certification. Subsequent source review found additional grant-provenance, agronomy, security, and infrastructure gaps. Its statements that finance mechanisms are certified or that only human cards block activation must not be relied on.
+
+
 Campaign record for the founder directive: fix with multiple agents → test
 with real-world cases → analyse gaps → fix again → clean debt → merge and
 ship, until the system makes accurate smart-farming decisions and compliant
