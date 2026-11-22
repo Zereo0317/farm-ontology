@@ -64,6 +64,7 @@ jobs:
           ACTUAL="$(gcloud run services describe farm-seges-ai --project=seges-ai --region=asia-east1 --format='value(status.traffic[0].revisionName,status.traffic[0].percent)')"
           test "$ACTUAL" = "${CANDIDATE}	100"
           curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 https://farm-seges-ai-451400509859.asia-east1.run.app/livez > /dev/null
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 25 https://farm-seges-ai-451400509859.asia-east1.run.app/farm/weather > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 25 https://farm-seges-ai-451400509859.asia-east1.run.app/farm/weather > "$RUNNER_TEMP/weather.json"
+          python deploy/verify_weather_smoke.py "$RUNNER_TEMP/weather.json"
           trap - ERR
           echo "Promoted $SHA as $IMAGE, serving revision $CANDIDATE"
