@@ -1,5 +1,5 @@
 # farm-seges-ai-landing — TanStack Start (nitro node-server) on Cloud Run
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 ENV NODE_OPTIONS=--max-old-space-size=4096
 WORKDIR /app
 COPY landing/package.json landing/package-lock.json ./
@@ -9,7 +9,7 @@ ENV NITRO_PRESET=node-server
 # skip db migrate: the funnel needs no database (leads go to the backend /leads)
 RUN npx vite build
 
-FROM node:20-slim
+FROM node:24-slim
 ENV NODE_ENV=production PORT=8080
 WORKDIR /app
 COPY --from=build /app/.output ./.output
