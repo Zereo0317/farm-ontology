@@ -290,6 +290,12 @@ def evaluate_grants(
     live = [grant for grant in covering if grant.is_live_at(at)]
     if live:
         winner = min(live, key=lambda grant: (grant.expiry_dt, grant.grant_id))
+        # A controller's permission to use farm data is not evidence of a
+        # third-party provider's licence. There is no verified provider-rights
+        # registry yet. Until that independent layer exists, financial and
+        # commercial uses must remain closed, including for founder grants.
+        if normalized in FINANCIAL_USES or normalized == "commercial":
+            return False, winner, "provider_rights_unverified"
         return True, winner, "ok"
     real = [grant for grant in covering if not grant.specimen]
     if real:
@@ -316,6 +322,8 @@ def _feed_reason(grants: tuple[Grant, ...], feed_id: str, at: datetime) -> tuple
         allowed, _, reason = evaluate_grants(grants, feed_id, use, at)
         if allowed:
             return True, "ok"
+        if reason == "provider_rights_unverified":
+            return False, reason
         last_reason = reason
     return False, last_reason
 
@@ -342,7 +350,7 @@ def build_state(grants: Iterable[Grant], at: datetime) -> dict:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "evaluated_at": at.isoformat(),
         "fail_closed": True,
-        "policy": "class C stays closed; a grant unlocks financial_use only for a valid non-specimen certificate",
+        "policy": "class C stays closed; provider rights are unverified and financial use is refused",
         "feeds": feeds,
         "grants": [
             {**grant.to_payload(), "fingerprint": grant.fingerprint} for grant in grants

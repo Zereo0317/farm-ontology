@@ -1,5 +1,8 @@
 # Seges — 把農地的真值變成可金融化的信任資產
 
+> **2026-11-22 evidence hold:** Financial-return, trading-readiness, legal-exemption, first-in-the-world, and farmer-outcome claims in this historical overview are unverified. Do not use them for investment solicitation, operational decisions, or external representations until independently reviewed. The T3-R report contains inconsistent provenance and a suspected price-unit error.
+
+
 > 專案完整介紹（2026-11-20 版）· repo：`Zereo0317/farm-ontology` · 官網：<https://seges.ai>
 
 ---

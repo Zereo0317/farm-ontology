@@ -105,6 +105,8 @@ class MemoryGcs:
             return 200, {}, json.dumps(document).encode("utf-8")
         if method == "POST" and parsed.path == f"/upload/storage/v1/b/{self.bucket}/o":
             name = query["name"][0]
+            if query.get("ifGenerationMatch") == ["0"] and name in self.objects:
+                return 412, {}, b"precondition failed"
             self.put(name, body)
             meta = {"name": name, "bucket": self.bucket, "updated": self.updated[name]}
             return 200, {}, json.dumps(meta).encode("utf-8")
@@ -180,6 +182,33 @@ class LocalBackendTests(unittest.TestCase):
         self.backend.write("notes/note-x.json", payload)
         self.assertEqual(self.backend.read_text("notes/note-x.json"), payload.decode("utf-8"))
 
+    def test_write_once_never_replaces_existing_data(self):
+        self.backend.write_once("obs-a.json", b"first")
+        with self.assertRaises(FileExistsError):
+            self.backend.write_once("obs-a.json", b"second")
+        self.assertEqual(self.backend.read_bytes("obs-a.json"), b"first")
+
+    def test_simultaneous_creates_do_not_overwrite(self):
+        from concurrent.futures import ThreadPoolExecutor
+        def create(value):
+            try:
+                self.backend.write_once("same.json", value)
+                return True
+            except FileExistsError:
+                return False
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(create, [str(i).encode() for i in range(8)]))
+        self.assertEqual(sum(results), 1)
+        self.assertIn(self.backend.read_bytes("same.json"), [str(i).encode() for i in range(8)])
+
+    def test_concurrent_mutable_writes_use_independent_staging_files(self):
+        from concurrent.futures import ThreadPoolExecutor
+        payloads = [str(i).encode() * 10000 for i in range(20)]
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda data: self.backend.write("mutable.json", data), payloads))
+        self.assertIn(self.backend.read_bytes("mutable.json"), payloads)
+        self.assertFalse(list(Path(self.tmp.name).glob(".record-*")))
+
     def test_exists_and_mtime_match_the_file(self):
         self.backend.write("obs-a.json", b"{}")
         path = Path(self.tmp.name) / "obs-a.json"
@@ -222,6 +251,13 @@ class GcsRequestShapeTests(unittest.TestCase):
         )
         self.assertEqual(call["body"], payload)
         self.assertEqual(len(self.tokens), 1)
+
+    def test_create_uses_generation_precondition_and_reports_conflict(self):
+        scripted = Scripted((412, {}, b"conflict"))
+        backend = GcsBackend(BUCKET, request_fn=scripted, token_fn=self.token)
+        with self.assertRaises(FileExistsError):
+            backend.write_once("obs-x.json", b"{}")
+        self.assertIn("ifGenerationMatch=0", scripted.calls[0]["url"])
 
     def test_list_pagination_walks_recorded_pages(self):
         scripted = Scripted(

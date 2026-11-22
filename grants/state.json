@@ -1,9 +1,9 @@
 {
   "schema": "farm-ontology.grants.state/1",
-  "generated_at": "2026-11-19T06:40:51.540338+00:00",
-  "evaluated_at": "2026-11-19T06:40:51.538333+00:00",
+  "generated_at": "2026-11-22T00:08:09.709126+00:00",
+  "evaluated_at": "2026-11-22T00:00:00+00:00",
   "fail_closed": true,
-  "policy": "class C stays closed; a grant unlocks financial_use only for a valid non-specimen certificate",
+  "policy": "class C stays closed; provider rights are unverified and financial use is refused",
   "feeds": {
     "ams.soybean-bid": {
       "use_class": "Screening",
@@ -12,8 +12,8 @@
     },
     "earth-engine.export": {
       "use_class": "Screening",
-      "permits_financial_use": true,
-      "reason": "ok"
+      "permits_financial_use": false,
+      "reason": "provider_rights_unverified"
     },
     "fao.food-price-index": {
       "use_class": "Screening",
@@ -27,23 +27,23 @@
     },
     "jma.hazard": {
       "use_class": "Screening",
-      "permits_financial_use": true,
-      "reason": "ok"
+      "permits_financial_use": false,
+      "reason": "provider_rights_unverified"
     },
     "open-meteo.jma-msm": {
       "use_class": "Screening",
-      "permits_financial_use": true,
-      "reason": "ok"
+      "permits_financial_use": false,
+      "reason": "provider_rights_unverified"
     },
     "planet.planetary-variable.soil-water-content": {
       "use_class": "Screening",
-      "permits_financial_use": true,
-      "reason": "ok"
+      "permits_financial_use": false,
+      "reason": "provider_rights_unverified"
     },
     "planet.psscene": {
       "use_class": "Screening",
-      "permits_financial_use": true,
-      "reason": "ok"
+      "permits_financial_use": false,
+      "reason": "provider_rights_unverified"
     },
     "usda.wasde": {
       "use_class": "Screening",
@@ -52,8 +52,8 @@
     },
     "usdm.hazard": {
       "use_class": "Screening",
-      "permits_financial_use": true,
-      "reason": "ok"
+      "permits_financial_use": false,
+      "reason": "provider_rights_unverified"
     },
     "worldbank.pink-sheet": {
       "use_class": "Screening",

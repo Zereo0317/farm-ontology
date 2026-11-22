@@ -8,9 +8,7 @@ from farm_ontology.agronomy.common import AgronomyGap, AgronomyRefusal
 from farm_ontology.agronomy.fertility import soil_fertility_note
 from farm_ontology.agronomy.irrigation import (
     CoverageLevel,
-    irrigation_advisory,
 )
-from farm_ontology.agronomy.phenology import phenology_reading
 from farm_ontology.agronomy.recommendation import (
     InputRef,
     draft_recommendation,
@@ -18,6 +16,8 @@ from farm_ontology.agronomy.recommendation import (
 )
 from farm_ontology.agronomy.spray_windows import scan_spray_windows
 from tests.agronomy_fixtures import (
+    synthetic_phenology_reading as phenology_reading,
+    synthetic_irrigation_advisory as irrigation_advisory,
     daily_season_rows,
     hourly_rows,
     sensor_projection_rows,
@@ -87,7 +87,7 @@ class MissingInputNeverSilentTests(unittest.TestCase):
         rows = [row for row in sensor_projection_rows() if "scan-array" not in row["sensor_iri"]]
         cov = irrigation_advisory(
             daily_season_rows(),
-            reading=phenology_reading(daily_season_rows(), sowing=SOWING, emergence=None),
+            reading=phenology_reading([row for row in daily_season_rows() if row["date"] < AT_IRRIGATION.date().isoformat()], sowing=SOWING, emergence=None, at=AT_IRRIGATION),
             sensor_rows=[
                 row for row in rows if "uncertified" in row["sensor_iri"]
             ],
@@ -119,7 +119,7 @@ class RefusedUsesRemainRefusedTests(unittest.TestCase):
 
     def test_no_wall_clock_anywhere_deterministic_replays(self):
         rows = daily_season_rows()
-        reading = phenology_reading(rows, sowing=SOWING, emergence=None)
+        reading = phenology_reading([row for row in rows if row["date"] < AT_IRRIGATION.date().isoformat()], sowing=SOWING, emergence=None, at=AT_IRRIGATION)
         one = irrigation_advisory(rows[:40], reading=reading, at=AT_IRRIGATION)
         two = irrigation_advisory(rows[:40], reading=reading, at=AT_IRRIGATION)
         self.assertEqual(one.to_payload(), two.to_payload())
@@ -128,7 +128,7 @@ class RefusedUsesRemainRefusedTests(unittest.TestCase):
 class FixtureDrivenEndToEndTests(unittest.TestCase):
     def test_full_chain_fixtures_to_signed_recommendation_candidate(self):
         rows = daily_season_rows()
-        reading = phenology_reading(rows, sowing=SOWING, emergence=None)
+        reading = phenology_reading([row for row in rows if row["date"] < AT_IRRIGATION.date().isoformat()], sowing=SOWING, emergence=None, at=AT_IRRIGATION)
         advice = irrigation_advisory(
             rows, reading=reading, sensor_rows=sensor_projection_rows(),
             parcel=PARCEL, at=AT_IRRIGATION,

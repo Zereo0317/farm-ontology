@@ -48,3 +48,10 @@ gcloud storage buckets describe gs://farm-seges-ai-records \
 
 Guardrail: `matchesPrefix` is mandatory — a bare age rule would silently
 eat the RECORD (the opposite of this whole workstream).
+
+## Format update
+
+New snapshots include a content digest in their names and use one immutable
+manifest object per snapshot. Legacy same-bucket NDJSON remains historical;
+see `deploy/nightly-export.md` for the distinct-bucket migration and restore
+validation still required. No retention or migration was applied by this note.

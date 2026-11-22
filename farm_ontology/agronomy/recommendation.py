@@ -171,6 +171,13 @@ class RecommendationRecord:
     payload: Mapping
     config_version: str = CONFIG_VERSION
 
+    def __post_init__(self) -> None:
+        if self.kind == "spray":
+            raise AgronomyRefusal(
+                "spray-label-unverified",
+                "spray recommendations are closed until product-label and application-method evidence can be independently verified",
+            )
+
     def to_payload(self) -> dict:
         return {
             "recommendation_id": self.recommendation_id,
@@ -207,6 +214,11 @@ def draft_recommendation(
     drafted_at = ensure_utc(drafted_at, "drafted_at")
     expires_at = ensure_utc(expires_at, "expires_at")
 
+    if kind == "spray":
+        raise AgronomyRefusal(
+            "spray-label-unverified",
+            "spray recommendations are closed until product-label and application-method evidence can be independently verified",
+        )
     if kind in REFUSED_KINDS:
         raise AgronomyRefusal(
             "refused-use",

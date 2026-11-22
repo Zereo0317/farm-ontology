@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import unittest
 from unittest import mock
 
@@ -21,6 +24,19 @@ class HttpServiceRoutingTests(unittest.TestCase):
         self.assertEqual(payload["use_class"], "Screening")
         self.assertEqual(payload["class_c"], "closed")
         self.assertFalse(payload["permits_financial_use"])
+
+    def test_environment_flags_cannot_unlock_public_financial_metadata(self):
+        env = {**os.environ, "FARM_FINANCIAL_USE": "true", "FARM_USE_CLASS": "Settlement"}
+        script = "from farm_ontology.http_service import STATUS_JSON; import json; print(json.dumps(STATUS_JSON))"
+        payload = json.loads(subprocess.check_output([sys.executable, "-c", script], env=env, text=True))
+        self.assertEqual(payload["use_class"], "Screening")
+        self.assertFalse(payload["permits_financial_use"])
+        with mock.patch.dict(hs.os.environ, env), mock.patch.object(hs, "_get_json", return_value=(200, "application/json", b"{}")):
+            self.assertFalse(hs._open_meteo_current(42.7, 142.4)["permits_financial_use"])
+            with mock.patch.object(hs, "_metadata_token", return_value=None):
+                self.assertFalse(hs._ee_catalog()["permits_financial_use"])
+        with mock.patch.dict(hs.os.environ, {**env, "PLANET_API_KEY": "test"}), mock.patch.object(hs, "_planet_post", return_value=(200, {"features": []}, "Basic")):
+            self.assertFalse(hs._planet_search(42.7, 142.4)["permits_financial_use"])
 
     def test_farm_pin_is_the_current_location(self):
         farm = STATUS_JSON["farm"]
@@ -127,9 +143,9 @@ class HttpServiceRoutingTests(unittest.TestCase):
             "usdm.hazard",
         })
         for feed, verdict in result["feeds"].items():
-            # the executed operator grant unlocks settlement on every feed here
-            self.assertTrue(verdict["settlement_allowed"], feed)
-            self.assertEqual(verdict["settlement_reason"], "ok", feed)
+            # controller authorization is not evidence of provider rights
+            self.assertFalse(verdict["settlement_allowed"], feed)
+            self.assertEqual(verdict["settlement_reason"], "provider_rights_unverified", feed)
             self.assertIsInstance(verdict["screening_allowed"], bool)
             self.assertTrue(verdict["screening_reason"], feed)
         self.assertIn("Specimen certificates exist", result["note"])
@@ -178,9 +194,9 @@ class ObservationsRouteTests(unittest.TestCase):
     def _with_reader(self, stamps):
         return mock.patch.object(hs, "_latest_observations", return_value=list(stamps))
 
-    def test_good_token_query_param_returns_stamped_observations(self):
+    def test_header_returns_stamped_observations(self):
         with self._with_reader(self.stamps):
-            status, payload, kind = handle_target("/farm/observations?token=" + self.expected)
+            status, payload, kind = handle_target("/farm/observations", token=self.expected)
         self.assertEqual(status, 200)
         self.assertEqual(kind, "json")
         self.assertEqual(payload["count"], 1)
@@ -192,6 +208,13 @@ class ObservationsRouteTests(unittest.TestCase):
         self.assertEqual(row["use_class"], "Screening")
         self.assertFalse(row["permits_financial_use"])
 
+    def test_query_tokens_are_rejected_even_with_valid_header(self):
+        for path in ("/farm/observations?token=secret", "/leads?token=", "/leads?token=secret"):
+            with self.subTest(path=path):
+                status, payload, _ = handle_target(path, token=self.expected)
+                self.assertEqual(status, 400)
+                self.assertIn("query-string credentials", payload["gap"])
+
     def test_header_token_honoured(self):
         with self._with_reader(self.stamps):
             status, payload, _kind = handle_target("/farm/observations", token=self.expected)
@@ -199,7 +222,7 @@ class ObservationsRouteTests(unittest.TestCase):
         self.assertEqual(payload["count"], 1)
 
     def test_bad_token_is_401_gap(self):
-        status, payload, kind = handle_target("/farm/observations?token=WRONG")
+        status, payload, kind = handle_target("/farm/observations", token="WRONG")
         self.assertEqual(status, 401)
         self.assertEqual(kind, "json")
         self.assertIn("gap", payload)
@@ -213,21 +236,21 @@ class ObservationsRouteTests(unittest.TestCase):
     def test_unmounted_secret_fails_closed_even_with_any_token(self):
         with mock.patch.dict(hs.os.environ, clear=False):
             hs.os.environ.pop("WEB_ACCESS_TOKEN", None)
-            status, payload, _kind = handle_target("/farm/observations?token=whatever")
+            status, payload, _kind = handle_target("/farm/observations", token="whatever")
         self.assertEqual(status, 401)
         self.assertIn("fails closed", payload["gap"])
 
     def test_limit_is_parsed_capped_and_floor_safe(self):
         with self._with_reader([]):
-            _status, payload, _k = handle_target("/farm/observations?token=" + self.expected + "&limit=999")
+            _status, payload, _k = handle_target("/farm/observations?limit=999", token=self.expected)
         self.assertEqual(payload["limit"], hs.OBSERVATIONS_MAX_LIMIT)
         with self._with_reader([]):
-            _status, payload, _k = handle_target("/farm/observations?token=" + self.expected + "&limit=nonsense")
+            _status, payload, _k = handle_target("/farm/observations?limit=nonsense", token=self.expected)
         self.assertEqual(payload["limit"], hs.OBSERVATIONS_DEFAULT_LIMIT)
 
     def test_backend_failure_is_a_gap_not_a_crash(self):
         with mock.patch.object(hs, "_latest_observations", side_effect=OSError("backend down")):
-            status, payload, kind = handle_target("/farm/observations?token=" + self.expected)
+            status, payload, kind = handle_target("/farm/observations", token=self.expected)
         self.assertEqual(status, 200)
         self.assertEqual(kind, "json")
         self.assertIn("gap", payload)
