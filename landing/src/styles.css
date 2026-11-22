@@ -1,20 +1,248 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #f7f5f2;
-  --color-paper-2: #efece6;
-  --color-ink: #1c1b19;
-  --color-muted: #5c564c;
-  --color-line: #d8d2c8;
-  --color-accent: #8c7355;
-  --color-on-ink: #f7f5f2;
-  --color-on-ink-muted: #d2cbc0;
-  --font-display: "Libre Baskerville", Palatino, "Palatino Linotype", "Songti TC", "Songti SC",
-    "PMingLiU", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif Thai", serif;
-  --font-sans: "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC", "Hiragino Sans",
+  --color-paper: #f6f4ec;
+  --color-paper-2: #eeece2;
+  --color-ink: #202a20;
+  --color-muted: #596359;
+  --color-line: #d5d8cb;
+  --color-accent: #54734f;
+  --color-on-ink: #f6f4ec;
+  --color-on-ink-muted: #c9d1c4;
+  --font-display:
+    "Libre Baskerville", Palatino, "Palatino Linotype", "Songti TC", "Songti SC", "PMingLiU",
+    "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif Thai", serif;
+  --font-sans:
+    "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC", "Hiragino Sans",
     "Microsoft JhengHei", "Noto Sans SC", "Noto Sans JP", "Sarabun", "Noto Sans Thai", sans-serif;
   --radius-control: 8px;
   --radius-panel: 28px;
+}
+
+/* Refined field editorial system — botanical tones, warm paper, quiet rules. */
+.hero-editorial {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-paper);
+}
+.hero-editorial-copy {
+  position: relative;
+  z-index: 2;
+  order: 1;
+  padding: clamp(2.5rem, 8vw, 5rem) max(1.25rem, calc((100vw - 76rem) / 2));
+}
+.hero-editorial-photo {
+  position: relative;
+  order: 2;
+  height: clamp(18rem, 65vw, 30rem);
+  overflow: hidden;
+  background: #495743;
+}
+.hero-editorial-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 58%;
+}
+.hero-photo-mark {
+  position: absolute;
+  right: 1.1rem;
+  bottom: 1rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+.hero-eyebrow {
+  margin-top: 1.25rem;
+  max-width: 34rem;
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+.audience-switch {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  border-bottom: 1px solid var(--color-line);
+}
+.audience-option {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.9rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease;
+  border-bottom: 2px solid transparent;
+}
+.audience-option:hover {
+  color: var(--color-ink);
+}
+.audience-option.is-selected {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.editorial-card {
+  border: 1px solid var(--color-line);
+  background: rgba(255, 255, 255, 0.32);
+}
+.field-principles {
+  display: grid;
+  grid-template-columns: 1fr;
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+.principle-item {
+  position: relative;
+  min-height: 12rem;
+  padding: 1.5rem 1.25rem;
+  background: var(--color-paper-2);
+}
+.principle-item + .principle-item {
+  border-top: 1px solid var(--color-line);
+}
+.principle-index {
+  color: var(--color-accent);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+}
+.principle-item h3 {
+  margin-top: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+.principle-item p {
+  max-width: 24rem;
+  margin-top: 0.7rem;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+.finance-editorial {
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+}
+.finance-intro {
+  max-width: 48rem;
+}
+.finance-intro p {
+  color: var(--color-on-ink-muted);
+}
+.finance-rails {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-top: 2.5rem;
+  border-top: 1px solid rgba(246, 244, 236, 0.25);
+}
+.finance-rails article {
+  min-height: 7rem;
+  padding: 1.25rem 0;
+}
+.finance-rails article + article {
+  border-top: 1px solid rgba(246, 244, 236, 0.18);
+}
+.finance-rails h3 {
+  color: #d1bd82;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+.finance-rails p {
+  margin-top: 0.5rem;
+  color: var(--color-on-ink-muted);
+  font-size: 0.9rem;
+}
+header.sticky {
+  border-color: rgba(84, 115, 79, 0.18);
+  background: rgba(246, 244, 236, 0.96);
+  backdrop-filter: blur(16px);
+}
+footer {
+  background: #eeece2;
+}
+
+@media (min-width: 48rem) {
+  .hero-editorial {
+    min-height: min(49rem, calc(100svh - 7rem));
+  }
+  .hero-editorial-photo {
+    position: absolute;
+    inset: 0;
+    height: auto;
+  }
+  .hero-editorial-photo::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+    background: linear-gradient(
+      90deg,
+      rgba(246, 244, 236, 0.98) 0%,
+      rgba(246, 244, 236, 0.94) 31%,
+      rgba(246, 244, 236, 0.72) 47%,
+      rgba(30, 42, 31, 0.05) 78%
+    );
+  }
+  .hero-editorial-copy {
+    width: min(52rem, 66%);
+    min-height: min(49rem, calc(100svh - 7rem));
+    padding: clamp(3rem, 6vw, 6rem) max(2.5rem, calc((100vw - 76rem) / 2));
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .hero-photo-mark {
+    right: 2rem;
+    bottom: 1.5rem;
+  }
+  .field-principles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .finance-rails {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .finance-rails article {
+    padding: 1.5rem;
+  }
+  .finance-rails article + article {
+    border-top: 0;
+    border-left: 1px solid rgba(246, 244, 236, 0.18);
+  }
+  .principle-item {
+    min-height: 16rem;
+    padding: 1.6rem;
+  }
+  .principle-item + .principle-item {
+    border-top: 0;
+    border-left: 1px solid var(--color-line);
+  }
+}
+
+@media (min-width: 64rem) {
+  .text-hero {
+    font-size: clamp(3.5rem, 4.25vw, 5rem);
+    line-height: 1.06;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 @layer base {

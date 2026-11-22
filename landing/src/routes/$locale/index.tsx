@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LandingPage } from "@/components/landing-page";
 import { alternateLinks, isLocale } from "@/lib/locale";
 import { getLiveLedger } from "@/lib/live.functions";
-import { VISION, type Audience } from "@/lib/vision";
+import type { Audience } from "@/lib/vision";
+import { COPY } from "@/lib/copy";
 
 type AudienceSearch = { for?: Audience };
 
@@ -14,13 +15,9 @@ export const Route = createFileRoute("/$locale/")({
   loader: () => getLiveLedger(),
   head: ({ params, match }) => {
     const locale = isLocale(params.locale) ? params.locale : "en";
-    const vision = VISION[locale];
-    const hunger = match.search.for === "hunger";
+    const copy = COPY[locale];
     return {
-      meta: [
-        { title: `${hunger ? vision.hungerTitle : vision.farmerTitle} — Seges` },
-        { name: "description", content: hunger ? vision.hungerDeck : vision.farmerDeck },
-      ],
+      meta: [{ title: copy.metaTitle }, { name: "description", content: copy.metaDescription }],
       links: alternateLinks(""),
     };
   },

@@ -3,9 +3,10 @@ import type { Copy } from "@/lib/copy-types";
 export const zhCN: Copy = {
   metaTitle: "每一笔农田数据，都自带出生证明 — Seges",
   metaDescription:
-    "卫星、气象、传感器与授权，全部写进同一本防篡改账本。看清田、看懂险、趋利避害。这里不发明任何数字。",
+    "卫星、气象、传感器与授权信息，记录在可查验的农业数据账本中。查看田间记录、数据来源、空间支持与授权状态。",
   startMetaTitle: "免费开始记录我的田 — Seges",
-  startMetaDescription: "用手机把田钉进系统，完成第一笔有出生证明的观测。大约三分钟。免信用卡。写在这台设备上，不是正式账本。",
+  startMetaDescription:
+    "用手机把田钉进系统，完成第一笔有出生证明的观测。大约三分钟。免信用卡。写在这台设备上，不是正式账本。",
   reportMetaTitle: "五个农区实测报告 — Seges",
   reportMetaDescription:
     "日高、十胜、上川、根室、庄内。2026-11-18 实测。零个致命缺陷。四个北海道产区的成熟度判定与公开品种历吻合在 ±15% 内。",
@@ -31,7 +32,6 @@ export const zhCN: Copy = {
     q1: "现在田里怎样？",
     q2: "下一步该做什么？",
     q3: "做这件事合不合法？",
-    stamp: "这里不发明任何数字",
     primary: "免费开始记录我的田",
     secondary: "看 5 个农区的实测报告",
     noCard: "免信用卡。大约三分钟。",
@@ -70,7 +70,7 @@ export const zhCN: Copy = {
     refused: "拒绝",
     specimen: "样本，不构成授权",
     noGrant: "没有授权",
-    caveat: "看得到，是因为公开只读端点返回了它。看得到不等于准你用。",
+    caveat: "公开只读端点返回的数据。",
     build: "账本版本",
     weather: "天气行",
     temp: "temperature_2m",
@@ -82,7 +82,7 @@ export const zhCN: Copy = {
   },
   trust: {
     title: "实际量到的",
-    lede: "不是预测。没有公布的数字，不会出现在这页。",
+    lede: "农业系统与公开数据的实际记录。",
     items: [
       { figure: "1,744", label: "自动测试，全部通过", note: "每次推送，CI 都重跑。" },
       {
@@ -96,7 +96,11 @@ export const zhCN: Copy = {
         note: "北海道平取町，Hiroki Tomiyasu 大豆田，0.4 公顷——从手机 GPS 钉桩到 GCS 防篡改仓储。",
       },
       { figure: "250+", label: "卫星场景 headers", note: "已索引该田区。每天更新。" },
-      { figure: "4", label: "警报防线", note: "uptime（3 区）、灾害 watcher、每小时天气、3 连败警报。" },
+      {
+        figure: "4",
+        label: "警报防线",
+        note: "uptime（3 区）、灾害 watcher、每小时天气、3 连败警报。",
+      },
       {
         figure: "12",
         label: "hash-chained 命令账本",
@@ -110,8 +114,8 @@ export const zhCN: Copy = {
     answered: "对应",
     pillarName: { A: "原生分辨率", B: "出生证明", C: "授权内建", D: "诚实的不确定" },
     items: [
-      "劳力：发达国家的农田人力大多短缺——自动化不是选项，是必然。",
-      "主权：国家自产食物是国安问题——进口比例越高，谈判桌越小。",
+      "来源与时点：不同数据的时间与授权条件，难以一并核对。",
+      "田块尺度：网格读值容易被误当成田块观测。",
     ],
   },
   pillars: {
@@ -136,7 +140,7 @@ export const zhCN: Copy = {
       {
         id: "D",
         name: "诚实的不确定性",
-        body: "资料读不到，页面显示「缺口 (gap)」而非编造的零；需要人类签核的判断，一定停在那里等你。这里不发明任何数字。",
+        body: "资料读不到时，页面标示「缺口 (gap)」而非零值；需要人类签核的判断会暂停并等待确认。",
       },
     ],
   },
@@ -204,8 +208,7 @@ export const zhCN: Copy = {
     note: "免信用卡。大约三分钟。",
   },
   footer: {
-    legal:
-      "",
+    legal: "",
     source: "公开只读账本",
   },
   start: {
@@ -255,7 +258,8 @@ export const zhCN: Copy = {
     colRegion: "地区",
     colRole: "本次实测",
     colMaturity: "成熟度判定",
-    biratori: "上路的那块田——Hiroki Tomiyasu，大豆，0.4 公顷——在北海道平取町、日高。这是位置，不是多出来的分数。",
+    biratori:
+      "上路的那块田——Hiroki Tomiyasu，大豆，0.4 公顷——在北海道平取町、日高。这是位置，不是多出来的分数。",
     caveat: "没有公布的分区分数，这里不补。机器指挥在 Phase-4 六项安全闸之前不开。",
     back: "回到账本",
     districts: [
@@ -269,8 +273,9 @@ export const zhCN: Copy = {
   forms: {
     waitTitle: "排我进正式版名单",
     waitBody: "自动化工单、多田管理、API、数据导出。留下联系方式，我们把正式版的第一波邀请寄给你。",
-    briefTitle: "预约法务与数据治理简报",
-    briefBody: "给想一起把可靠农业自动化推向世界的机构。留下联系方式，我们寄上合作简报。",
+    briefTitle: "预约机构数据治理简报",
+    briefBody:
+      "适合正在评估农地数据血统、授权条件或审计需求的机构。提交后，简报请求与同意记录会一并登记。",
     name: "姓名",
     email: "电子邮件",
     org: "机构",

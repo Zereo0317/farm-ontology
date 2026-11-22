@@ -32,7 +32,6 @@ export type Copy = {
     q1: string;
     q2: string;
     q3: string;
-    stamp: string;
     primary: string;
     secondary: string;
     noCard: string;

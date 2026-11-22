@@ -1,8 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Farm Ontology">
-  <rect width="64" height="64" fill="#1c1b19"/>
-  <rect x="3" y="3" width="58" height="58" fill="#f7f5f2"/>
-  <path d="M12 20h26M12 30h40M12 40h16" fill="none" stroke="#1c1b19" stroke-width="3.25" stroke-linecap="square"/>
-  <path d="M12 40h16" fill="none" stroke="#8c7355" stroke-width="3.25" stroke-linecap="square"/>
-  <rect x="36" y="34" width="16" height="16" fill="#8c7355"/>
-  <rect x="41" y="39" width="6" height="6" fill="#f7f5f2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="15" fill="#24352A"/>
+  <path d="M10 23.5c6.1-4.3 12.7-6.5 19.8-6.5 8.4 0 15.5 3.1 24.2 9.1M9 32.7c7-4.7 13.7-7.1 20.9-7.1 8.2 0 15.4 2.8 25.1 9.2M9.5 42c6.8-4.4 13.4-6.6 20.3-6.6 8.1 0 15.2 2.7 25.2 8.7" stroke="#E9E7D9" stroke-width="2.1" stroke-linecap="round"/>
+  <path d="M13 50.1c6-3.6 11.6-5.3 17.6-5.3 5.8 0 11.2 1.6 17.9 5.1" stroke="#A8B395" stroke-width="2.1" stroke-linecap="round"/>
+  <circle cx="43.8" cy="17" r="4.1" fill="#D6A462"/>
+  <path d="M43.8 12.9v8.2m-4.1-4.1h8.2" stroke="#24352A" stroke-width="1.1" stroke-linecap="round"/>
 </svg>

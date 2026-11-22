@@ -3,7 +3,7 @@ import type { Copy } from "@/lib/copy-types";
 export const en: Copy = {
   metaTitle: "Every farm data point ships with its birth certificate — Seges",
   metaDescription:
-    "Satellites, weather, sensors and licences, written into one tamper-evident ledger. Read the field, read the risk, and act before the weather does. Nothing here is invented.",
+    "Satellite, weather, sensor, and licence information recorded in a verifiable agricultural data ledger. Explore field records, sources, spatial support, and licence status.",
   startMetaTitle: "Start recording my field — free — Seges",
   startMetaDescription:
     "Pin a field and issue the first observation with a birth certificate. About three minutes. No credit card. Written on this device, not the production ledger.",
@@ -32,7 +32,6 @@ export const en: Copy = {
     q1: "What is happening in the field now?",
     q2: "What should be done next?",
     q3: "And is doing it legal?",
-    stamp: "Nothing here is invented",
     primary: "Start recording my field — free",
     secondary: "See the 5-district field report",
     noCard: "No credit card. About three minutes.",
@@ -71,8 +70,7 @@ export const en: Copy = {
     refused: "refused",
     specimen: "specimen — not a grant",
     noGrant: "no grant",
-    caveat:
-      "Shown because the public read-only endpoint returned it. A visible number is not permission to use it.",
+    caveat: "Returned by the public read-only endpoint.",
     build: "Ledger build",
     weather: "Weather row",
     temp: "temperature_2m",
@@ -84,7 +82,7 @@ export const en: Copy = {
   },
   trust: {
     title: "What was actually measured",
-    lede: "Not a projection. If a figure was not published, it is not on this page.",
+    lede: "Production records and public data, in view.",
     items: [
       {
         figure: "1,744",
@@ -129,8 +127,8 @@ export const en: Copy = {
       D: "Honest uncertainty",
     },
     items: [
-      "Labour: developed nations run chronic shortages of farm workers — automation is not optional, it is inevitable.",
-      "Sovereignty: home-grown food is national security — the more a nation imports, the weaker its seat at the negotiating table.",
+      "Source and timing: Feeds carry separate timestamps and licence terms.",
+      "Field scale: Grid readings can be mistaken for plot observations.",
     ],
   },
   pillars: {
@@ -155,12 +153,13 @@ export const en: Copy = {
       {
         id: "D",
         name: "Honest uncertainty",
-        body: "When data is missing you see a “gap”, not an invented zero; anything needing a human signature stops and waits. Nothing here is invented.",
+        body: "When data is missing, the record shows a “gap” instead of a zero. Decisions needing human sign-off pause for review.",
       },
     ],
   },
   mistake: {
-    quote: "If you don’t know a number’s native resolution, you don’t know whether it can be used for your decision.",
+    quote:
+      "If you don’t know a number’s native resolution, you don’t know whether it can be used for your decision.",
     story:
       "A United States official 5 km grid said it had rained. On the ground, it was clear. Treat that as rainfall on a 0.4 ha field and open the valve, and you put 200 tonnes of water into a field that did not need it. Any system that cannot tell you how large an area its number actually covers is not fit to command your machines.",
     leftTitle: "Trust the grid as if it were the plot",
@@ -205,7 +204,7 @@ export const en: Copy = {
     entCta: "Book a legal and data-governance briefing",
   },
   faq: {
-    title: "Questions, answered without a new number",
+    title: "Common questions",
     items: [
       {
         q: "I only farm 0.4 ha. Do I need this?",
@@ -235,8 +234,7 @@ export const en: Copy = {
     note: "No credit card. About three minutes.",
   },
   footer: {
-    legal:
-      "",
+    legal: "",
     source: "Public read-only ledger",
   },
   start: {
@@ -268,7 +266,8 @@ export const en: Copy = {
     issued: "Issued on this device",
     download: "Download the JSON",
     again: "Record another",
-    notProduction: "SHA-256 of this record, computed in your browser. Not a production-ledger hash.",
+    notProduction:
+      "SHA-256 of this record, computed in your browser. Not a production-ledger hash.",
     yourRecords: "Earlier records on this device",
     required: "A field name is required.",
     areaInvalid: "Area must be a number greater than zero, or empty.",
@@ -280,7 +279,8 @@ export const en: Copy = {
     fatalFigure: "0",
     fatal: "Fatal defects",
     maturityFigure: "±15%",
-    maturity: "Four Hokkaido districts against public cultivar calendars — ±15% is the agreement radius",
+    maturity:
+      "Four Hokkaido districts against public cultivar calendars — ±15% is the agreement radius",
     included: "Included",
     within: "Within ±15%",
     gapNote: "gap — not one of the four Hokkaido areas in that maturity statement",
@@ -305,9 +305,9 @@ export const en: Copy = {
     waitTitle: "Join the release waitlist",
     waitBody:
       "Action sheets, many fields, an API, data export. Submitting writes your consent, with the record (name and email only), into the ledger.",
-    briefTitle: "Book a legal and data-governance briefing",
+    briefTitle: "Book an institutional data-governance briefing",
     briefBody:
-      "For institutions that need lineage, licence control, and hash-chained credentials. Submitting writes the request and your consent into the same ledger.",
+      "For institutions exploring field-data lineage, licence conditions, and auditability. Submitting records the request and your consent.",
     name: "Name",
     email: "Email",
     org: "Organisation",
@@ -316,13 +316,16 @@ export const en: Copy = {
     needLineage: "Auditable data lineage",
     needLicence: "Licence controls",
     needHash: "Hash-chained credentials",
-    consentWait: "I agree to have this waitlist intent (name, email) written into the ledger as a consent record.",
-    consentBrief: "I agree to have this briefing request, including my organisation, written into the ledger as a consent record.",
+    consentWait:
+      "I agree to have this waitlist intent (name, email) written into the ledger as a consent record.",
+    consentBrief:
+      "I agree to have this briefing request, including my organisation, written into the ledger as a consent record.",
     submitWait: "Issue my waitlist record",
     submitBrief: "Issue my briefing record",
     savedWait: "Waitlist record issued",
     savedBrief: "Briefing request issued",
-    savedNext: "Next: the access code arrives at this email. In a hurry, message @seges on Instagram.",
+    savedNext:
+      "Next: the access code arrives at this email. In a hurry, message @seges on Instagram.",
     notTransmitted:
       "Written down. Online it syncs into the ledger; offline it stays on this device — download or delete it any time.",
     download: "Download the JSON",

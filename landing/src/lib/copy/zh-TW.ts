@@ -3,9 +3,10 @@ import type { Copy } from "@/lib/copy-types";
 export const zhTW: Copy = {
   metaTitle: "每一筆農地數據，都自帶出生證明 — Seges",
   metaDescription:
-    "衛星、氣象、感測器與授權，全部寫進同一本防竄改帳本。看懂田、懂得險、趨吉避凶。這裡不發明任何數字。",
+    "衛星、氣象、感測器與授權資訊，記錄於可查驗的農業資料帳本。查看田間紀錄、資料來源、空間支援與授權狀態。",
   startMetaTitle: "免費開始記錄我的田 — Seges",
-  startMetaDescription: "用手機把田釘進系統，完成第一筆有出生證明的觀測。大約三分鐘。免信用卡。寫在這台裝置上，不是正式帳本。",
+  startMetaDescription:
+    "用手機把田釘進系統，完成第一筆有出生證明的觀測。大約三分鐘。免信用卡。寫在這台裝置上，不是正式帳本。",
   reportMetaTitle: "五個農區實測報告 — Seges",
   reportMetaDescription:
     "日高、十勝、上川、根室、庄內。2026-11-18 實測。零個致命缺陷。四個北海道產區的成熟度判定與公開品種曆吻合在 ±15% 內。",
@@ -31,7 +32,6 @@ export const zhTW: Copy = {
     q1: "現在田裡怎樣？",
     q2: "下一步該做什麼？",
     q3: "做這件事合不合法？",
-    stamp: "這裡不發明任何數字",
     primary: "免費開始記錄我的田",
     secondary: "看 5 個農區的實測報告",
     noCard: "免信用卡。大約三分鐘。",
@@ -70,7 +70,7 @@ export const zhTW: Copy = {
     refused: "拒絕",
     specimen: "樣本，不構成授權",
     noGrant: "沒有授權",
-    caveat: "看得到，是因為公開唯讀端點回傳了它。看得到不等於准你用。",
+    caveat: "公開唯讀端點回傳的資料。",
     build: "帳本版本",
     weather: "天氣列",
     temp: "temperature_2m",
@@ -82,7 +82,7 @@ export const zhTW: Copy = {
   },
   trust: {
     title: "實際量到的",
-    lede: "不是預測。沒有公布的數字，不會出現在這頁。",
+    lede: "農業系統與公開資料的實際紀錄。",
     items: [
       { figure: "1,744", label: "自動測試，全部通過", note: "每次推送，CI 都重跑。" },
       {
@@ -114,8 +114,8 @@ export const zhTW: Copy = {
     answered: "對應",
     pillarName: { A: "原生解析度", B: "出生證明", C: "授權內建", D: "誠實的不確定" },
     items: [
-      "勞力：已開發國家的農田人力大多短缺——自動化不是選項，是必然。",
-      "主權：國家自產食物是國安問題——進口比例越高，談判桌越小。",
+      "來源與時點：不同資料的時間與授權條件，難以一併核對。",
+      "田區尺度：格網讀值容易被誤當成田區觀測。",
     ],
   },
   pillars: {
@@ -140,7 +140,7 @@ export const zhTW: Copy = {
       {
         id: "D",
         name: "誠實的不確定性",
-        body: "資料讀不到，頁面顯示「缺口 (gap)」而非編造的零；需要人類簽核的判斷，一定停在那裡等你。這裡不發明任何數字。",
+        body: "資料讀不到時，頁面標示「缺口 (gap)」而非零值；需要人類簽核的判斷，會停下來等待確認。",
       },
     ],
   },
@@ -178,7 +178,7 @@ export const zhTW: Copy = {
     entCta: "預約法務與資料治理簡報",
   },
   faq: {
-    title: "問答，不加新數字",
+    title: "常見問題",
     items: [
       {
         q: "我只種 0.4 公頃，有必要嗎？",
@@ -208,8 +208,7 @@ export const zhTW: Copy = {
     note: "免信用卡。大約三分鐘。",
   },
   footer: {
-    legal:
-      "",
+    legal: "",
     source: "公開唯讀帳本",
   },
   start: {
@@ -259,7 +258,8 @@ export const zhTW: Copy = {
     colRegion: "地區",
     colRole: "本次實測",
     colMaturity: "成熟度判定",
-    biratori: "上路的那塊田——Hiroki Tomiyasu，大豆，0.4 公頃——在北海道平取町、日高。這是位置，不是多出來的分數。",
+    biratori:
+      "上路的那塊田——Hiroki Tomiyasu，大豆，0.4 公頃——在北海道平取町、日高。這是位置，不是多出來的分數。",
     caveat: "沒有公布的分區分數，這裡不補。機器指揮在 Phase-4 六項安全閘之前不開。",
     back: "回到帳本",
     districts: [
@@ -273,8 +273,9 @@ export const zhTW: Copy = {
   forms: {
     waitTitle: "排我進正式版名單",
     waitBody: "自動化工單、多田管理、API、資料匯出。留下聯絡方式，我們把正式版的第一波邀請寄給你。",
-    briefTitle: "預約法務與資料治理簡報",
-    briefBody: "給想一起把可靠農業自動化推向世界的機構。留下聯絡方式，我們寄上合作簡報。",
+    briefTitle: "預約機構資料治理簡報",
+    briefBody:
+      "適合正在評估農地資料血統、授權條件或稽核需求的機構。送出後，簡報請求與同意紀錄會一併登記。",
     name: "姓名",
     email: "電子郵件",
     org: "機構",
