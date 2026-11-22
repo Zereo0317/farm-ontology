@@ -19,6 +19,19 @@ AT = datetime(2026, 8, 10, 4, 0, tzinfo=timezone.utc)
 HOURS = hourly_rows()
 
 
+class InvalidWeatherRegressionTests(unittest.TestCase):
+    def test_nonfinite_and_negative_values_never_create_a_go(self):
+        for key, value in (("precip_mm", float("nan")), ("precip_mm", float("inf")),
+                           ("precip_mm", -1), ("wind_ms", -1),
+                           ("wind_ms", float("nan")), ("temp_c", float("inf"))):
+            with self.subTest(key=key, value=value):
+                rows = [dict(row) for row in HOURS]
+                rows[0][key] = value
+                with self.assertRaises(AgronomyGap) as ctx:
+                    scan_spray_windows(rows, at=AT)
+                self.assertEqual(ctx.exception.gap, "invalid-hour-field")
+
+
 class ScanBehaviourTests(unittest.TestCase):
     def test_fixture_series_produces_ordered_verdict_windows(self):
         windows, summary = scan_spray_windows(HOURS, at=AT)

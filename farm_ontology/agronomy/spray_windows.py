@@ -58,6 +58,7 @@ the human signer disposes. Offline, deterministic, injected ``at``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from datetime import datetime, timedelta
 from typing import Sequence
 
@@ -168,7 +169,14 @@ def _field(row: Sequence | dict, key: str, index: int) -> float:
             f"hour row {index}: '{key}' must be a number, got {value!r}",
             missing=(f"hour[{index}].{key}",),
         )
-    return float(value)
+    value = float(value)
+    if not math.isfinite(value) or (key in {"wind_ms", "precip_mm"} and value < 0):
+        raise AgronomyGap(
+            "invalid-hour-field",
+            f"hour row {index}: {key!r} must be finite and non-negative when applicable",
+            missing=(f"hour[{index}].{key}",),
+        )
+    return value
 
 
 def scan_spray_windows(

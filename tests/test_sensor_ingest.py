@@ -85,6 +85,16 @@ class SensorIngestTests(unittest.TestCase):
         self.assertIsNotNone(wetness.error)
         self.assertNotEqual(rain.iri, wetness.iri)
 
+    def test_missing_sensor_constants_refuse_instead_of_assuming(self):
+        soil = soil_payload()
+        soil.pop("depth_cm")
+        self.assertFalse(ingest_record(Store(), soil, at=NOW).ok)
+        rain = load_fixture("device-proto-rain.json")
+        rain.pop("tip_mm")
+        self.assertFalse(ingest_record(Store(), rain, at=NOW).ok)
+        rain["tip_mm"] = float("nan")
+        self.assertFalse(ingest_record(Store(), rain, at=NOW).ok)
+
     def test_uncalibrated_rows_are_refused_before_the_store(self):
         store = Store()
         (result,) = ingest_device_json(

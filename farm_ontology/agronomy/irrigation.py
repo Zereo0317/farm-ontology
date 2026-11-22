@@ -43,8 +43,9 @@ timestamps are injected.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+import math
+from datetime import date, datetime, timedelta
 from typing import Iterable, Mapping, Sequence
 
 from farm_ontology.agronomy.common import (
@@ -191,6 +192,7 @@ class CoverageEligibility:
     excluded: tuple[dict, ...]       # {sensor_iri, reason} for every refusal
     footprint_texts: tuple[str, ...] # claim lines earned, never hectares
     area_ha_claims: tuple[float, ...]  # ONLY sensor-declared areas
+    eligible_rows: tuple[Mapping, ...] = field(default=(), repr=False, compare=False)
 
     def to_payload(self) -> dict:
         return {
@@ -206,7 +208,8 @@ class CoverageEligibility:
 def _number(value: object) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    return float(value)
+    value = float(value)
+    return value if math.isfinite(value) else None
 
 
 def _phenomenon_end(record: Mapping, key: str) -> datetime | None:
@@ -223,7 +226,7 @@ def _phenomenon_end(record: Mapping, key: str) -> datetime | None:
 
 
 def _certified_and_fresh(
-    row: Mapping, at: datetime, *, store_certified: bool
+    row: Mapping, at: datetime, *, store_certified: bool, freshness: timedelta = SENSOR_FRESHNESS
 ) -> str | None:
     """Mirror of the sensors-ingest calibration gate, at query time.
 
@@ -243,7 +246,9 @@ def _certified_and_fresh(
         due = row.get("recalibration_due")
         if isinstance(due, str) and due.strip():
             due_parsed = _parse_lenient(due)
-            if due_parsed is not None and due_parsed <= at:
+            if due_parsed is None:
+                return "malformed-recalibration-due"
+            if due_parsed <= at:
                 return "calibration-expired"
         elif due is not None:
             return "malformed-recalibration-due"
@@ -252,8 +257,14 @@ def _certified_and_fresh(
     end = _phenomenon_end(row, "phenomenon_end")
     if end is None:
         return "no-phenomenon-end"
-    if end <= at - SENSOR_FRESHNESS:
+    if end > at:
+        return "future-phenomenon-end"
+    if end <= at - freshness:
         return "stale-beyond-freshness-window"
+    if "availability_time" in row:
+        available = _phenomenon_end(row, "availability_time")
+        if available is None or available > at:
+            return "unavailable-at-query-time"
     return None
 
 
@@ -316,6 +327,7 @@ def has_calibrated_coverage(
     footprints: list[str] = []
     areas: list[float] = []
     seen_levels: list[str] = []
+    eligible_rows: list[Mapping] = []
 
     for row in sensor_rows:
         if isinstance(row, Observation):
@@ -346,12 +358,13 @@ def has_calibrated_coverage(
             )
             continue
         reason = _certified_and_fresh(
-            record, moment, store_certified=isinstance(row, Observation)
+            record, moment, store_certified=isinstance(row, Observation), freshness=freshness
         )
         if reason is not None:
             excluded.append({"sensor_iri": str(sensor_iri), "reason": reason})
             continue
         supporting.append(str(sensor_iri))
+        eligible_rows.append(record)
         area = _number(record.get("coverage_area_ha"))
         radius = _number(record.get("probe_radius_m"))
         if area is not None and area > 0:
@@ -389,6 +402,7 @@ def has_calibrated_coverage(
         excluded=tuple(excluded),
         footprint_texts=tuple(footprints),
         area_ha_claims=tuple(areas),
+        eligible_rows=tuple(eligible_rows),
     )
 
 
@@ -472,6 +486,7 @@ def irrigation_advisory(
     cumulative = 0.0  # running GDD through THIS trace only
 
     trace: list[dict] = []
+    previous_day = None
     for index, row in enumerate(daily_rows):
         day = row.get("date")
         eto = _number(row.get("eto_mm"))
@@ -509,6 +524,15 @@ def irrigation_advisory(
                 missing=tuple(missing),
             )
         assert day is not None and eto is not None and rain is not None
+        try:
+            parsed_day = date.fromisoformat(day)
+        except ValueError as error:
+            raise AgronomyGap("malformed-row", f"daily row {index} has invalid date: {day!r}") from error
+        if previous_day is not None and parsed_day - previous_day != timedelta(days=1):
+            raise AgronomyGap("daily-sequence-hole", f"daily row {index} is not the next calendar day")
+        previous_day = parsed_day
+        if eto < 0 or rain < 0:
+            raise AgronomyGap("malformed-row", f"daily row {index} contains negative ET0 or rainfall")
         effective_rain = max(0.0, rain * (1.0 - cfg.runoff_loss_fraction))
         # Surface layer: wet first, then evaporate.
         surface_after_wetting = max(0.0, surface - effective_rain)
@@ -550,6 +574,9 @@ def irrigation_advisory(
     deficit = max(0.0, root - soil.raw_mm)
     recommend = deficit > 0.0
 
+    # Materialize generators once so eligibility and calculations see the same rows.
+    sensor_rows = tuple(sensor_rows)
+
     # The sensor story. Without a parcel, only exclusions can be produced
     # honestly (there is nothing for a probe to be linked to).
     coverage: CoverageEligibility
@@ -570,7 +597,7 @@ def irrigation_advisory(
     if coverage.level in (CoverageLevel.PROBE_FOOTPRINT, CoverageLevel.PARCEL_REPORTED):
         measured = [
             row
-            for row in sensor_rows
+            for row in coverage.eligible_rows
             if isinstance(row, Mapping)
             and _number(row.get("value")) is not None
             and row.get("parcel_iri") == parcel
@@ -581,7 +608,7 @@ def irrigation_advisory(
             implied = soil.taw_mm * (1.0 - min(1.0, max(0.0, vwc_percent / 100.0)))
             probe_note = {
                 "kind": "grid-vs-probe-divergence",
-                "sensor_iri": coverage.supporting_sensor_iris[0],
+                "sensor_iri": str(probe_row.get("sensor_iri") or "sensor-unnamed"),
                 "grid_model_depletion_mm": round(root, 2),
                 "probe_implied_depletion_mm": round(implied, 2),
                 "assumption": (

@@ -303,6 +303,41 @@ class ProbeVsGridDivergenceTests(unittest.TestCase):
         )
 
 
+class SensorEligibilityRegressionTests(unittest.TestCase):
+    def row(self, sensor, value, **changes):
+        result = {"sensor_iri": sensor, "parcel_iri": PARCEL,
+                  "calibration_activity": "activity/calibrated",
+                  "recalibration_due": "2027-01-01T00:00:00+00:00",
+                  "phenomenon_end": (AT - timedelta(hours=1)).isoformat(),
+                  "value": value}
+        result.update(changes)
+        return result
+
+    def test_invalid_expiry_future_or_unavailable_row_cannot_support_claims(self):
+        rows = [self.row("malformed", 10, recalibration_due="nonsense"),
+                self.row("future", 10, phenomenon_end=(AT + timedelta(days=1)).isoformat()),
+                self.row("unavailable", 10, availability_time=(AT + timedelta(hours=1)).isoformat())]
+        cov = has_calibrated_coverage(rows, PARCEL, AT)
+        self.assertEqual(cov.level, CoverageLevel.NONE)
+        self.assertEqual([x["reason"] for x in cov.excluded],
+                         ["malformed-recalibration-due", "future-phenomenon-end", "unavailable-at-query-time"])
+
+    def test_probe_value_and_identity_come_from_same_eligible_row(self):
+        expired = self.row("expired", 99, recalibration_due="2026-01-01")
+        valid = self.row("valid", 10)
+        for rows in ([expired, valid], [valid, expired], iter([expired, valid])):
+            advice = irrigation_advisory(_window_rows(), reading=_reading(),
+                                         sensor_rows=rows, parcel=PARCEL, at=AT)
+            self.assertEqual(advice.probe_divergence["sensor_iri"], "valid")
+            self.assertAlmostEqual(advice.probe_divergence["probe_implied_depletion_mm"],
+                                   round(advice.taw_mm * .9, 2))
+
+    def test_configured_freshness_window_is_applied(self):
+        row = self.row("old", 10, phenomenon_end=(AT - timedelta(hours=3)).isoformat())
+        cov = has_calibrated_coverage([row], PARCEL, AT, freshness=timedelta(hours=2))
+        self.assertEqual(cov.excluded[0]["reason"], "stale-beyond-freshness-window")
+
+
 class GapPathsTests(unittest.TestCase):
     def test_no_rows_gap(self):
         with self.assertRaises(AgronomyGap) as ctx:
@@ -322,6 +357,23 @@ class GapPathsTests(unittest.TestCase):
             irrigation_advisory(broken, reading=_reading(), at=AT)
         self.assertEqual(ctx.exception.gap, "malformed-row")
         self.assertTrue(any("eto_mm" in m for m in ctx.exception.missing))
+
+    def test_duplicate_reordered_and_missing_days_refuse(self):
+        rows = _window_rows()
+        for broken in ([rows[0], rows[0]], [rows[1], rows[0]], [rows[0], rows[2]]):
+            with self.subTest(dates=[x["date"] for x in broken]):
+                with self.assertRaises(AgronomyGap) as ctx:
+                    irrigation_advisory(broken, reading=_reading(), at=AT)
+                self.assertEqual(ctx.exception.gap, "daily-sequence-hole")
+
+    def test_nonfinite_or_negative_balance_inputs_refuse(self):
+        for key, value in (("rain_mm", float("nan")), ("rain_mm", -1),
+                           ("eto_mm", float("inf")), ("eto_mm", -1)):
+            rows = [dict(x) for x in _window_rows()]
+            rows[0][key] = value
+            with self.subTest(key=key, value=value):
+                with self.assertRaises(AgronomyGap):
+                    irrigation_advisory(rows, reading=_reading(), at=AT)
 
     def test_naive_at_refused(self):
         with self.assertRaises(ValueError):
