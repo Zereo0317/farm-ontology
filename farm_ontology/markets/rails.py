@@ -777,7 +777,13 @@ def rail_4_consent_first_upward_flow(
                 "the consent grant carries no purpose or no scope",
             )
         ]
-    return []
+    # A caller-created ConsentGrant and URL do not establish the identity of
+    # the grantor, the permitted data/purpose, or revocation status. Until a
+    # trusted consent store and authenticated principal binding exist, refuse.
+    return [RailViolation(
+        RAIL_4_CONSENT_FLOW,
+        "farmer consent cannot be verified against a trusted consent registry",
+    )]
 
 
 def rail_5_truthfulness_gate(
@@ -799,8 +805,29 @@ def rail_5_truthfulness_gate(
     """
     violations: list[RailViolation] = []
     cited = set(artefact.market_decisive_feeds)
+    if not cited:
+        violations.append(RailViolation(
+            RAIL_5_TRUTHFULNESS,
+            "no market-decisive feeds were declared; source provenance cannot be assessed",
+        ))
+    if len(cited) != len(artefact.market_decisive_feeds) or any(
+        not isinstance(feed, str) or not feed.strip() for feed in cited
+    ):
+        violations.append(RailViolation(
+            RAIL_5_TRUTHFULNESS, "market-decisive feed identifiers must be nonempty and unique"
+        ))
+        return violations
     contributed: dict[str, Contribution] = {}
     for contribution in artefact.contributions:
+        if contribution.feed in contributed:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS, f"feed {contribution.feed} has duplicate contributions"
+            ))
+        if contribution.feed not in cited:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS,
+                f"feed {contribution.feed} contributes without a declared market-decisive source",
+            ))
         contributed[contribution.feed] = contribution
     for feed in sorted(cited):
         contribution = contributed.get(feed)
@@ -813,10 +840,17 @@ def rail_5_truthfulness_gate(
                 )
             )
             continue
-        if (
-            contribution.contribution_time is not None
-            and contribution.contribution_time > as_of
-        ):
+        if contribution.contribution_time is None:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS,
+                f"feed {feed} has no recorded contribution availability time",
+            ))
+        elif not isinstance(contribution.contribution_time, datetime) or contribution.contribution_time.tzinfo is None or contribution.contribution_time.utcoffset() is None:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS,
+                f"feed {feed} has an invalid contribution availability time",
+            ))
+        elif contribution.contribution_time > as_of:
             raise RailError.for_time(
                 f"feed {feed} contribution_time "
                 f"{contribution.contribution_time.isoformat()} > as_of "

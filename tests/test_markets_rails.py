@@ -257,10 +257,11 @@ class RailViolationsTest(unittest.TestCase):
             carries_farmer_level_data=True,
             consent=rl.ConsentGrant("farmer-A", "market synthesis", "parcel yields", "2027-11-01T00:00:00+00:00", "url"),
         )
-        self.assertEqual(
-            [v for v in rl.validate_playbook_artefact(valid_consent, AS_OF) if v.rail == rl.RAIL_4_CONSENT_FLOW],
-            [],
-        )
+        self.assertTrue(any(
+            "trusted consent registry" in v.detail
+            for v in rl.validate_playbook_artefact(valid_consent, AS_OF)
+            if v.rail == rl.RAIL_4_CONSENT_FLOW
+        ))
 
     def test_r5_missing_contribution_triple(self) -> None:
         hollow = artefact(contributions=())

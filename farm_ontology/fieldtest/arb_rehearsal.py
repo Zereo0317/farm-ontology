@@ -263,7 +263,7 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
         # D2 healed: the bridge transplants the licences verdict VERBATIM,
         # so the wall's detail names the real reason ('no_grant'), not a
         # generic 'closed'.
-        verbatim = all("no_grant" in v.detail for v in violations if v.rail == rl.RAIL_5_TRUTHFULNESS)
+        verbatim = all("no_grant" in v.detail for v in violations if "fails closed on grant state" in v.detail)
         assert verbatim, f"reason transplant broken (expected verbatim no_grant): {violations}"
         return (
             f"dies on grant state as expected: {grants_named} R5 violations, "
@@ -381,7 +381,7 @@ def run_lane1() -> tuple[ArbrehearsalReport, dict]:
             }
         )
         violations = rl.validate_playbook_artefact(artefact, REHEARSAL_T)
-        hit = [v for v in violations if v.rail == rl.RAIL_5_TRUTHFULNESS]
+        hit = [v for v in violations if v.rail == rl.RAIL_5_TRUTHFULNESS and "fails closed on grant state" in v.detail]
         assert hit, "specimen-fed artefact passed rails"
         verbatim = all("specimen" in v.detail for v in hit)
         assert verbatim, f"D2 regression: specimen reason no longer verbatim: {hit}"
