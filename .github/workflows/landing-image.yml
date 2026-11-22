@@ -58,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="ci-${GITHUB_SHA}"
-          DIGEST="$(gcloud artifacts docker images describe "$IMAGE_BASE:$TAG" --project=seges-ai --format='value(digest)')"
+          DIGEST="$(gcloud artifacts docker images describe "$IMAGE_BASE:$TAG" --project=seges-ai --format='value(image_summary.digest)')"
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           echo "image_digest=$DIGEST" >> "$GITHUB_OUTPUT"
           echo "::notice::Built $IMAGE_BASE@$DIGEST"

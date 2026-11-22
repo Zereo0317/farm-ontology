@@ -16,7 +16,7 @@ if (-not $stage.StartsWith($repoPrefix, [StringComparison]::OrdinalIgnoreCase)) 
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Path $stage | Out-Null
 
-Copy-Item -LiteralPath (Join-Path $repo "landing\Dockerfile.landing") -Destination (Join-Path $stage "Dockerfile")
+Copy-Item -LiteralPath (Join-Path $repo "Dockerfile.landing") -Destination (Join-Path $stage "Dockerfile")
 $skipDirs = @("node_modules", ".output", ".vercel", ".tanstack", ".grok", "__pycache__")
 function Copy-LandingTree([string]$Source, [string]$Destination) {
   New-Item -ItemType Directory -Force -Path $Destination | Out-Null
@@ -30,7 +30,7 @@ function Copy-LandingTree([string]$Source, [string]$Destination) {
     }
   }
 }
-Copy-LandingTree -Source (Join-Path $repo "landing") -Destination $stage
+Copy-LandingTree -Source (Join-Path $repo "landing") -Destination (Join-Path $stage "landing")
 Set-Content -LiteralPath (Join-Path $stage ".gcloudignore") -Value ".git`n.output"
 
 $image = "$Region-docker.pkg.dev/$Project/cloud-run-source-deploy/farm-seges-ai-landing:$TagSuffix"
