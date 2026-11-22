@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import unittest
 from unittest import mock
 
@@ -21,6 +24,19 @@ class HttpServiceRoutingTests(unittest.TestCase):
         self.assertEqual(payload["use_class"], "Screening")
         self.assertEqual(payload["class_c"], "closed")
         self.assertFalse(payload["permits_financial_use"])
+
+    def test_environment_flags_cannot_unlock_public_financial_metadata(self):
+        env = {**os.environ, "FARM_FINANCIAL_USE": "true", "FARM_USE_CLASS": "Settlement"}
+        script = "from farm_ontology.http_service import STATUS_JSON; import json; print(json.dumps(STATUS_JSON))"
+        payload = json.loads(subprocess.check_output([sys.executable, "-c", script], env=env, text=True))
+        self.assertEqual(payload["use_class"], "Screening")
+        self.assertFalse(payload["permits_financial_use"])
+        with mock.patch.dict(hs.os.environ, env), mock.patch.object(hs, "_get_json", return_value=(200, "application/json", b"{}")):
+            self.assertFalse(hs._open_meteo_current(42.7, 142.4)["permits_financial_use"])
+            with mock.patch.object(hs, "_metadata_token", return_value=None):
+                self.assertFalse(hs._ee_catalog()["permits_financial_use"])
+        with mock.patch.dict(hs.os.environ, {**env, "PLANET_API_KEY": "test"}), mock.patch.object(hs, "_planet_post", return_value=(200, {"features": []}, "Basic")):
+            self.assertFalse(hs._planet_search(42.7, 142.4)["permits_financial_use"])
 
     def test_farm_pin_is_the_current_location(self):
         farm = STATUS_JSON["farm"]
@@ -127,7 +143,7 @@ class HttpServiceRoutingTests(unittest.TestCase):
             "usdm.hazard",
         })
         for feed, verdict in result["feeds"].items():
-            # the executed operator grant unlocks settlement on every feed here
+            # controller authorization is not evidence of provider rights
             self.assertFalse(verdict["settlement_allowed"], feed)
             self.assertEqual(verdict["settlement_reason"], "provider_rights_unverified", feed)
             self.assertIsInstance(verdict["screening_allowed"], bool)
