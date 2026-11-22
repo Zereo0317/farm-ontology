@@ -120,7 +120,7 @@ jobs:
           gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web-before.json"
           PREVIOUS="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; a=[x for x in t if x.get("percent",0)>0]; assert len(a)==1 and a[0]["percent"]==100; print(a[0]["revisionName"])' "$RUNNER_TEMP/web-before.json")"
           gcloud run deploy farm-seges-ai-web --project=seges-ai --region=asia-east1 --image "$IMAGE" --no-traffic
-          CANDIDATE="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format='value(status.latestReadyRevisionName)')"
+          CANDIDATE="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format='value(status.latestCreatedRevisionName)')"
           test -n "$CANDIDATE" && test "$CANDIDATE" != "$PREVIOUS"
           ACTUAL_IMAGE="$(gcloud run revisions describe "$CANDIDATE" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
           test "$ACTUAL_IMAGE" = "$IMAGE"
@@ -167,7 +167,7 @@ jobs:
             --image "$REF" --no-traffic
           REV="$(gcloud run services describe farm-seges-ai-web \
             --project=seges-ai --region=asia-east1 \
-            --format='value(status.latestReadyRevisionName)')"
+            --format='value(status.latestCreatedRevisionName)')"
           test -n "$REV"
           ACTUAL_IMAGE="$(gcloud run revisions describe "$REV" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
           test "$ACTUAL_IMAGE" = "$REF"

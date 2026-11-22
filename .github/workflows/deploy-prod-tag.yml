@@ -54,7 +54,7 @@ jobs:
           PREVIOUS="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; s=[x for x in t if x.get("percent",0)>0]; assert len(s)==1 and s[0]["percent"]==100; print(s[0]["revisionName"])' "$RUNNER_TEMP/prod.json")"
           # No env or secret replacement: preserve the verified service config.
           gcloud run deploy farm-seges-ai --project=seges-ai --region=asia-east1 --image "$IMAGE" --no-traffic
-          CANDIDATE="$(gcloud run services describe farm-seges-ai --project=seges-ai --region=asia-east1 --format='value(status.latestReadyRevisionName)')"
+          CANDIDATE="$(gcloud run services describe farm-seges-ai --project=seges-ai --region=asia-east1 --format='value(status.latestCreatedRevisionName)')"
           test -n "$CANDIDATE" && test "$CANDIDATE" != "$PREVIOUS"
           CANDIDATE_IMAGE="$(gcloud run revisions describe "$CANDIDATE" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
           test "$CANDIDATE_IMAGE" = "$IMAGE"
