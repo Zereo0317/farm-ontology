@@ -89,6 +89,14 @@ class EngineBehaviourTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.result = bt.run_backtest(bt.simulated_seasons())
 
+    def test_nonfinite_or_nonpositive_synthetic_close_refused(self) -> None:
+        frame = bt.simulated_seasons()[0]
+        for value in (float("nan"), float("inf"), 0, -1, True):
+            with self.subTest(value=value):
+                bad = dict(frame.rows[0], close=value)
+                with self.assertRaisesRegex(ValueError, "finite and positive"):
+                    bt.run_season("2021", replace(frame, rows=(bad, *frame.rows[1:])), yield_t_per_ha=3.0)
+
     def test_external_data_refused_without_verified_backtest(self) -> None:
         frame = replace(bt.simulated_seasons()[0], source="external", captured_live=True)
         with self.assertRaisesRegex(ValueError, "synthetic frames only"):

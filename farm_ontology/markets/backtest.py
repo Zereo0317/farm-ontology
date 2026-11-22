@@ -313,6 +313,10 @@ def run_season(year: str, frame: PriceSeriesFrame, *, yield_t_per_ha: float) -> 
     rows = sorted(frame.rows, key=lambda row: row["date"])
     if not rows:
         raise ValueError(f"season {year}: empty frame")
+    for row in rows:
+        value = row["close"]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+            raise ValueError(f"season {year}: close must be finite and positive")
     window_rows = [
         row
         for row in rows
