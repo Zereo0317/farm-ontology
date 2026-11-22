@@ -32,8 +32,8 @@ def synth_fixture(
     ecto_null_row: int | None = None,
     duplicate_day: str | None = None,
 ) -> dict:
-    """A tiny but engine-real 2026 season: May 20 .. Oct 30 daily + hourly."""
-    start = date(2026, 5, 20)
+    """A synthetic 2026 season: May 1 .. Oct 30 daily + hourly."""
+    start = date(2026, 5, 1)
     daily, hourly = [], []
     day = start
     step = 0
@@ -89,7 +89,7 @@ def synth_fixture(
         },
     }
     return {
-        "captured_live": True,
+        "captured_live": False,
         "transport_error": None,
         "fetched_at": NOW.isoformat(),
         "endpoint": "https://archive-api.open-meteo.com/v1/archive",
@@ -126,19 +126,12 @@ class HarnessOfflineTests(unittest.TestCase):
     def test_run_site_produces_chain_and_no_blocker_defects(self):
         result = run_site(get_site("obihiro-tokachi"), days=140, fixtures_root=self.tmp)
         self.assertEqual(result.site, "obihiro-tokachi")
-        self.assertIsNotNone(result.phenology_stage)
-        self.assertIsNotNone(result.irrigation_net_mm)
-        self.assertIsNotNone(result.recommendation_id)
-        self.assertFalse(result.recommendation_permits_financial_use)
-        self.assertTrue(result.recommendation_requires_signoff)
-        self.assertEqual(result.irrigation_coverage_level, "none")
-        self.assertIn("grid-support", result.support_rendered or "")
-        blockers = [row for row in result.defects if row.severity == "blocker"]
-        self.assertEqual(
-            blockers,
-            [],
-            [row.to_payload() for row in blockers],
-        )
+        self.assertIsNone(result.phenology_stage)
+        # Archive fixtures do not prove per-observation availability.
+        # The operational adviser refuses instead of guessing.
+        self.assertIsNone(result.irrigation_net_mm)
+        self.assertIsNone(result.recommendation_id)
+        self.assertIn("gap:missing-observation-source", {row.rule for row in result.defects})
 
     def test_irrigation_never_implies_parcel_support_without_sensors(self):
         for site in SITES:
@@ -152,9 +145,10 @@ class HarnessOfflineTests(unittest.TestCase):
     def test_hot_control_earlier_stages_than_nemuro(self):
         hot = run_site(get_site("tsuruoka-shonai"), days=150, fixtures_root=self.tmp)
         cool = run_site(get_site("nemuro-hanasaki"), days=150, fixtures_root=self.tmp)
-        self.assertIsNotNone(hot.cumulative_gdd)
-        self.assertIsNotNone(cool.cumulative_gdd)
-        self.assertGreater(hot.cumulative_gdd, cool.cumulative_gdd)
+        self.assertIsNone(hot.cumulative_gdd)
+        self.assertIsNone(cool.cumulative_gdd)
+        for result in (hot, cool):
+            self.assertIn("gap:missing-observation-source", {row.rule for row in result.defects})
 
     def test_wind_scale_triple_keeps_chain_alive_but_records_sanity(self):
         result = run_site(get_site("nemuro-hanasaki"), days=150, fixtures_root=self.tmp)
@@ -169,7 +163,9 @@ class HarnessOfflineTests(unittest.TestCase):
         save_site_fixture(envelope, "obihiro-tokachi", self.tmp)
         result = run_site(get_site("obihiro-tokachi"), days=140, fixtures_root=self.tmp)
         rules = {row.rule for row in result.defects}
-        self.assertIn("gap:malformed-row", rules)
+        # Source evidence is missing, so no stage or irrigation advice is made.
+        self.assertIn("gap:missing-observation-source", rules)
+        self.assertIn("gap:missing-stage", rules)
 
     def test_transport_error_fixture_becomes_defect_not_crash(self):
         (self.tmp / "site-nemuro-hanasaki" / "year2026.json").unlink()
@@ -237,7 +233,7 @@ class HarnessOfflineTests(unittest.TestCase):
         self.assertEqual(path.name, "year2026.json")
         self.assertEqual(path.parent.name, "site-obihiro-tokachi")
         loaded = load_site_fixture(get_site("obihiro-tokachi"), self.tmp)
-        self.assertTrue(loaded["captured_live"])
+        self.assertFalse(loaded["captured_live"])
 
     def test_fetch_gate_refuses_when_offline(self):
         previous = {ONLINE_ENV: __import__("os").environ.get(ONLINE_ENV)}
@@ -262,9 +258,10 @@ class HarnessOfflineTests(unittest.TestCase):
     def test_days_trims_the_drive_window(self):
         short = run_site(get_site("obihiro-tokachi"), days=30, fixtures_root=self.tmp)
         long = run_site(get_site("obihiro-tokachi"), days=150, fixtures_root=self.tmp)
-        self.assertIsNotNone(short.cumulative_gdd)
-        self.assertIsNotNone(long.cumulative_gdd)
-        self.assertLess(short.cumulative_gdd, long.cumulative_gdd)
+        self.assertIsNone(short.cumulative_gdd)
+        self.assertIsNone(long.cumulative_gdd)
+        for result in (short, long):
+            self.assertIn("gap:missing-observation-source", {row.rule for row in result.defects})
         self.assertEqual(DEFAULT_DRIVE_DAYS, 165)
 
 

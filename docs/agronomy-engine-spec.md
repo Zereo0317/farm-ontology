@@ -103,8 +103,8 @@ soybean basal coefficients (ini 0.15 / mid 1.15 / end 0.50; VERIFY
 [FAO-56-T17]) placed on the profile's own stage thresholds; the daily
 GDD input is `t_mean_c` when the row carries it, else the
 `(t_max+t_min)/2` textbook mean from the SAME row (the basis used is
-declared per trace row); days with no temperature at all contribute
-zero GDD, published in the trace, never interpolated.
+declared per trace row); days with no temperature at all now refuse with a named gap; they never
+contribute an assumed zero GDD.
 
 Remaining declared simplifications (all in `IRRIGATION_CONFIG_SOURCE_NOTE`):
 flat 20 % runoff haircut (conservative: never hides water need), no
@@ -267,3 +267,46 @@ Pipeline obligations implied by this contract, in priority order:
 Failure posture: if WS2 emits a row violating the contract, the engine
 raises a NAMED gap citing the offending index/field — the pipeline gets a
 machine-readable complaint, not a silent degradation.
+
+
+### Irrigation state and point-in-time migration
+
+Operational irrigation calls require `IrrigationInitialState` with the
+end-of-day date immediately before the first trace row, cumulative GDD,
+root and surface depletion, and an evidence reference. Each row must
+declare `source_kind` as `observation` or `forecast` and an aware
+`availability_time` no later than the query instant. Observations must be
+completed before the query date. Missing temperature, non-contiguous
+dates, and missing or future availability refuse with named gaps. The
+returned `ending_state` can seed a contiguous next trace without losing
+the development or water balance.
+
+Legacy archive fixtures lack state and point-in-time availability evidence;
+the fieldtest harness now reports `gap:missing-initial-state` instead of
+turning those rows into an operational recommendation. Test-only synthetic
+fixtures may declare synthetic evidence; this does not validate a field
+state, a forecast source, or an agronomic model. A caller-provided evidence
+string is not independent verification, and phenology reading provenance
+still requires a trusted verification boundary before operational use.
+
+
+### Phenology and spray time guards
+
+Phenology refuses nonfinite temperatures, nonpositive/nonfinite native
+resolution, missing anchor days, and gaps in the daily sequence. An aware
+as-of instant is required; each row must declare itself an observation
+with an aware availability time no later than that instant, and its calendar
+date must precede the instant's UTC date. Forecasts, current/future dates,
+missing metadata and unavailable data refuse. The resulting reading carries
+the as-of instant and latest declared source availability; irrigation
+refuses readings whose timestamps cannot support its own decision instant.
+These are caller-supplied assertions, not authenticated provenance or a
+verification of the source's local-day cutoff. A trusted source registry and
+local-calendar semantics remain required before operational reliance.
+Legacy archive fixtures lacking this metadata refuse; synthetic test-only
+metadata is never assigned to real archive captures.
+
+Spray scans use earlier hours only as context: candidate windows include
+only complete hourly slots whose starts are at or after the scan instant.
+This does not establish product-label suitability, source availability,
+or forecast accuracy.

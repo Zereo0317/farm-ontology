@@ -49,6 +49,15 @@ class BoundaryWalkTests(unittest.TestCase):
         body = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(body["parcel_name"], "toyomi-1")
 
+    def test_three_walks_same_second_preserve_every_record(self):
+        from datetime import datetime, timezone
+        from unittest.mock import patch
+        instant = datetime(2026, 11, 22, 12, tzinfo=timezone.utc)
+        with patch("farm_ontology.record._now", return_value=instant):
+            saved = [dispatch(self._full()) for _ in range(3)]
+        self.assertEqual(len({item["file"] for item in saved}), 3)
+        self.assertEqual(len(dispatch({"op": "list_walks"})["walks"]), 3)
+
     def test_four_metred_corners_yield_a_shoelace_estimate(self):
         saved = dispatch(self._full())
         walk = saved["walk"]

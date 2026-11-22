@@ -259,7 +259,7 @@ def grant_state_at(
     """Judge one grant at ``as_of``. Anything unsure is CLOSED.
 
     ``as_of=None`` judges against the current clock. States:
-    ``GRANT_VALID`` only when every condition provably holds; expiry
+    No caller-supplied reference alone establishes provider rights; expiry
     parity means already expired (a grant is not valid at the instant
     it dies); a missing grant object is ``GRANT_CLOSED`` outright; a
     specimen-flagged grant is ``GRANT_SPECIMEN`` no matter what its
@@ -273,9 +273,8 @@ def grant_state_at(
             GRANT_SPECIMEN,
             f"specimen grant never unlocks (licences verdict: {detail})",
         )
-    if not grant.permits_financial_use or not grant.permits_market_data_use:
-        suffix = f" (licences verdict: {grant.state_detail})" if grant.state_detail else ""
-        return GRANT_CLOSED, "the recorded grant does not permit this use" + suffix
+    if grant.state_detail in {"no_grant", "unknown_feed", "use_not_granted", "provider_rights_unverified"}:
+        return GRANT_CLOSED, f"the recorded grant does not permit this use (licences verdict: {grant.state_detail})"
     try:
         expiry = parse_time(grant.expiry)
     except (TypeError, ValueError):
@@ -285,7 +284,13 @@ def grant_state_at(
     moment = ensure_utc(as_of, "as_of")
     if expiry <= moment:
         return GRANT_EXPIRED, f"the grant expired at {expiry.isoformat()}"
-    return GRANT_VALID, "permit provably alive"
+    if not grant.permits_financial_use or not grant.permits_market_data_use:
+        suffix = f" (licences verdict: {grant.state_detail})" if grant.state_detail else ""
+        return GRANT_CLOSED, "the recorded grant does not permit this use" + suffix
+    # A structurally live reference does not establish provider permission.
+    # Callers also use this helper directly, so the provenance barrier must
+    # not exist only in the higher-level artefact validator.
+    return GRANT_CLOSED, "provider rights unverified; reference claims are not authorization"
 
 
 def grant_ref_from_v2_like(**fields) -> GrantRef:
@@ -326,9 +331,8 @@ def grant_ref_from_ws6_grant(grant, *, at=None) -> tuple[str, GrantRef | None]:
     - a SPECIMEN grant is never live ⇒ ``GRANT_CLOSED`` with the specimen
       reason and no ref — specimen paper must never unlock a rail;
     - an expired grant ⇒ ``GRANT_EXPIRED`` and no ref;
-    - a live grant ⇒ ``GRANT_VALID`` plus the adapted ref, with
-      ``permits_financial_use`` true iff the grant carries any financial
-      use (the class-C family) and ``permits_market_data_use`` mirroring it.
+    - a live grant ⇒ ``GRANT_CLOSED`` plus a non-permitting adapted ref:
+      the grant's claims alone do not prove independent provider rights.
 
     Returns ``(state, ref_or_None)``; never raises for judged states —
     a malformed WS6 grant object is ``GRANT_UNPARSEABLE``.
@@ -342,7 +346,6 @@ def grant_ref_from_ws6_grant(grant, *, at=None) -> tuple[str, GrantRef | None]:
         return GRANT_UNPARSEABLE, f"ws6 grant is_live_at failed: {error}"
     if not live:
         return GRANT_EXPIRED, None
-    financial = bool(getattr(grant, "financial_uses", ()) or ())
     ref = GrantRef(
         name=str(getattr(grant, "grant_id", "")),
         issuer=str(getattr(grant, "issuer", "")),
@@ -355,10 +358,11 @@ def grant_ref_from_ws6_grant(grant, *, at=None) -> tuple[str, GrantRef | None]:
         purpose=str(getattr(grant, "purpose", "")),
         expiry=str(getattr(grant, "expiry_utc", "")),
         evidence_url=str(getattr(grant, "evidence_url", "")),
-        permits_financial_use=financial,
-        permits_market_data_use=financial,
+        permits_financial_use=False,
+        permits_market_data_use=False,
+        state_detail="provider_rights_unverified",
     )
-    return GRANT_VALID, ref
+    return GRANT_CLOSED, ref
 
 
 # ----------------------- doctrine section 4 rails ---------------------- #
@@ -589,6 +593,10 @@ def provenance_check(
     violations: list[RailViolation] = []
     registry = artefact.grant_registry
     if registry is None:
+        if artefact.grants_by_feed or artefact.market_decisive_feeds:
+            violations.append(RailViolation(
+                "R5-provenance", "no trusted provider-rights registry is configured"
+            ))
         return violations
     if not hasattr(registry, "contains"):
         violations.append(
@@ -604,6 +612,13 @@ def provenance_check(
         grant = artefact.grants_by_feed.get(feed)
         if grant is None:
             continue
+        # Membership in a caller-supplied fingerprint set is not authority:
+        # even a specimen fingerprint can be copied into an altered GrantRef.
+        # No verified provider-rights registry exists, so no ref may unlock.
+        violations.append(RailViolation(
+            "R5-provenance",
+            f"feed {feed}: provider rights are unverified; caller-supplied registry cannot authorize use",
+        ))
         if not grant.fingerprint:
             violations.append(
                 RailViolation(
@@ -764,7 +779,13 @@ def rail_4_consent_first_upward_flow(
                 "the consent grant carries no purpose or no scope",
             )
         ]
-    return []
+    # A caller-created ConsentGrant and URL do not establish the identity of
+    # the grantor, the permitted data/purpose, or revocation status. Until a
+    # trusted consent store and authenticated principal binding exist, refuse.
+    return [RailViolation(
+        RAIL_4_CONSENT_FLOW,
+        "farmer consent cannot be verified against a trusted consent registry",
+    )]
 
 
 def rail_5_truthfulness_gate(
@@ -786,8 +807,29 @@ def rail_5_truthfulness_gate(
     """
     violations: list[RailViolation] = []
     cited = set(artefact.market_decisive_feeds)
+    if not cited:
+        violations.append(RailViolation(
+            RAIL_5_TRUTHFULNESS,
+            "no market-decisive feeds were declared; source provenance cannot be assessed",
+        ))
+    if len(cited) != len(artefact.market_decisive_feeds) or any(
+        not isinstance(feed, str) or not feed.strip() for feed in cited
+    ):
+        violations.append(RailViolation(
+            RAIL_5_TRUTHFULNESS, "market-decisive feed identifiers must be nonempty and unique"
+        ))
+        return violations
     contributed: dict[str, Contribution] = {}
     for contribution in artefact.contributions:
+        if contribution.feed in contributed:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS, f"feed {contribution.feed} has duplicate contributions"
+            ))
+        if contribution.feed not in cited:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS,
+                f"feed {contribution.feed} contributes without a declared market-decisive source",
+            ))
         contributed[contribution.feed] = contribution
     for feed in sorted(cited):
         contribution = contributed.get(feed)
@@ -800,10 +842,17 @@ def rail_5_truthfulness_gate(
                 )
             )
             continue
-        if (
-            contribution.contribution_time is not None
-            and contribution.contribution_time > as_of
-        ):
+        if contribution.contribution_time is None:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS,
+                f"feed {feed} has no recorded contribution availability time",
+            ))
+        elif not isinstance(contribution.contribution_time, datetime) or contribution.contribution_time.tzinfo is None or contribution.contribution_time.utcoffset() is None:
+            violations.append(RailViolation(
+                RAIL_5_TRUTHFULNESS,
+                f"feed {feed} has an invalid contribution availability time",
+            ))
+        elif contribution.contribution_time > as_of:
             raise RailError.for_time(
                 f"feed {feed} contribution_time "
                 f"{contribution.contribution_time.isoformat()} > as_of "
@@ -927,6 +976,13 @@ def premium_budget_check(artefact: "PlaybookArtefact") -> list[RailViolation]:
     violations: list[RailViolation] = []
     registry = artefact.cap_sheet_registry
     budget = artefact.premium_budget
+    # A hash in a caller-supplied registry authenticates neither the signer
+    # nor the cap values. Keep this gate closed until verified, trusted cap
+    # sheets and numeric-limit checks are available.
+    violations.append(RailViolation(
+        RAIL_6_PREMIUM_CAP,
+        "verified signed cap sheet and numeric cap are unavailable",
+    ))
     if registry is None:
         violations.append(
             RailViolation(

@@ -23,8 +23,25 @@ jobs:
           GCLOUD_CONFIGURATION: segescloud
           GCP_PROJECT: seges-ai
 
+  web-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies
+        run: npm ci --ignore-scripts
+      - name: Test web security and routing
+        run: node --test tests/*.test.cjs
+
   build:
-    needs: unittest
+    needs: [unittest, web-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,17 +73,17 @@ jobs:
             --project=seges-ai --region=asia-east1 \
             --source . \
             --allow-unauthenticated \
-            --set-secrets PLANET_API_KEY=Planet-labs:latest \
-            --set-env-vars GCP_PROJECT=seges-ai,EE_PROJECT=seges-ai,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records
+            --update-secrets PLANET_API_KEY=Planet-labs:latest \
+            --update-env-vars GCP_PROJECT=seges-ai,EE_PROJECT=seges-ai,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records,FARM_RELEASE_COMMIT=${GITHUB_SHA}
       - name: Pin staging traffic to the latest revision
         run: |
           gcloud run services update-traffic farm-seges-ai-staging \
             --project=seges-ai --region=asia-east1 --to-latest
           gcloud run services describe farm-seges-ai-staging \
-            --project=seges-ai --region=asia-east1 \
-            --format='value(status.traffic[0].revisionName,status.latestCreatedRevisionName)'
+            --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/staging.json"
+          python -c 'import json,sys; s=json.load(open(sys.argv[1]))["status"]; t=[r for r in s["traffic"] if r.get("percent",0)>0]; assert len(t)==1 and t[0]["percent"]==100 and t[0]["revisionName"]==s["latestCreatedRevisionName"]' "$RUNNER_TEMP/staging.json"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 https://farm-seges-ai-staging-451400509859.asia-east1.run.app/livez > /dev/null
 
   # Production is NOT touched by this workflow. Deploys to prod go through
   # .github/workflows/deploy-prod-tag.yml, which is workflow_dispatch-only.
-  # Merge-to-prod without a green pipeline is therefore impossible: staging
-  # deploys (above) require green tests + green docker build.
+  # Production independently verifies CI and staging before promotion.

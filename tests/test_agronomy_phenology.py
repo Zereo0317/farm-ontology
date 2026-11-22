@@ -12,11 +12,10 @@ from farm_ontology.agronomy.phenology import (
     METHOD_NOISE_GDD,
     THRESHOLD_TABLE_VERSION,
     daily_gdd_contribution,
-    phenology_reading,
     profile_or_raise,
 )
 from farm_ontology.agronomy.common import AgronomyGap, CONFIG_VERSION
-from tests.agronomy_fixtures import daily_season_rows
+from tests.agronomy_fixtures import daily_season_rows, synthetic_phenology_reading as phenology_reading
 
 SOWING = datetime(2026, 5, 20, tzinfo=timezone.utc)
 EMERGENCE = datetime(2026, 6, 2, tzinfo=timezone.utc)
@@ -242,6 +241,83 @@ class MalformedInputTests(unittest.TestCase):
         with self.assertRaises(AgronomyGap) as ctx:
             phenology_reading(rows, sowing=SOWING, emergence=None)
         self.assertEqual(ctx.exception.gap, "grid-resolution-mixed")
+
+
+class NumericAndTimeRegressionTests(unittest.TestCase):
+    def test_nonfinite_temperatures_and_invalid_resolutions_refuse(self):
+        for key, value in (("t_mean_c", float("nan")), ("t_mean_c", float("inf")),
+                           ("native_resolution_km", float("nan")),
+                           ("native_resolution_km", float("inf")),
+                           ("native_resolution_km", 0), ("native_resolution_km", -5)):
+            row = {"date": "2026-05-20", "t_mean_c": 20.0, "native_resolution_km": 5}
+            row[key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(AgronomyGap):
+                phenology_reading([row], sowing=SOWING, emergence=None)
+        for value in (float("nan"), float("inf")):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                daily_gdd_contribution(value)
+
+    def test_missing_anchor_day_and_missing_intermediate_day_refuse(self):
+        for dates, reason in ((["2026-05-21"], "missing-anchor-day"),
+                              (["2026-05-20", "2026-05-22"], "daily-sequence-hole")):
+            rows = [{"date": day, "t_mean_c": 20, "native_resolution_km": 5} for day in dates]
+            with self.subTest(dates=dates), self.assertRaises(AgronomyGap) as ctx:
+                phenology_reading(rows, sowing=SOWING, emergence=None)
+            self.assertEqual(ctx.exception.gap, reason)
+
+    def test_as_of_refuses_future_rows_and_future_anchor(self):
+        row = {"date": "2026-05-22", "t_mean_c": 20.0, "native_resolution_km": 5}
+        with self.assertRaises(AgronomyGap) as ctx:
+            phenology_reading([row], sowing=SOWING, emergence=None,
+                              at=datetime(2026, 5, 21, tzinfo=timezone.utc))
+        self.assertEqual(ctx.exception.gap, "future-row")
+        with self.assertRaises(AgronomyGap) as ctx:
+            phenology_reading([row], sowing=SOWING, emergence=None,
+                              at=datetime(2026, 5, 19, tzinfo=timezone.utc))
+        self.assertEqual(ctx.exception.gap, "future-anchor")
+        with self.assertRaises(ValueError):
+            phenology_reading([row], sowing=SOWING, emergence=None,
+                              at=datetime(2026, 5, 22))
+
+
+class ObservationAvailabilityRegressionTests(unittest.TestCase):
+    def setUp(self):
+        self.at = datetime(2026, 5, 22, 12, tzinfo=timezone.utc)
+        self.row = {"date": "2026-05-20", "t_mean_c": 20, "native_resolution_km": 5,
+                    "source_kind": "observation", "availability_time": "2026-05-21T00:00:00+00:00"}
+
+    def test_missing_as_of_and_missing_source_metadata_refuse(self):
+        from farm_ontology.agronomy.phenology import phenology_reading as actual
+        with self.assertRaises(AgronomyGap) as ctx:
+            actual([self.row], sowing=SOWING, emergence=None)
+        self.assertEqual(ctx.exception.gap, "missing-as-of")
+        for key, expected in (("source_kind", "missing-observation-source"),
+                              ("availability_time", "missing-row-availability")):
+            row = dict(self.row); del row[key]
+            with self.subTest(key=key), self.assertRaises(AgronomyGap) as ctx:
+                actual([row], sowing=SOWING, emergence=None, at=self.at)
+            self.assertEqual(ctx.exception.gap, expected)
+
+    def test_unavailable_forecast_and_incomplete_observation_refuse(self):
+        from farm_ontology.agronomy.phenology import phenology_reading as actual
+        for changes, expected in (({"availability_time": "2026-05-23T00:00:00+00:00"}, "unavailable-row"),
+                                  ({"availability_time": "2026-05-21T00:00:00"}, "missing-row-availability"),
+                                  ({"source_kind": "forecast"}, "missing-observation-source"),
+                                  ({"date": "2026-05-22"}, "missing-anchor-day")):
+            row = dict(self.row, **changes)
+            with self.subTest(changes=changes), self.assertRaises(AgronomyGap) as ctx:
+                actual([row], sowing=SOWING, emergence=None, at=self.at)
+            self.assertEqual(ctx.exception.gap, expected)
+        rows = [dict(self.row, date=f"2026-05-{day:02d}") for day in (20, 21, 22)]
+        with self.assertRaises(AgronomyGap) as ctx:
+            actual(rows, sowing=SOWING, emergence=None, at=self.at)
+        self.assertEqual(ctx.exception.gap, "incomplete-day")
+
+    def test_result_records_as_of_and_source_availability(self):
+        from farm_ontology.agronomy.phenology import phenology_reading as actual
+        result = actual([self.row], sowing=SOWING, emergence=None, at=self.at).to_payload()
+        self.assertEqual(result["as_of"], self.at.isoformat())
+        self.assertEqual(result["latest_source_availability"], self.row["availability_time"])
 
 
 class CultivarProfileTests(unittest.TestCase):

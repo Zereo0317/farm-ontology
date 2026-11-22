@@ -118,7 +118,8 @@ class ScenarioEncodingTest(unittest.TestCase):
 
 class GrantStateTest(unittest.TestCase):
     def test_states_cover_happy_and_every_failure(self) -> None:
-        self.assertEqual(rl.grant_state_at(grant(), AS_OF), (rl.GRANT_VALID, "permit provably alive"))
+        self.assertEqual(rl.grant_state_at(grant(), AS_OF),
+                         (rl.GRANT_CLOSED, "provider rights unverified; reference claims are not authorization"))
         self.assertEqual(rl.grant_state_at(grant(expiry="2026-11-01T00:00:00+00:00"), AS_OF)[0], rl.GRANT_EXPIRED)
         self.assertEqual(rl.grant_state_at(grant(expiry="next quarter"), AS_OF)[0], rl.GRANT_UNPARSEABLE)
         self.assertEqual(rl.grant_state_at(None, AS_OF)[0], rl.GRANT_CLOSED)
@@ -135,7 +136,7 @@ class GrantStateTest(unittest.TestCase):
 class FailClosedTest(unittest.TestCase):
     def test_expired_grant_flips_validation_to_violations(self) -> None:
         healthy = rl.validate_playbook_artefact(artefact(), AS_OF)
-        self.assertEqual(healthy, ())
+        self.assertTrue(any(v.rail == "R5-provenance" for v in healthy))
         broken = artefact(grants_by_feed={SUBJECT_AMS_BID: grant(expiry="2026-11-01T00:00:00+00:00")})
         violations = rl.validate_playbook_artefact(broken, AS_OF)
         self.assertTrue(any(v.rail == rl.RAIL_5_TRUTHFULNESS and "expired" in v.detail for v in violations))
@@ -154,7 +155,7 @@ class FailClosedTest(unittest.TestCase):
         # the SAME artefact validated later, after expiry, must flip
         g = grant(expiry="2026-12-31T00:00:00+00:00")
         a = artefact(grants_by_feed={SUBJECT_AMS_BID: g})
-        self.assertEqual(rl.validate_playbook_artefact(a, AS_OF), ())
+        self.assertTrue(any(v.rail == "R5-provenance" for v in rl.validate_playbook_artefact(a, AS_OF)))
         later = datetime(2027, 1, 5, tzinfo=timezone.utc)
         self.assertTrue(rl.validate_playbook_artefact(a, later))
 
@@ -257,10 +258,11 @@ class RailViolationsTest(unittest.TestCase):
             carries_farmer_level_data=True,
             consent=rl.ConsentGrant("farmer-A", "market synthesis", "parcel yields", "2027-11-01T00:00:00+00:00", "url"),
         )
-        self.assertEqual(
-            [v for v in rl.validate_playbook_artefact(valid_consent, AS_OF) if v.rail == rl.RAIL_4_CONSENT_FLOW],
-            [],
-        )
+        self.assertTrue(any(
+            "trusted consent registry" in v.detail
+            for v in rl.validate_playbook_artefact(valid_consent, AS_OF)
+            if v.rail == rl.RAIL_4_CONSENT_FLOW
+        ))
 
     def test_r5_missing_contribution_triple(self) -> None:
         hollow = artefact(contributions=())
@@ -364,10 +366,11 @@ class Ws6GrantSeamTests(unittest.TestCase):
 
         grant = self._ws6(expiry="2099-01-01T00:00:00+00:00")
         state, ref = grant_ref_from_ws6_grant(grant, at=datetime(2026, 11, 18, tzinfo=timezone.utc))
-        self.assertEqual(state, GRANT_VALID)
+        self.assertEqual(state, "closed")
         self.assertIsNotNone(ref)
-        self.assertTrue(ref.permits_financial_use)
-        self.assertTrue(ref.permits_market_data_use)
+        self.assertFalse(ref.permits_financial_use)
+        self.assertFalse(ref.permits_market_data_use)
+        self.assertEqual(ref.state_detail, "provider_rights_unverified")
         self.assertIn("planet.psscene", ref.scope)
         self.assertEqual(ref.expiry, "2099-01-01T00:00:00+00:00")
 

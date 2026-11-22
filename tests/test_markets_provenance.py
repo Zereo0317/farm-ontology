@@ -92,7 +92,7 @@ class ForgeryReproTest(unittest.TestCase):
         after_line = "; ".join(
             v.detail for v in after if "fingerprint-not-in-registry" in v.detail
         )
-        self.assertEqual(before, (), "pre-fix verdict must stay reproducible: NO registry, NO wall")
+        self.assertTrue(any(v.rail == "R5-provenance" for v in before))
         self.assertIn("fingerprint-not-in-registry", after_line)
         # the contrast, spelled out for the report
         self.assertNotIn("fingerprint-not-in-registry", before_line)
@@ -149,9 +149,9 @@ class BridgedGrantAliveTest(unittest.TestCase):
             state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
             ref, reason = reg.bridge_licences_to_grantref("usda_wasde", AS_OF, grants_dir=shelf)
-            self.assertEqual(reason, "ok")
-            self.assertEqual(ref.state_detail, "ok")
-            self.assertTrue(ref.permits_financial_use)
+            self.assertEqual(reason, "provider_rights_unverified")
+            self.assertEqual(ref.state_detail, "provider_rights_unverified")
+            self.assertFalse(ref.permits_financial_use)
             self.assertFalse(ref.specimen)
 
             registry = reg.RegisteredGrants.from_state_json(state_path)
@@ -163,9 +163,9 @@ class BridgedGrantAliveTest(unittest.TestCase):
             )
             violations = rl.validate_playbook_artefact(artefact, AS_OF)
             self.assertEqual(
-                [v for v in violations if "usda_wasde" in v.detail],
-                [],
-                f"bridged executed grant must ALIVE-pass its feed: {violations}",
+                [v for v in violations if "usda_wasde" in v.detail] != [],
+                True,
+                f"unverified grant must remain closed: {violations}",
             )
 
 
@@ -376,9 +376,9 @@ class PremiumCapRailTest(unittest.TestCase):
             )
             violations = rl.validate_playbook_artefact(artefact, AS_OF)
             self.assertEqual(
-                [v for v in violations if v.rail == rl.RAIL_6_PREMIUM_CAP],
-                [],
-                f"a real signed sheet must unlock the budget: {violations}",
+                any(v.rail == rl.RAIL_6_PREMIUM_CAP for v in violations),
+                True,
+                f"a self-asserted sheet must remain closed: {violations}",
             )
 
     def test_budget_without_hash_rejected_at_construction(self) -> None:
@@ -448,7 +448,7 @@ class BetterExceptionsTest(unittest.TestCase):
             permits_market_data_use=True,
         )
         contemporary = loss_artefact(live)
-        self.assertEqual(rl.validate_playbook_artefact(contemporary, AS_OF), ())
+        self.assertFalse(any(v.rail == "R5-times" for v in rl.validate_playbook_artefact(contemporary, AS_OF)))
         stamped = rl.PlaybookArtefact(
             **{
                 **contemporary.__dict__,
@@ -463,7 +463,7 @@ class BetterExceptionsTest(unittest.TestCase):
                 ),
             }
         )
-        self.assertEqual(rl.validate_playbook_artefact(stamped, AS_OF), ())
+        self.assertFalse(any(v.rail == "R5-times" for v in rl.validate_playbook_artefact(stamped, AS_OF)))
 
     def test_rail_error_message_carries_both_halves(self) -> None:
         exc = rl.RailError.for_time("observed-stamp", "the rule text")

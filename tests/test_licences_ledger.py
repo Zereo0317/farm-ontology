@@ -35,8 +35,8 @@ def _live_grant(**overrides) -> Grant:
 
 # The timeline table: same feed, same grant, three instants straddling expiry.
 TIMELINE = (
-    (datetime(2026, 12, 1, tzinfo=timezone.utc), True),      # mid-grant
-    (datetime.fromisoformat(EXPIRY), True),                  # expiry instant, inclusive
+    (datetime(2026, 12, 1, tzinfo=timezone.utc), False),     # rights unverified
+    (datetime.fromisoformat(EXPIRY), False),                 # rights unverified
     (datetime(2026, 12, 17, 15, 0, 0, tzinfo=timezone.utc), False),  # one tick past
 )
 _FIN_STATE = {"feed_id": "planet.psscene", "permits_financial_use": True}
@@ -44,6 +44,13 @@ _REC_FALSE = {"feed_id": "planet.psscene", "permits_financial_use": False}
 
 
 class MidTimelineDemotionTests(unittest.TestCase):
+    def test_founder_authorization_and_asserted_feed_do_not_unlock_provider_rights(self):
+        founder = next(g for g in load_grants(DEFAULT_GRANTS_DIR)
+                       if g.grant_id == "founder-operator-2026-11-19")
+        at = datetime(2026, 11, 22, tzinfo=timezone.utc)
+        self.assertFalse(effective_permits_financial_use(_FIN_STATE, [founder], at))
+        self.assertEqual(demoted_reason(_FIN_STATE, [founder], at), "provider_rights_unverified")
+
     def test_automatic_demotion_across_the_three_dates(self):
         grant = _live_grant()
         for at, expected in TIMELINE:
@@ -114,7 +121,7 @@ class EdgeAndNarrativeTests(unittest.TestCase):
 
     def test_demoted_reason_narrates_each_failure_family(self):
         grant = _live_grant()
-        self.assertIsNone(demoted_reason(_FIN_STATE, [grant], TIMELINE[0][0]))
+        self.assertEqual(demoted_reason(_FIN_STATE, [grant], TIMELINE[0][0]), "provider_rights_unverified")
         self.assertEqual(demoted_reason(_REC_FALSE, [grant], TIMELINE[0][0]), "recorded_false")
         self.assertEqual(demoted_reason(_FIN_STATE, [], TIMELINE[0][0]), "no_grant")
         financial_specimen = Grant.from_payload(

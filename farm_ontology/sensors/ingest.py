@@ -28,6 +28,7 @@ No network. No clock reads. Everything the store needs is in the payload.
 from __future__ import annotations
 
 import os
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -166,7 +167,8 @@ def _parse_expiry(text: str):
 def _number(value: object) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    return float(value)
+    value = float(value)
+    return value if math.isfinite(value) else None
 
 
 def _reject_reasons(record: dict) -> list[tuple[str, str]]:
@@ -195,11 +197,12 @@ def _reject_reasons(record: dict) -> list[tuple[str, str]]:
         tip_mm = _number(record.get("tip_mm"))
         if tips is None or tips < 0:
             reasons.append(("R-property", "tip_count must be a non-negative number"))
-        tip_mm = 0.2794 if tip_mm is None else tip_mm
-        if tip_mm <= 0:
+        if tip_mm is None or tip_mm <= 0:
             reasons.append(("R-property", "tip_mm must be positive"))
-        if tips is not None and tip_mm > 0 and tips * tip_mm > spec.high:
+        if tips is not None and tip_mm is not None and tip_mm > 0 and tips * tip_mm > spec.high:
             reasons.append(("R-property", "derived rainfall exceeds the class range"))
+    elif device_class == "soil-vwc" and (_number(record.get("depth_cm")) is None or _number(record.get("depth_cm")) <= 0):
+        reasons.append(("R-property", "depth_cm must be explicitly provided and positive"))
     elif value is not None and not spec.low <= value <= spec.high:
         reasons.append(
             ("R-property", f"value {value} outside the {device_class} range")
@@ -239,8 +242,7 @@ def _reject_reasons(record: dict) -> list[tuple[str, str]]:
 
 def _depth_token(record: dict) -> str:
     depth = _number(record.get("depth_cm"))
-    if depth is None or depth <= 0:
-        depth = 10.0
+    assert depth is not None and depth > 0
     if float(depth).is_integer():
         return str(int(depth)).zfill(2)
     return str(depth).replace(".", "p")
@@ -306,7 +308,8 @@ def ingest_record(store: Store, record: dict, *, at: datetime) -> CommitResult:
     value = _number(record.get("value"))
     if device_class == "rain-tip":
         tips = _number(record.get("tip_count")) or 0.0
-        tip_mm = _number(record.get("tip_mm")) or 0.2794
+        tip_mm = _number(record.get("tip_mm"))
+        assert tip_mm is not None
         value = tips * tip_mm
     assert value is not None
     stamp = phenomenon_start.strftime("%Y%m%dT%H%M%SZ")

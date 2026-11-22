@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Shared-cookie gate for the hosted field app.
  *
- * When WEB_ACCESS_TOKEN is unset the gate is off entirely (local dev, or a
- * knowingly-public deployment). When set, every route except /login,
+ * When WEB_ACCESS_TOKEN is unset, protected routes fail closed.
+ * Every route except /login,
  * /api/access, /livez and static assets requires a cookie holding the token.
  * API paths answer 401 in the backend's gap shape instead of redirecting.
  */
@@ -45,7 +45,7 @@ export function negotiateLocale(acceptLanguage: string | null): Supported {
   return "en";
 }
 
-const PUBLIC_PREFIXES = ("/login|/api/access|/livez|/report|/fieldday|/walk|/api/boundaries|/api/scene-thumb|/reports|/icon.svg|/pitch").split("|");
+const PUBLIC_PREFIXES = ("/login|/api/access|/livez|/report|/fieldday|/api/scene-thumb|/reports|/icon.svg|/pitch").split("|");
 
 export const config = {
   // every page including /login participates, so first-visit language
@@ -82,9 +82,16 @@ export function middleware(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
   );
 
-  // Public paths skip enforcement but still carry the locale stamp.
-  if (!expected || isPublic || request.cookies.get(ACCESS_COOKIE)?.value === expected) {
+  // Public paths remain available, but missing credentials never open the gate.
+  if (isPublic || (expected && request.cookies.get(ACCESS_COOKIE)?.value === expected)) {
     return stamp(NextResponse.next());
+  }
+
+  if (!expected) {
+    return stamp(NextResponse.json(
+      { gap: true, reason: "web gate: access is not configured", upstream_status: null },
+      { status: 503 },
+    ));
   }
 
   if (pathname.startsWith("/api/")) {

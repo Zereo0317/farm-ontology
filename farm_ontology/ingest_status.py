@@ -69,10 +69,14 @@ def job_of_row_name(filename: str) -> str | None:
     if not base.endswith(".json"):
         return None
     stem = base[: -len(".json")]
-    date, separator, job = stem.partition("-")
-    if not separator or len(date) != 8 or not date.isdigit() or not job:
+    # Accept both legacy daily filenames and timestamped execution filenames.
+    date, separator, remainder = stem.partition("-")
+    if not separator or not date[:8].isdigit():
         return None
-    return job if job in WATCHED_JOBS else None
+    for job in WATCHED_JOBS:
+        if remainder == job or remainder.endswith("-" + job):
+            return job
+    return None
 
 
 def summarize_entry(filename: str, row: dict) -> dict:

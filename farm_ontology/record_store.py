@@ -89,9 +89,41 @@ class LocalBackend:
     def write(self, rel: str, data: bytes) -> None:
         path = self._path(rel)
         path.parent.mkdir(parents=True, exist_ok=True)
-        staging = path.with_name(path.name + ".part")
-        staging.write_bytes(data)
-        os.replace(staging, path)
+        # A per-write staging name prevents concurrent writers from stealing
+        # each other's .part file. Replacement is atomic, but remains last-
+        # writer-wins for mutable objects; it is not a read-modify-write lock.
+        fd, staging = tempfile.mkstemp(prefix=".record-", dir=path.parent)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            # Windows can transiently deny competing atomic replacements.
+            for attempt in range(8):
+                try:
+                    os.replace(staging, path)
+                    break
+                except PermissionError:
+                    if os.name != "nt" or attempt == 7:
+                        raise
+                    time.sleep(0.01 * (attempt + 1))
+        finally:
+            if os.path.exists(staging):
+                os.unlink(staging)
+
+    def write_once(self, rel: str, data: bytes) -> None:
+        """Atomically create an immutable record; never replace an existing one."""
+        path = self._path(rel)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".record-", dir=path.parent)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.link(temporary, path)  # atomic create, fails if path already exists
+        finally:
+            os.unlink(temporary)
 
     def read_text(self, rel: str) -> str:
         return self._path(rel).read_text(encoding="utf-8")
@@ -261,6 +293,18 @@ class GcsBackend:
             data,
         )
         self._expect(status, body, "write", object_name)
+
+    def write_once(self, rel: str, data: bytes) -> None:
+        """Create only if no live object exists, enforced by GCS."""
+        object_name = self.object_name(rel)
+        url = (f"{UPLOAD_API}/b/{self.bucket}/o?uploadType=media"
+               f"&name={self._encoded(object_name)}&ifGenerationMatch=0")
+        status, _, body = self._request_fn(
+            "POST", url, {**self._authorization(), "Content-Type": "application/json"}, data
+        )
+        if status == 412:
+            raise FileExistsError(errno.EEXIST, "object already exists", object_name)
+        self._expect(status, body, "create", object_name)
 
     def read_bytes(self, rel: str) -> bytes:
         """Binary read (archives are not text); 404 still raises FileNotFoundError."""

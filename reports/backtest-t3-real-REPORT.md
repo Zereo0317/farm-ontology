@@ -1,5 +1,8 @@
 # Backtest T3-R — staged selling on REAL CBOT ZS=F data (2021-2025)
 
+> **2026-11-22 evidence hold:** Do not rely on this report for investment or return claims. Its quote units, threshold comparison, point-in-time provenance, season drawdown, and reproduction command require independent reconstruction. The reported dollar values may be off by a factor of 100; correcting that alone would not validate the strategy.
+
+
 > **NOT ADVICE — DECISION-SUPPORT EVIDENCE ONLY.** Real data: CBOT soybean
 > front futures (ZS=F), daily closes 2021-01-04 .. 2025-12-31 (1,256 sessions,
 > Yahoo Finance chart API; carry rows on non-trading harvest days marked

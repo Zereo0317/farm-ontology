@@ -2,13 +2,12 @@
 
 Pipelines companion to the durable record store. Each run:
 
-1. reads every object of the FIELD RECORD (``field-notes/...`` through the
+1. reads every JSON object of the FIELD RECORD (``field-notes/...`` through the
    same backend the record seam chose),
 2. composes them deterministically into one gzipped tar
-   (``<root>/field-archive/YYYYMMDD/record-snapshot-<RUNSTAMP>.tar.gz``),
-3. appends ONE row per snapshot to the day's manifest
-   (``field-archive/manifest/YYYYMMDD.ndjson``), deduplicating on the
-   snapshot object name, and
+   (``field-archive/YYYYMMDD/record-snapshot-<RUNSTAMP>-<SHA256>.tar.gz``),
+3. creates an immutable per-snapshot manifest row under
+   ``field-archive/manifest/YYYYMMDD/`` and
 4. records its run in the shared WS2 run log (``job="record-export"``),
    inheriting the 3-strike alert machinery of
    ``farm_ontology.ingest_core`` for free.
@@ -18,10 +17,9 @@ Design rules respected:
 - Retention/pruning is a WRITTEN POLICY ONLY (deploy/record-retention-
   policy.md); this module never deletes anything, not even old
   snapshots. Pruning is approval-gated infra work.
-- Idempotence: fixed names from the injected clock; a re-run with the
-  same ``--now`` reproduces byte-identical archives and does NOT add a
-  second manifest row (dedupe on the object name). A failure never
-  skips its run row.
+- Idempotence: the same clock and snapshot content reproduce the same
+  names and bytes. Existing different content at a chosen name is refused.
+  A retry using a different clock is a separate snapshot. Failures are logged.
 - Honesty: the manifest row carries the archive's sha256 and the member
   count so a restore can verify completeness without trusting the tar
   reader. All members are read back once after composition.
@@ -70,8 +68,8 @@ def record_backend():
 def archive_backend():
     """Backend of the ARCHIVE prefix, mirroring record/pipes composition.
 
-    Local: ``<record root>/field-archive``. GCS: the durable bucket with
-    the dedicated ``field-archive`` prefix. Rel paths are identical
+    Local: ``<record root>/field-archive`` (not an independent failure domain).
+    GCS: a separately configured bucket with ``field-archive`` prefix. Rel paths are identical
     under both, like every other house subtrees.
     """
     from farm_ontology.record import record_dir
@@ -82,9 +80,12 @@ def archive_backend():
         base = Path(root) if root else _REPO_ROOT / "field-notes"
         return LocalBackend(base.parent / ARCHIVE_PREFIX)
     if name == "gcs":
-        bucket = os.environ.get("FARM_RECORD_BUCKET", "").strip()
-        if not bucket:
+        source_bucket = os.environ.get("FARM_RECORD_BUCKET", "").strip()
+        bucket = os.environ.get("FARM_ARCHIVE_BUCKET", "").strip()
+        if not source_bucket:
             raise ValueError("FARM_RECORD_BACKEND=gcs requires FARM_RECORD_BUCKET")
+        if not bucket or bucket == source_bucket:
+            raise ValueError("FARM_ARCHIVE_BUCKET must name a separate archive bucket")
         return GcsBackend(bucket, ARCHIVE_PREFIX)
     raise ValueError(f"FARM_RECORD_BACKEND must be local or gcs, got {name!r}")
 
@@ -98,9 +99,9 @@ def _gather_members(backend) -> list[tuple[str, bytes]]:
     identical on either backend (tests assert it).
     """
     names: set[str] = set()
-    for sub, pattern in (("", "*.json"), ("notes/", "*.json")):
-        for name in backend.list_paths(sub, pattern):
-            names.add(name)
+    # GCS listing is recursive by prefix; pathlib requires a recursive glob.
+    pattern = "**/*.json" if isinstance(backend, LocalBackend) else "*.json"
+    names.update(backend.list_paths("", pattern))
     members = []
     for name in sorted(names):
         members.append((name, backend.read_text(name).encode("utf-8")))
@@ -133,22 +134,27 @@ def _manifest_rel(day: str) -> str:
 
 
 def _read_manifest_lines(backend, day: str) -> list[dict]:
+    """Read historical daily NDJSON and new immutable per-snapshot rows."""
+    rows = []
     try:
         text = backend.read_text(_manifest_rel(day))
     except FileNotFoundError:
-        return []
-    rows = []
+        text = ""
     for line in text.splitlines():
-        stripped = line.strip()
-        if stripped:
-            rows.append(json.loads(stripped))
+        if line.strip():
+            rows.append(json.loads(line))
+    for rel in backend.list_paths(f"{MANIFEST_DIR}/{day}", "*.json"):
+        rows.append(json.loads(backend.read_text(rel)))
     return rows
 
 
-def _write_manifest_lines(backend, day: str, rows: list[dict]) -> str:
-    body = "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
-    backend.write(_manifest_rel(day), body.encode("utf-8"))
-    return _manifest_rel(day)
+def _write_once_or_verify(backend, rel: str, body: bytes) -> None:
+    """Identical retries succeed; a conflicting existing object is refused."""
+    try:
+        backend.write_once(rel, body)
+    except FileExistsError:
+        if backend.read_bytes(rel) != body:
+            raise RuntimeError(f"record export: immutable object conflict: {rel}")
 
 
 def run_export(backend, archive, *, now: datetime, verify_readback: bool = True) -> dict:
@@ -157,9 +163,9 @@ def run_export(backend, archive, *, now: datetime, verify_readback: bool = True)
     members = _gather_members(backend)
     payload = _compose_tar(members, now_epoch=int(now.timestamp()))
     digest = hashlib.sha256(payload).hexdigest()
-    object_name = f"{day_stamp(now)}/record-snapshot-{run_stamp(now)}.tar.gz"
+    object_name = f"{day_stamp(now)}/record-snapshot-{run_stamp(now)}-{digest}.tar.gz"
 
-    archive.write(object_name, payload)
+    _write_once_or_verify(archive, object_name, payload)
     if verify_readback:
         raw = archive.read_bytes(object_name)
         if hashlib.sha256(raw).hexdigest() != digest:
@@ -174,21 +180,17 @@ def run_export(backend, archive, *, now: datetime, verify_readback: bool = True)
             )
 
     day = day_stamp(now)
-    rows = _read_manifest_lines(archive, day)
     row = {
         "archive_object": object_name,
         "sha256": digest,
         "members": len(members),
         "bytes": len(payload),
         "backend": describe_backend(backend),
-        "written_at": iso(now),
+        "written_at": iso(now.replace(microsecond=0)),
         "manifest_note": "one row per snapshot object; snapshots are additive, pruning is policy-gated (deploy/record-retention-policy.md)",
     }
-    if not any(existing.get("archive_object") == object_name for existing in rows):
-        rows.append(row)
-        _write_manifest_lines(archive, day, rows)
-    else:
-        _write_manifest_lines(archive, day, rows)  # rewrite idempotent
+    manifest = f"{MANIFEST_DIR}/{day}/{run_stamp(now)}-{digest}.json"
+    _write_once_or_verify(archive, manifest, (json.dumps(row, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8"))
     finished = now
 
     run = {
@@ -217,7 +219,7 @@ def run_export(backend, archive, *, now: datetime, verify_readback: bool = True)
         "sha256": digest,
         "members": len(members),
         "bytes": len(payload),
-        "manifest": _manifest_rel(day),
+        "manifest": manifest,
         "run_log": log_rel,
         "strikes": strikes,
     }

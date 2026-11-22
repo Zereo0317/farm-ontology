@@ -8,7 +8,7 @@ module. The rules:
    ``farm-seges-ai-records``). Pipeline artefacts are siblings of the
    field record, never new storage infrastructure::
 
-       <backend root>/pipelines/run-log/YYYYMMDD-<job>.json
+       <backend root>/pipelines/run-log/<timestamp>-<id>-<job>.json
        <backend root>/pipelines/alerts/YYYYMMDD-<job>-ALERT.json
        <backend root>/pipelines/state/planet-last.json
        <backend root>/pipelines/state/hazard-seen-warnings.json
@@ -31,12 +31,9 @@ module. The rules:
    infra watchdog can watch the ``alerts/`` prefix later and translate a
    standing alert into whatever channel policy chooses.
 
-4. Idempotence. Job re-runs overwrite their own dated artefacts with
-   byte-identical content when inputs repeat (fixed day stamps, no wall
-   clock outside the injected ``now``) and dedupe rules (weather
-   equal-value rows, Planet scene-id deltas, hazard warning signatures)
-   prevent duplicate data rows. Running a job twice writes nothing new
-   the second time unless the underlying feed changed.
+4. Data deduplication. Weather equal-value rows, Planet scene-id deltas,
+   and hazard warning signatures prevent duplicate data rows. Every execution
+   is retained in the run log, including retries of identical data.
 """
 
 from __future__ import annotations
@@ -44,6 +41,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -391,7 +389,7 @@ def append_run(
     error: str | None = None,
     **extra,
 ) -> str:
-    """Append (dated-overwrite = one row per job per UTC day) a run row.
+    """Append an immutable run row, including repeated same-day executions.
 
     Fixed schema first, evidence extras after. This row is written even
     when the job raised; it is the durable success/failure audit trail
@@ -406,7 +404,11 @@ def append_run(
         "error": (str(error)[:400] if error else None),
         **extra,
     }
-    written = write_json(backend, log_rel(day_stamp(now), job), document)
+    # Include time and a unique id; keep the job suffix for legacy readers.
+    stamp = now.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    identity = f"{time.time_ns():020d}-{uuid.uuid4().hex}"
+    written = f"{RUN_LOG}/{stamp}-{identity}-{safe_name(job)}.json"
+    backend.write_once(written, (json.dumps(document, indent=2, sort_keys=True) + "\n").encode("utf-8"))
     invalidate_ingest_status_cache(reason=f"append_run:{job}")
     return written
 
@@ -426,7 +428,7 @@ def run_rows(backend, job: str | None = None) -> list[dict]:
 
 
 def consecutive_failures(backend, job: str) -> int:
-    """Failed rows since the newest success (date-order scan)."""
+    """Failed rows since the newest success (execution-order scan)."""
     streak = 0
     for row in reversed(run_rows(backend, job)):
         if row["ok"]:
@@ -463,8 +465,8 @@ def on_run_finished(
     """Strike bookkeeping after any run: success resets, failure counts.
 
     Fires (or refreshes, dated) the consecutive-failure ALERT at the
-    threshold, carrying the evidence trail. Idempotent: the same failed
-    day rewritten produces the same alert.
+    threshold, carrying the evidence trail. The dated alert is refreshed
+    on repeated failures; execution evidence remains append-only.
     """
     streak = consecutive_failures(backend, job)
     if run["ok"] or streak < CONSECUTIVE_FAILURE_ALERT_AT:

@@ -13,8 +13,8 @@ pulse fed by rainfall. SIMPLIFICATIONS — all declared:
   (RUNOFF_LOSS_FRACTION), biasing the balance toward MORE irrigation
   demand — the conservative direction for a water-stress adviser. Deep
   percolation is whatever pushes root depletion below zero (discarded).
-* Initial conditions are declared, not measured: the season starts at
-  INITIAL_ROOT_DEPLETION_MM and a dry surface (De = TEW).
+* Initial conditions must be supplied as a dated, evidence-bearing state;
+  no season start or zero-GDD assumption is silently made.
 
 THE HONEST-CLAIMS LADDER
 ------------------------
@@ -43,8 +43,9 @@ timestamps are injected.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+import math
+from datetime import date, datetime, timedelta
 from typing import Iterable, Mapping, Sequence
 
 from farm_ontology.agronomy.common import (
@@ -191,6 +192,7 @@ class CoverageEligibility:
     excluded: tuple[dict, ...]       # {sensor_iri, reason} for every refusal
     footprint_texts: tuple[str, ...] # claim lines earned, never hectares
     area_ha_claims: tuple[float, ...]  # ONLY sensor-declared areas
+    eligible_rows: tuple[Mapping, ...] = field(default=(), repr=False, compare=False)
 
     def to_payload(self) -> dict:
         return {
@@ -206,7 +208,8 @@ class CoverageEligibility:
 def _number(value: object) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    return float(value)
+    value = float(value)
+    return value if math.isfinite(value) else None
 
 
 def _phenomenon_end(record: Mapping, key: str) -> datetime | None:
@@ -223,7 +226,7 @@ def _phenomenon_end(record: Mapping, key: str) -> datetime | None:
 
 
 def _certified_and_fresh(
-    row: Mapping, at: datetime, *, store_certified: bool
+    row: Mapping, at: datetime, *, store_certified: bool, freshness: timedelta = SENSOR_FRESHNESS
 ) -> str | None:
     """Mirror of the sensors-ingest calibration gate, at query time.
 
@@ -243,7 +246,9 @@ def _certified_and_fresh(
         due = row.get("recalibration_due")
         if isinstance(due, str) and due.strip():
             due_parsed = _parse_lenient(due)
-            if due_parsed is not None and due_parsed <= at:
+            if due_parsed is None:
+                return "malformed-recalibration-due"
+            if due_parsed <= at:
                 return "calibration-expired"
         elif due is not None:
             return "malformed-recalibration-due"
@@ -252,8 +257,14 @@ def _certified_and_fresh(
     end = _phenomenon_end(row, "phenomenon_end")
     if end is None:
         return "no-phenomenon-end"
-    if end <= at - SENSOR_FRESHNESS:
+    if end > at:
+        return "future-phenomenon-end"
+    if end <= at - freshness:
         return "stale-beyond-freshness-window"
+    if "availability_time" in row:
+        available = _phenomenon_end(row, "availability_time")
+        if available is None or available > at:
+            return "unavailable-at-query-time"
     return None
 
 
@@ -316,6 +327,7 @@ def has_calibrated_coverage(
     footprints: list[str] = []
     areas: list[float] = []
     seen_levels: list[str] = []
+    eligible_rows: list[Mapping] = []
 
     for row in sensor_rows:
         if isinstance(row, Observation):
@@ -346,12 +358,13 @@ def has_calibrated_coverage(
             )
             continue
         reason = _certified_and_fresh(
-            record, moment, store_certified=isinstance(row, Observation)
+            record, moment, store_certified=isinstance(row, Observation), freshness=freshness
         )
         if reason is not None:
             excluded.append({"sensor_iri": str(sensor_iri), "reason": reason})
             continue
         supporting.append(str(sensor_iri))
+        eligible_rows.append(record)
         area = _number(record.get("coverage_area_ha"))
         radius = _number(record.get("probe_radius_m"))
         if area is not None and area > 0:
@@ -389,6 +402,7 @@ def has_calibrated_coverage(
         excluded=tuple(excluded),
         footprint_texts=tuple(footprints),
         area_ha_claims=tuple(areas),
+        eligible_rows=tuple(eligible_rows),
     )
 
 
@@ -419,6 +433,17 @@ def _grid_support(rows: Sequence[Mapping]) -> SupportDeclaration:
     return SupportDeclaration(base=f"grid-support (native {resolution:g} km)")
 
 
+@dataclass(frozen=True)
+class IrrigationInitialState:
+    """Dated end-of-day balance state; callers must supply its provenance."""
+
+    as_of_date: str
+    cumulative_gdd: float
+    root_depletion_mm: float
+    surface_depletion_mm: float
+    evidence: str
+
+
 def irrigation_advisory(
     daily_rows: Sequence[Mapping],
     *,
@@ -428,6 +453,7 @@ def irrigation_advisory(
     at: datetime,
     cfg: IrrigationCfg = DEFAULT_IRRIGATION_CONFIG,
     soil: SoilProfile = SoilProfile(),
+    initial_state: IrrigationInitialState | None = None,
 ) -> "IrrigationAdvice":
     """Run the dual-Kc balance and answer with mm + stamped claims.
 
@@ -450,6 +476,16 @@ def irrigation_advisory(
             "no-usable-rows", "no daily ET0/rainfall rows were supplied",
             missing=("rows",),
         )
+    reading_as_of = _phenomenon_end({"as_of": getattr(reading, "as_of", None)}, "as_of")
+    reading_available = _phenomenon_end({"available": getattr(reading, "latest_source_availability", None)}, "available")
+    try:
+        reading_last_day = date.fromisoformat(getattr(reading, "last_date", ""))
+    except (ValueError, TypeError):
+        reading_last_day = None
+    if (reading_as_of is None or reading_available is None or reading_last_day is None or
+        reading_as_of > moment or reading_available > reading_as_of or
+        reading_last_day >= reading_as_of.date()):
+        raise AgronomyGap("unavailable-stage", "phenology reading must have completed observations and source availability at or before the irrigation decision")
     support = _grid_support(daily_rows)
 
     # The basal curve walks the DAY's running cumulative GDD (D-ENGINE-2):
@@ -458,20 +494,25 @@ def irrigation_advisory(
     profile_id = getattr(reading, "cultivar_profile", None)
     anchors = kcb_anchors_for(profile_id if profile_id else None)
 
-    initial_root = (
-        cfg.initial_root_depletion_mm
-        if cfg.initial_root_depletion_mm is not None
-        else soil.raw_mm
-    )
-    surface = (
-        cfg.initial_surface_depletion_mm
-        if cfg.initial_surface_depletion_mm is not None
-        else cfg.tew_mm
-    )
-    root = float(initial_root)
-    cumulative = 0.0  # running GDD through THIS trace only
+    if initial_state is None:
+        raise AgronomyGap("missing-initial-state", "irrigation requires a dated starting balance and cumulative GDD", missing=("initial_state",))
+    try:
+        initial_day = date.fromisoformat(initial_state.as_of_date)
+        first_day = date.fromisoformat(daily_rows[0]["date"])
+    except (ValueError, TypeError, KeyError) as error:
+        raise AgronomyGap("malformed-initial-state", "state date and first row date must be ISO calendar dates") from error
+    state_numbers = tuple(_number(x) for x in (initial_state.cumulative_gdd, initial_state.root_depletion_mm, initial_state.surface_depletion_mm))
+    if (initial_day + timedelta(days=1) != first_day or
+        not isinstance(initial_state.evidence, str) or not initial_state.evidence.strip() or
+        any(x is None or x < 0 for x in state_numbers)):
+        raise AgronomyGap("malformed-initial-state", "state must precede the first row by one day, name evidence, and have finite nonnegative values")
+    cumulative, root, surface = state_numbers
+    assert cumulative is not None and root is not None and surface is not None
+    if surface > cfg.tew_mm:
+        raise AgronomyGap("malformed-initial-state", "initial surface depletion exceeds TEW")
 
     trace: list[dict] = []
+    previous_day = None
     for index, row in enumerate(daily_rows):
         day = row.get("date")
         eto = _number(row.get("eto_mm"))
@@ -480,8 +521,7 @@ def irrigation_advisory(
         # it; else derived as (t_max_c + t_min_c)/2 — the textbook daily
         # mean, computed from the SAME row's publisher values, never from
         # neighbouring rows or a climatology. The basis used is DECLARED
-        # on every trace row; absent both, the day contributes zero GDD
-        # (published in the trace, never interpolated).
+        # on every trace row; absent both, refuse the trace.
         t_mean = _number(row.get("t_mean_c"))
         t_mean_basis = "given" if t_mean is not None else None
         if t_mean is None:
@@ -490,9 +530,9 @@ def irrigation_advisory(
             if t_max is not None and t_min is not None:
                 t_mean = (t_max + t_min) / 2.0
                 t_mean_basis = "max-min-average"
-        t_contrib = (
-            daily_gdd_contribution(t_mean) if t_mean is not None else None
-        )
+        if t_mean is None:
+            raise AgronomyGap("missing-temperature", f"daily row {index} lacks a finite mean or min/max temperature")
+        t_contrib = daily_gdd_contribution(t_mean)
         missing = [
             name
             for name, value in (
@@ -509,6 +549,23 @@ def irrigation_advisory(
                 missing=tuple(missing),
             )
         assert day is not None and eto is not None and rain is not None
+        try:
+            parsed_day = date.fromisoformat(day)
+        except ValueError as error:
+            raise AgronomyGap("malformed-row", f"daily row {index} has invalid date: {day!r}") from error
+        if previous_day is not None and parsed_day - previous_day != timedelta(days=1):
+            raise AgronomyGap("daily-sequence-hole", f"daily row {index} is not the next calendar day")
+        previous_day = parsed_day
+        kind = row.get("source_kind")
+        if kind not in ("observation", "forecast"):
+            raise AgronomyGap("missing-source-kind", f"daily row {index} must declare observation or forecast")
+        available = _phenomenon_end(row, "availability_time")
+        if available is None or available > moment:
+            raise AgronomyGap("unavailable-row", f"daily row {index} lacks valid availability at the decision time")
+        if kind == "observation" and parsed_day >= moment.date():
+            raise AgronomyGap("future-observation", f"daily row {index} is not a completed historical day")
+        if eto < 0 or rain < 0:
+            raise AgronomyGap("malformed-row", f"daily row {index} contains negative ET0 or rainfall")
         effective_rain = max(0.0, rain * (1.0 - cfg.runoff_loss_fraction))
         # Surface layer: wet first, then evaporate.
         surface_after_wetting = max(0.0, surface - effective_rain)
@@ -530,6 +587,8 @@ def irrigation_advisory(
         trace.append(
             {
                 "date": day,
+                "source_kind": kind,
+                "availability_time": available.isoformat(),
                 "eto_mm": eto,
                 "rain_mm": rain,
                 "t_mean_c": (round(t_mean, 2) if t_mean is not None else None),
@@ -549,6 +608,9 @@ def irrigation_advisory(
 
     deficit = max(0.0, root - soil.raw_mm)
     recommend = deficit > 0.0
+
+    # Materialize generators once so eligibility and calculations see the same rows.
+    sensor_rows = tuple(sensor_rows)
 
     # The sensor story. Without a parcel, only exclusions can be produced
     # honestly (there is nothing for a probe to be linked to).
@@ -570,7 +632,7 @@ def irrigation_advisory(
     if coverage.level in (CoverageLevel.PROBE_FOOTPRINT, CoverageLevel.PARCEL_REPORTED):
         measured = [
             row
-            for row in sensor_rows
+            for row in coverage.eligible_rows
             if isinstance(row, Mapping)
             and _number(row.get("value")) is not None
             and row.get("parcel_iri") == parcel
@@ -581,7 +643,7 @@ def irrigation_advisory(
             implied = soil.taw_mm * (1.0 - min(1.0, max(0.0, vwc_percent / 100.0)))
             probe_note = {
                 "kind": "grid-vs-probe-divergence",
-                "sensor_iri": coverage.supporting_sensor_iris[0],
+                "sensor_iri": str(probe_row.get("sensor_iri") or "sensor-unnamed"),
                 "grid_model_depletion_mm": round(root, 2),
                 "probe_implied_depletion_mm": round(implied, 2),
                 "assumption": (
@@ -620,6 +682,9 @@ def irrigation_advisory(
         config_version=CONFIG_VERSION,
         source_note=IRRIGATION_CONFIG_SOURCE_NOTE,
         use_class=USE_CLASS_FIELD_OPS,
+        initial_state=initial_state,
+        ending_state=IrrigationInitialState(day, cumulative, root, surface,
+                                            "derived from initial evidence: " + initial_state.evidence),
     )
 
 
@@ -642,10 +707,20 @@ class IrrigationAdvice:
     config_version: str
     source_note: str
     use_class: str
+    initial_state: IrrigationInitialState
+    ending_state: IrrigationInitialState
 
     def to_payload(self) -> dict:
         return {
             "kind": "irrigation-advice",
+            "initial_state": {"as_of_date": self.initial_state.as_of_date, "cumulative_gdd": self.initial_state.cumulative_gdd,
+                              "root_depletion_mm": self.initial_state.root_depletion_mm,
+                              "surface_depletion_mm": self.initial_state.surface_depletion_mm,
+                              "evidence": self.initial_state.evidence},
+            "ending_state": {"as_of_date": self.ending_state.as_of_date, "cumulative_gdd": self.ending_state.cumulative_gdd,
+                             "root_depletion_mm": self.ending_state.root_depletion_mm,
+                             "surface_depletion_mm": self.ending_state.surface_depletion_mm,
+                             "evidence": self.ending_state.evidence},
             "net_irrigation_requirement_mm": self.net_irrigation_requirement_mm,
             "recommend": self.recommend,
             "why": self.why,
@@ -675,6 +750,7 @@ __all__ = [
     "CoverageEligibility",
     "SoilProfile",
     "IrrigationAdvice",
+    "IrrigationInitialState",
     "IrrigationCfg",
     "has_calibrated_coverage",
     "irrigation_advisory",
