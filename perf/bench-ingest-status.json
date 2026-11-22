@@ -1,0 +1,20 @@
+{
+  "bench": "ingest-status compose",
+  "rtt_ms_per_ask": 25.0,
+  "iterations": 12,
+  "rows_per_job": 50,
+  "storage_asks_total": 2040,
+  "legacy": {
+    "p50_ms": 10579,
+    "p95_ms": 10601
+  },
+  "fast": {
+    "p50_ms": 137,
+    "p95_ms": 141
+  },
+  "fast_warm": {
+    "p50_ms": 30,
+    "p95_ms": 32
+  },
+  "speedup_p50_vs_legacy": 77.2
+}
