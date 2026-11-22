@@ -11,6 +11,7 @@ from farm_ontology.agronomy.spray_windows import (
     SPRAY_CONFIG,
     SPRAY_SOURCE_NOTE,
     Verdict,
+    SprayWindow,
     scan_spray_windows,
 )
 from tests.agronomy_fixtures import hourly_rows
@@ -61,21 +62,40 @@ class ScanBehaviourTests(unittest.TestCase):
         self.assertEqual(starts, sorted(starts))
         for window in windows:
             self.assertIn(window.verdict,
-                          (Verdict.GO, Verdict.CAUTION, Verdict.NO_GO,
-                           f"{Verdict.GO} (conservative)"))
+                          (Verdict.SCREENING, Verdict.CAUTION, Verdict.NO_GO))
 
-    def test_wind_rule_caps_and_conservative_tag(self):
+    def test_favorable_weather_never_approves_a_spray_operation(self):
+        rows = [{"time": (AT + timedelta(hours=i)).isoformat(),
+                 "wind_ms": 1 if i < 2 else 4, "precip_mm": 0,
+                 "temp_c": 20, "native_resolution_km": 5}
+                for i in range(8)]
+        windows, summary = scan_spray_windows(rows, at=AT)
+        self.assertEqual(len(windows), 1)
+        self.assertEqual(windows[0].verdict, Verdict.SCREENING)
+        self.assertEqual(windows[0].use_class, "weather-screening")
+        self.assertFalse(windows[0].to_payload()["operational_approval"])
+        self.assertFalse(summary["operational_approval"])
+        self.assertEqual(summary["label_status"], "unverified")
+        self.assertIn("product-label-and-method-unverified",
+                      [item["rule"] for item in windows[0].evidence])
+        self.assertFalse(any(window.verdict.startswith("GO") for window in windows))
+
+    def test_screening_window_cannot_be_relabelled_as_go_or_field_ops(self):
+        from dataclasses import replace
         windows, _ = scan_spray_windows(HOURS, at=AT)
-        verdicts = [window.verdict for window in windows]
-        # The calm run in the fixture must be conservative-tagged GO or a
-        # verdict justified by an evidence rule; the tagging is the claim
-        # under test: a conservative tag exists iff worst wind ≤ 2 m/s.
-        for window in windows:
-            wind_ev = next(e for e in window.evidence if e["rule"] == "wind<=max")
-            if window.verdict.startswith(Verdict.GO) and "conservative" in window.verdict:
-                self.assertLessEqual(wind_ev["worst_observed_ms"], 2.0)
-                self.assertTrue(wind_ev["conservative_eligible"])
-        self.assertTrue(verdicts)  # something was scored
+        self.assertTrue(windows)
+        for changes in ({"verdict": "GO"}, {"verdict": "GO (conservative)"},
+                        {"use_class": "field-ops"}):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                replace(windows[0], **changes)
+
+    def test_spray_recommendation_is_closed_without_trusted_label_gate(self):
+        from farm_ontology.agronomy.common import AgronomyRefusal
+        from farm_ontology.agronomy.recommendation import draft_recommendation
+        with self.assertRaises(AgronomyRefusal) as ctx:
+            draft_recommendation(kind="spray", inputs=[], rationale=[], payload={"verdict": "GO"},
+                                 drafted_at=AT, expires_at=AT + timedelta(hours=1))
+        self.assertIn("spray-label-unverified", str(ctx.exception))
 
     def test_rain_inside_run_or_tail_downgrades_with_evidence(self):
         windows, _ = scan_spray_windows(HOURS, at=AT)
@@ -92,13 +112,9 @@ class ScanBehaviourTests(unittest.TestCase):
                 all(isinstance(e.get("rule"), str) for e in window.evidence)
             )
             fired = [e for e in window.evidence if e.get("fired")]
-            # A GO window fires only the wind-pass line; anything stricter
-            # (temp/wet) firing must downgrade.
-            if window.verdict == Verdict.GO:
-                self.assertFalse(
-                    any("temp" in e["rule"] or "rainfast" in e["rule"]
-                        for e in fired)
-                )
+            self.assertIn("product-label-and-method-unverified",
+                          [e["rule"] for e in fired])
+            self.assertFalse(window.to_payload()["operational_approval"])
 
     def test_summary_reports_unusable_spans_with_their_rule(self):
         windows, summary = scan_spray_windows(HOURS, at=AT)

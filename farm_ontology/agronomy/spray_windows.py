@@ -64,7 +64,6 @@ from typing import Sequence
 
 from farm_ontology.agronomy.common import (
     CONFIG_VERSION,
-    USE_CLASS_FIELD_OPS,
     AgronomyGap,
     SupportDeclaration,
 )
@@ -101,12 +100,15 @@ SPRAY_SOURCE_NOTE = (
     "VERIFY [SPRAY-WINDOW]: Japanese low-drift ground-sprayer norms "
     "(wind ≤3 m/s, conservative ≤2 m/s); glyphosate-type systemic uptake "
     "guideline 10-25 °C; rainfast 6 h is a conservative stand-in for the "
-    "product label, which governs in reality."
+    "product label, which governs in reality. Weather screening only; no "
+    "product or application method is verified, and no operation is approved."
 )
 
 
 class Verdict:
-    GO = "GO"
+    # Weather-only screening cannot authorize a pesticide application.
+    SCREENING = "WEATHER-SCREENING-ONLY"
+    GO = "GO"  # legacy constant; never emitted by this screening interface
     CAUTION = "CAUTION"
     NO_GO = "NO-GO"
 
@@ -121,8 +123,14 @@ class SprayWindow:
     verdict: str                    # a Verdict value
     evidence: tuple[dict, ...]
     support: SupportDeclaration
-    use_class: str = USE_CLASS_FIELD_OPS
+    use_class: str = "weather-screening"
     config_version: str = CONFIG_VERSION
+
+    def __post_init__(self) -> None:
+        if self.use_class != "weather-screening" or self.verdict not in (
+            Verdict.SCREENING, Verdict.CAUTION, Verdict.NO_GO
+        ):
+            raise ValueError("spray windows are unapproved weather screening only")
 
     def to_payload(self) -> dict:
         return {
@@ -130,6 +138,7 @@ class SprayWindow:
             "end": self.end,
             "hours": self.hours,
             "verdict": self.verdict,
+            "operational_approval": False,
             "evidence": [dict(item) for item in self.evidence],
             "support": self.support.to_payload(),
             "use_class": self.use_class,
@@ -353,9 +362,14 @@ def scan_spray_windows(
         elif run_temp_bad or not tail_verifiable:
             verdict = Verdict.CAUTION
         else:
-            verdict = Verdict.GO
+            verdict = Verdict.SCREENING
 
-        conservative = verdict == Verdict.GO and run_wind <= WIND_CONSERVATIVE_MS
+        evidence.append({
+            "rule": "product-label-and-method-unverified",
+            "fired": True,
+            "note": "Weather screening only; no pesticide application is approved. "
+                    "The product label, method, and authoritative requirements have not been verified.",
+        })
         end_stamp = (
             stamps[end] if end < len(stamps) else stamps[end - 1] + timedelta(hours=1)
         )
@@ -364,9 +378,7 @@ def scan_spray_windows(
                 start=stamps[start].isoformat(),
                 end=end_stamp.isoformat(),
                 hours=end - start,
-                verdict=(
-                    f"{Verdict.GO} (conservative)" if conservative else verdict
-                ),
+                verdict=verdict,
                 evidence=tuple(evidence),
                 support=SupportDeclaration(
                     base=f"grid-support (native {resolution_km:g} km)",
@@ -382,6 +394,9 @@ def scan_spray_windows(
     ]
     summary = {
         "rule_table": SPRAY_CONFIG,
+        "use_class": "weather-screening",
+        "operational_approval": False,
+        "label_status": "unverified",
         "config_version": CONFIG_VERSION,
         "source_note": SPRAY_SOURCE_NOTE,
         "hours_scanned": len(stamps),
