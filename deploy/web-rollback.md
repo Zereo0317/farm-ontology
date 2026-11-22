@@ -6,6 +6,15 @@ image line. Service: `farm-seges-ai-web`, region `asia-east1`, project
 `ci-<shortsha>` and records its digest; manual builds historically used
 `report-v2*` / `report-i18n` tags.
 
+## Current forward-deployment hold
+
+The web workflow builds on main changes but does not forward-deploy: a web
+staging service and verified same-digest promotion are still required. The
+manual digest-only rollback lane remains available from the main workflow.
+It preserves existing environment and secret configuration. Verify traffic
+and the gate plus value route after any pin; no authenticated journey is
+proven by `/livez` alone.
+
 ## 0. Inventory first (know what you're standing on)
 
 ```bash

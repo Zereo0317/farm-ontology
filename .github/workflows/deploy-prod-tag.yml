@@ -1,39 +1,33 @@
 name: deploy-prod-tag
 
-# Manual, auditable production deploys ONLY (workflow_dispatch). Nothing here
-# runs on push; prod never moves because of a routine merge. Promote to prod
-# only after staging is verified green on the same commit.
-#
-# Runbook (human steps recorded per ship):
-#   1. Verify staging: https://farm-seges-ai-staging-451400509859.asia-east1.run.app/livez
-#   2. Run this workflow against main (or a release tag).
-#   3. It deploys to farm-seges-ai and pins traffic with --to-latest.
-#   4. Uptime checks (farm-prod-livez, farm-prod-weather) must stay green;
-#      the alert email goes to segescloud@gmail.com.
-
+# Promotion is manual and requires successful CI and a 100%-serving,
+# healthy staging revision carrying the same commit and immutable digest.
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref to deploy (tag or branch; default main)"
-        required: false
-        default: main
+        description: "Commit or tag already verified on staging"
+        required: true
       note:
-        description: "Why this prod deploy"
-        required: false
-        default: ""
+        description: "Why this production promotion is needed"
+        required: true
 
+concurrency:
+  group: farm-backend-production
+  cancel-in-progress: false
 permissions:
   contents: read
+  actions: read
   id-token: write
-
 jobs:
   deploy-prod:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: main
+          fetch-depth: 0
       - id: auth
         uses: google-github-actions/auth@v2
         with:
@@ -41,18 +35,35 @@ jobs:
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Deploy production (immutable revision)
+      - name: Verify and promote tested staging image
+        shell: bash
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gcloud run deploy farm-seges-ai \
-            --project=seges-ai --region=asia-east1 \
-            --source . \
-            --allow-unauthenticated \
-            --set-secrets PLANET_API_KEY=Planet-labs:latest \
-            --set-env-vars GCP_PROJECT=seges-ai,EE_PROJECT=seges-ai,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records
-      - name: Pin prod traffic to the latest revision
-        run: |
-          gcloud run services update-traffic farm-seges-ai \
-            --project=seges-ai --region=asia-east1 --to-latest
-          gcloud run services describe farm-seges-ai \
-            --project=seges-ai --region=asia-east1 \
-            --format='value(status.traffic[0].revisionName,status.latestCreatedRevisionName)'
+          set -euo pipefail
+          SHA="$(git rev-parse --verify "${INPUT_REF}^{commit}")"
+          git merge-base --is-ancestor "$SHA" origin/main
+          gcloud run services describe farm-seges-ai-staging --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/staging.json"
+          REV="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; s=[x for x in t if x.get("percent",0)>0]; assert len(s)==1 and s[0]["percent"]==100; print(s[0]["revisionName"])' "$RUNNER_TEMP/staging.json")"
+          gcloud run revisions describe "$REV" --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/revision.json"
+          gcloud run services describe farm-seges-ai --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/prod.json"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/test.yml/runs?head_sha=${SHA}&event=push&status=success&per_page=100" > "$RUNNER_TEMP/runs.json"
+          IMAGE="$(python deploy/verify-promotion.py --service "$RUNNER_TEMP/staging.json" --revision "$RUNNER_TEMP/revision.json" --production "$RUNNER_TEMP/prod.json" --runs "$RUNNER_TEMP/runs.json" --sha "$SHA")"
+          curl --fail --silent --show-error --max-time 15 https://farm-seges-ai-staging-451400509859.asia-east1.run.app/livez > /dev/null
+          PREVIOUS="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; s=[x for x in t if x.get("percent",0)>0]; assert len(s)==1 and s[0]["percent"]==100; print(s[0]["revisionName"])' "$RUNNER_TEMP/prod.json")"
+          # No env or secret replacement: preserve the verified service config.
+          gcloud run deploy farm-seges-ai --project=seges-ai --region=asia-east1 --image "$IMAGE" --no-traffic
+          CANDIDATE="$(gcloud run services describe farm-seges-ai --project=seges-ai --region=asia-east1 --format='value(status.latestReadyRevisionName)')"
+          test -n "$CANDIDATE" && test "$CANDIDATE" != "$PREVIOUS"
+          CANDIDATE_IMAGE="$(gcloud run revisions describe "$CANDIDATE" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
+          test "$CANDIDATE_IMAGE" = "$IMAGE"
+          rollback() { gcloud run services update-traffic farm-seges-ai --project=seges-ai --region=asia-east1 --to-revisions "${PREVIOUS}=100"; }
+          trap rollback ERR
+          gcloud run services update-traffic farm-seges-ai --project=seges-ai --region=asia-east1 --to-revisions "${CANDIDATE}=100"
+          ACTUAL="$(gcloud run services describe farm-seges-ai --project=seges-ai --region=asia-east1 --format='value(status.traffic[0].revisionName,status.traffic[0].percent)')"
+          test "$ACTUAL" = "${CANDIDATE}	100"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 https://farm-seges-ai-451400509859.asia-east1.run.app/livez > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 25 https://farm-seges-ai-451400509859.asia-east1.run.app/farm/weather > /dev/null
+          trap - ERR
+          echo "Promoted $SHA as $IMAGE, serving revision $CANDIDATE"

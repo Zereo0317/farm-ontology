@@ -8,11 +8,10 @@ name: web-image
 # Pipeline shape:
 #   push to main touching web/** or Dockerfile.web or this file
 #     → build image via Cloud Build (web/tools/web-image-build.ps1)
-#     → deploy to the LIVE farm-seges-ai-web service (the report is the
-#       user-facing product; staging parity added later in WS-ops review)
-#     → pin traffic --to-latest + smoke the live URL (livez/gate/thumb).
-#   workflow_dispatch WITHOUT image_ref: same as above, manually.
-#   workflow_dispatch WITH image_ref (digest or tag): PIN job only —
+#     → build only. Forward production deployment remains blocked until a web
+#       staging service and same-digest promotion verification are in place.
+#   workflow_dispatch WITHOUT image_ref: build only.
+#   workflow_dispatch WITH image_ref (digest only): PIN job only —
 #     rolls the service back to that exact image (explicit digest per
 #     ops discipline; see deploy/web-rollback.md).
 
@@ -21,12 +20,14 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "farm_ontology/**"
+      - "vocabulary-manifest.json"
       - "Dockerfile.web"
       - ".github/workflows/web-image.yml"
   workflow_dispatch:
     inputs:
       image_ref:
-        description: "PIN ONLY: exact image ref (digest preferred) to roll back / pin to. Leave EMPTY to build+deploy from the ref."
+        description: "PIN ONLY: farm web sha256 digest. Leave EMPTY for build only."
         required: false
         default: ""
 
@@ -79,10 +80,12 @@ jobs:
           echo "image_digest=$DIGEST" >> "$GITHUB_OUTPUT"
           echo "::notice::Image $IMAGE_BASE@$DIGEST (tag $TAG)"
 
-  deploy-web:
-    needs: build-push
-    # Live deploys only from an actual main push or an explicit manual run.
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+  # Forward deployment is intentionally absent until web staging and a
+  # verified same-digest promotion pipeline are implemented.
+
+  pin-rollback:
+    # Dispatch-only: pin the live service to an EXPLICIT older image ref.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.image_ref != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -96,75 +99,34 @@ jobs:
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Deploy farm-seges-ai-web (complete env/secrets set — these flags REPLACE, never merge)
-        run: |
-          gcloud run deploy farm-seges-ai-web \
-            --project=seges-ai --region=asia-east1 \
-            --image "$IMAGE_BASE:${{ needs.build-push.outputs.image_tag }}" \
-            --allow-unauthenticated \
-            --set-secrets "WEB_ACCESS_TOKEN=web-access-token:latest,PLANET_API_KEY=Planet-labs:latest" \
-            --set-env-vars "FARM_API_BASE=https://farm-seges-ai-451400509859.asia-east1.run.app,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records,FARM_RECORD_DIR=/tmp/field-notes" \
-            --memory 512Mi --cpu 1 --max-instances 2 --timeout 60
-      - name: Pin traffic to the latest revision (the WS1 traffic-shift gotcha)
-        run: |
-          gcloud run services update-traffic farm-seges-ai-web \
-            --project=seges-ai --region=asia-east1 --to-latest
-          gcloud run services describe farm-seges-ai-web \
-            --project=seges-ai --region=asia-east1 \
-            --format='value(status.traffic[0].revisionName,status.latestCreatedRevisionName)'
-      - name: Smoke the live service (livez 200, gate 307, thumb image)
-        run: |
-          BASE="https://farm-seges-ai-web-451400509859.asia-east1.run.app"
-          ok() { [ "$1" = "$2" ] && echo "PASS $3 ($1)" || { echo "FAIL $3: got '$1' want '$2'"; exit 1; }; }
-          tries=0; livez=""
-          until [ "$livez" = "200" ] || [ $tries -ge 12 ]; do sleep 5; tries=$((tries+1)); livez=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/livez"); done
-          ok "$livez" "200" "/livez"
-          ok "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/")" "307" "gate (GET /)"
-          gate_loc="$(curl -s -o /dev/null -w '%{redirect_url}' "$BASE/")"
-          case "$gate_loc" in *"/login?next="%2F*) echo "PASS gate location ($gate_loc)";; *) echo "FAIL gate location: $gate_loc"; exit 1;; esac
-          ctype="$(curl -s -o /dev/null -w '%{content_type}' "$BASE/api/scene-thumb")"
-          case "$ctype" in image/png*) echo "PASS scene-thumb ($ctype)";; *) echo "FAIL scene-thumb: $ctype"; exit 1;; esac
-          ok "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/report/biratori-1119")" "200" "report"
-          echo "::notice::Web deploy smoke GREEN at $BASE (image $IMAGE_BASE@${{ needs.build-push.outputs.image_digest }})"
-
-  pin-rollback:
-    # Dispatch-only: pin the live service to an EXPLICIT older image ref.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.image_ref != '' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
-          service_account: 451400509859-compute@developer.gserviceaccount.com
-          project_id: seges-ai
-      - uses: google-github-actions/setup-gcloud@v2
       - name: Pin farm-seges-ai-web to the requested image ref
+        env:
+          INPUT_IMAGE_REF: ${{ inputs.image_ref }}
         run: |
-          REF="${{ inputs.image_ref }}"
-          case "$REF" in
-            # Full artifact URI: use verbatim.
-            asia-east1-docker.pkg.dev/*) ;;
-            # Bare digest (with or without the sha256: prefix): qualify it.
-            *) REF="$IMAGE_BASE@sha256:${REF#sha256:}" ;;
-          esac
+          set -euo pipefail
+          REF="$(python deploy/web_image_ref.py "$INPUT_IMAGE_REF")"
           echo "Pinning to: $REF"
+          # Preserve the existing env and secret set during rollback.
+          PREVIOUS="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format='value(status.traffic[0].revisionName)')"
+          test -n "$PREVIOUS"
           gcloud run deploy farm-seges-ai-web \
             --project=seges-ai --region=asia-east1 \
-            --image "$IMAGE_BASE@$REF" \
-            --allow-unauthenticated \
-            --set-secrets "WEB_ACCESS_TOKEN=web-access-token:latest,PLANET_API_KEY=Planet-labs:latest" \
-            --set-env-vars "FARM_API_BASE=https://farm-seges-ai-451400509859.asia-east1.run.app,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records,FARM_RECORD_DIR=/tmp/field-notes" \
-            --memory 512Mi --cpu 1 --max-instances 2 --timeout 60
+            --image "$REF" --no-traffic
+          REV="$(gcloud run services describe farm-seges-ai-web \
+            --project=seges-ai --region=asia-east1 \
+            --format='value(status.latestReadyRevisionName)')"
+          test -n "$REV"
+          ACTUAL_IMAGE="$(gcloud run revisions describe "$REV" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
+          test "$ACTUAL_IMAGE" = "$REF"
+          rollback() { gcloud run services update-traffic farm-seges-ai-web --project=seges-ai --region=asia-east1 --to-revisions "${PREVIOUS}=100"; }
+          trap rollback ERR
           gcloud run services update-traffic farm-seges-ai-web \
-            --project=seges-ai --region=asia-east1 --to-latest
-      - name: Smoke after pin
-        run: |
+            --project=seges-ai --region=asia-east1 --to-revisions "${REV}=100"
+          gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web.json"
+          python -c 'import json,sys; s=json.load(open(sys.argv[1]))["status"]; t=[r for r in s["traffic"] if r.get("percent",0)>0]; assert len(t)==1 and t[0]["percent"]==100 and t[0]["revisionName"]==sys.argv[2]' "$RUNNER_TEMP/web.json" "$REV"
           BASE="https://farm-seges-ai-web-451400509859.asia-east1.run.app"
-          tries=0; livez=""
-          until [ "$livez" = "200" ] || [ $tries -ge 12 ]; do sleep 5; tries=$((tries+1)); livez=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/livez"); done
-          [ "$livez" = "200" ] || { echo "FAIL livez after pin: $livez"; exit 1; }
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 "$BASE/livez" > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/")" = 307
+          curl --fail --silent --show-error --max-time 15 "$BASE/report/biratori-1119" > /dev/null
+          trap - ERR
           echo "::notice::Pinned service healthy"
