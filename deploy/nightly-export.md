@@ -1,15 +1,18 @@
 # Nightly record export (WS1.2 tail, task-10)
 
-Executed 2026-11-18 by infra. The nightly export completes the durable
-record story: even a catastrophic, versioned-bucket-corruption scenario
-leaves one immutable daily snapshot per UTC day.
+Historical run record (2026-11-18). The original job wrote to the SAME
+bucket as the source: it did not protect against bucket loss and snapshot
+immutability was not established. This implementation now requires a distinct
+`FARM_ARCHIVE_BUCKET` for GCS; provision and independently protect that bucket,
+then configure and test a restore before deploying the changed job. Local
+archives on the same disk are not an independent backup.
 
 ## What runs
 
 `pipelines/record_export.py` (entry `python -m pipelines.record_export`,
 Cloud Run job **`farm-nightly-export`**):
 
-1. reads EVERY object of the field record through the SAME record-store
+1. reads JSON objects of the field record through the SAME record-store
    seam the services use (`field-notes/**`, both roots),
 2. composes one deterministic gzipped tar (sorted members, fixed
    mtime/uid/gid ⇒ byte-identical for identical inputs):
@@ -21,7 +24,7 @@ Cloud Run job **`farm-nightly-export`**):
 5. logs the run under `pipelines/run-log/<day>-record-export.json`
    (job `record-export`) — inheriting WS2's run-log + 3-strike alert
    machinery (`on_run_finished`) unchanged. A failed export STILL
-   writes its failure row; three failed days fire
+   writes its failure row; three failed executions fire
    `pipelines/alerts/<day>-record-export-ALERT.json`.
 
 Schedule: **03:30 JST nightly** (`CRON_TZ=Asia/Tokyo 30 3 * * *`), bound
@@ -59,8 +62,17 @@ gcloud run jobs deploy farm-nightly-export --project=seges-ai \
   --service-account=451400509859-compute@developer.gserviceaccount.com \
   --max-retries=1 --task-timeout=10m \
   --args=python,-m,pipelines.record_export \
-  --set-env-vars FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records,GCP_PROJECT=seges-ai,FARM_RECORD_DIR=/tmp/farm-records
+  --set-env-vars FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records,FARM_ARCHIVE_BUCKET=<independently-protected-farm-archive-bucket>,GCP_PROJECT=seges-ai,FARM_RECORD_DIR=/tmp/farm-records
 ```
 
 Retention: see `deploy/record-retention-policy.md` (POLICY DOCUMENT
 ONLY — no lifecycle rule is active; this job deletes nothing).
+
+## Remaining release gates
+
+The manifest is a mutable per-day file, not an independently verified ledger.
+Provision a separate archive bucket with restricted access and retention, configure
+the job, and perform a timed isolated restore with member hashes and a documented
+RPO/RTO. Alert rows are artifacts only; real notification delivery and a missing-
+run watchdog remain unimplemented. None of these live operations was performed
+by the code change.

@@ -102,7 +102,7 @@ class BackendLayoutTests(unittest.TestCase):
             backend, job="weather-hourly", now=NOW,
             started=NOW, finished=NOW, ok=True, row_count=1,
         )
-        self.assertEqual(rel, "run-log/20261118-weather-hourly.json")
+        self.assertRegex(rel, r"^run-log/20261118T\d+Z-\d+-[a-f0-9]+-weather-hourly\.json$")
         self.assertTrue((root / "pipelines" / "run-log" / rel.split("/", 1)[1]).is_file())
 
     def test_env_backend_places_the_same_rel_under_the_pipelines_subtree(self):
@@ -118,9 +118,7 @@ class BackendLayoutTests(unittest.TestCase):
             backend, job="hazard-daily", now=NOW,
             started=NOW, finished=NOW, ok=True, row_count=0,
         )
-        self.assertTrue(
-            (root / "pipelines" / "run-log" / f"20261118-hazard-daily.json").is_file()
-        )
+        self.assertEqual(len(list((root / "pipelines" / "run-log").glob("*-hazard-daily.json"))), 1)
 
 
 class RunRowTests(unittest.TestCase):
@@ -140,7 +138,7 @@ class RunRowTests(unittest.TestCase):
         self.assertEqual(row["extra_detail"], "hi")
         self.assertFalse(row["ok"])
 
-    def test_same_day_same_job_appends_are_one_dated_row(self):
+    def test_same_day_same_job_appends_preserve_both_rows(self):
         _root, backend = new_backend()
         ingest_core.append_run(
             backend, job="ndvi-weekly", now=NOW, started=NOW, finished=NOW,
@@ -151,8 +149,8 @@ class RunRowTests(unittest.TestCase):
             ok=True, row_count=0,
         )
         rows = ingest_core.run_rows(backend, "ndvi-weekly")
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["row_count"], 0)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual([row["row_count"] for row in rows], [1, 0])
 
     def test_env_gcs_backend_rel_matches_local_object_names(self):
         transport = MockGcsTransport()
@@ -161,13 +159,24 @@ class RunRowTests(unittest.TestCase):
             backend, job="weather-hourly", now=NOW, started=NOW, finished=NOW,
             ok=True, row_count=3,
         )
-        self.assertIn("pipelines/run-log/20261118-weather-hourly.json", transport.objects)
+        self.assertIn("pipelines/" + rel, transport.objects)
         rows = ingest_core.run_rows(backend, "weather-hourly")
         self.assertEqual(rows[0]["row_count"], 3)
-        self.assertEqual(rel, "run-log/20261118-weather-hourly.json")
+        self.assertRegex(rel, r"^run-log/20261118T\d+Z-\d+-[a-f0-9]+-weather-hourly\.json$")
 
 
 class StrikeTests(unittest.TestCase):
+    def test_three_failures_on_same_day_are_separate_and_trigger_alert(self):
+        _root, backend = new_backend()
+        for offset in range(3):
+            when = NOW + timedelta(minutes=offset)
+            ingest_core.append_run(backend, job="weather-hourly", now=when,
+                                   started=when, finished=when, ok=False, row_count=0)
+            result = ingest_core.on_run_finished(backend, job="weather-hourly", now=when, run=failed_run())
+        self.assertEqual(result["consecutive_failures"], 3)
+        self.assertIsNotNone(result["alert"])
+        self.assertEqual(len(ingest_core.run_rows(backend, "weather-hourly")), 3)
+
     def test_no_alert_before_three_consecutive_failed_days(self):
         _root, backend = new_backend()
         results = []
@@ -203,7 +212,7 @@ class StrikeTests(unittest.TestCase):
         self.assertIn("artifact-only", alert["notification_policy"])
         # evidence trail names the actual run rows
         for item in alert["evidence"]:
-            self.assertRegex(item["file"], r"\d{8}-weather-hourly\.json")
+            self.assertRegex(item["file"], r"\d{8}T.*-weather-hourly\.json")
         self.assertTrue((root / "pipelines" / "alerts" / alert_rel.split("/", 1)[1]).is_file())
 
     def test_a_success_resets_the_strike_counter(self):

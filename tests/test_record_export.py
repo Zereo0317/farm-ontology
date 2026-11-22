@@ -27,6 +27,8 @@ MEMBERS = {
     "obs-20261116T130426Z.json": {"crop": "soybean", "value": 1},
     "obs-20261116T130945Z.json": {"crop": "soybean", "value": 2},
     "notes/note-feedback-20261116T131001Z.json": {"kind": "feedback"},
+    "boundaries/parcel/walk.json": {"kind": "boundary"},
+    "leads/20261118/lead.json": {"kind": "lead"},
 }
 
 
@@ -53,6 +55,18 @@ class ExportCase(unittest.TestCase):
 
     def _successful_run(self, *, now=NOW):
         return record_export.run_export(self.record, self.archive, now=now)
+
+
+class ArchiveConfigurationTests(unittest.TestCase):
+    def test_gcs_archive_requires_a_different_bucket(self):
+        with patch.dict("os.environ", {"FARM_RECORD_BACKEND": "gcs", "FARM_RECORD_BUCKET": "source"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "separate archive bucket"):
+                record_export.archive_backend()
+            with patch.dict("os.environ", {"FARM_ARCHIVE_BUCKET": "source"}):
+                with self.assertRaisesRegex(ValueError, "separate archive bucket"):
+                    record_export.archive_backend()
+            with patch.dict("os.environ", {"FARM_ARCHIVE_BUCKET": "archive"}):
+                self.assertEqual(record_export.archive_backend().bucket, "archive")
 
 
 class CompositionTests(ExportCase):
@@ -118,7 +132,7 @@ class CompositionTests(ExportCase):
 
 
 class StrikeTests(ExportCase):
-    """Run rows are day-granular (house rule): three failed DAYS strike."""
+    """Distinct failed executions trigger strikes, including on separate days."""
 
     def test_three_failed_days_fire_one_alert(self):
         for offset in range(3):

@@ -70,8 +70,8 @@ def record_backend():
 def archive_backend():
     """Backend of the ARCHIVE prefix, mirroring record/pipes composition.
 
-    Local: ``<record root>/field-archive``. GCS: the durable bucket with
-    the dedicated ``field-archive`` prefix. Rel paths are identical
+    Local: ``<record root>/field-archive`` (not an independent failure domain).
+    GCS: a separately configured bucket with ``field-archive`` prefix. Rel paths are identical
     under both, like every other house subtrees.
     """
     from farm_ontology.record import record_dir
@@ -82,9 +82,12 @@ def archive_backend():
         base = Path(root) if root else _REPO_ROOT / "field-notes"
         return LocalBackend(base.parent / ARCHIVE_PREFIX)
     if name == "gcs":
-        bucket = os.environ.get("FARM_RECORD_BUCKET", "").strip()
-        if not bucket:
+        source_bucket = os.environ.get("FARM_RECORD_BUCKET", "").strip()
+        bucket = os.environ.get("FARM_ARCHIVE_BUCKET", "").strip()
+        if not source_bucket:
             raise ValueError("FARM_RECORD_BACKEND=gcs requires FARM_RECORD_BUCKET")
+        if not bucket or bucket == source_bucket:
+            raise ValueError("FARM_ARCHIVE_BUCKET must name a separate archive bucket")
         return GcsBackend(bucket, ARCHIVE_PREFIX)
     raise ValueError(f"FARM_RECORD_BACKEND must be local or gcs, got {name!r}")
 
@@ -98,9 +101,9 @@ def _gather_members(backend) -> list[tuple[str, bytes]]:
     identical on either backend (tests assert it).
     """
     names: set[str] = set()
-    for sub, pattern in (("", "*.json"), ("notes/", "*.json")):
-        for name in backend.list_paths(sub, pattern):
-            names.add(name)
+    # GCS listing is recursive by prefix; pathlib requires a recursive glob.
+    pattern = "**/*.json" if isinstance(backend, LocalBackend) else "*.json"
+    names.update(backend.list_paths("", pattern))
     members = []
     for name in sorted(names):
         members.append((name, backend.read_text(name).encode("utf-8")))
