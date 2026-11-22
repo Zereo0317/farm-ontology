@@ -20,12 +20,32 @@ export async function POST(request: Request) {
   if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
     return NextResponse.json({ gap: true, reason: "application/json required" }, { status: 415 });
   }
+  const maxBodyBytes = 64 * 1024;
   let payload: Record<string, unknown>;
   try {
-    payload = (await request.json()) as Record<string, unknown>;
+    const reader = request.body?.getReader();
+    if (!reader) throw new Error("missing body");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBodyBytes) {
+        await reader.cancel();
+        return NextResponse.json({ gap: true, reason: "request body too large" }, { status: 413 });
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("object required");
+    payload = parsed as Record<string, unknown>;
   } catch {
     return NextResponse.json(
-      { gap: true, reason: "request body was not valid json", upstream_status: null },
+      { gap: true, reason: "request body was not valid json object", upstream_status: null },
       { status: 400 },
     );
   }

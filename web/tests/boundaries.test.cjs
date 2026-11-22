@@ -26,3 +26,13 @@ test('only same-origin JSON boundary writes reach the record', async () => {
   assert.equal((await m.exports.POST(request('https://farm.example'))).status, 200);
   assert.equal(calls, 1);
 });
+
+test('oversize and non-object bodies never reach the record', async () => {
+  calls = 0;
+  const headers = { host: 'farm.example', origin: 'https://farm.example', 'content-type': 'application/json' };
+  const large = new Request('https://farm.example/api/boundaries', { method: 'POST', headers, body: JSON.stringify({ note: 'x'.repeat(65536) }) });
+  const array = new Request('https://farm.example/api/boundaries', { method: 'POST', headers, body: '[]' });
+  assert.equal((await m.exports.POST(large)).status, 413);
+  assert.equal((await m.exports.POST(array)).status, 400);
+  assert.equal(calls, 0);
+});
