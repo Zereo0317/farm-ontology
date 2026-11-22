@@ -118,7 +118,8 @@ class ScenarioEncodingTest(unittest.TestCase):
 
 class GrantStateTest(unittest.TestCase):
     def test_states_cover_happy_and_every_failure(self) -> None:
-        self.assertEqual(rl.grant_state_at(grant(), AS_OF), (rl.GRANT_VALID, "permit provably alive"))
+        self.assertEqual(rl.grant_state_at(grant(), AS_OF),
+                         (rl.GRANT_CLOSED, "provider rights unverified; reference claims are not authorization"))
         self.assertEqual(rl.grant_state_at(grant(expiry="2026-11-01T00:00:00+00:00"), AS_OF)[0], rl.GRANT_EXPIRED)
         self.assertEqual(rl.grant_state_at(grant(expiry="next quarter"), AS_OF)[0], rl.GRANT_UNPARSEABLE)
         self.assertEqual(rl.grant_state_at(None, AS_OF)[0], rl.GRANT_CLOSED)

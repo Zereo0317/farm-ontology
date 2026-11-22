@@ -259,7 +259,7 @@ def grant_state_at(
     """Judge one grant at ``as_of``. Anything unsure is CLOSED.
 
     ``as_of=None`` judges against the current clock. States:
-    ``GRANT_VALID`` only when every condition provably holds; expiry
+    No caller-supplied reference alone establishes provider rights; expiry
     parity means already expired (a grant is not valid at the instant
     it dies); a missing grant object is ``GRANT_CLOSED`` outright; a
     specimen-flagged grant is ``GRANT_SPECIMEN`` no matter what its
@@ -287,7 +287,10 @@ def grant_state_at(
     if not grant.permits_financial_use or not grant.permits_market_data_use:
         suffix = f" (licences verdict: {grant.state_detail})" if grant.state_detail else ""
         return GRANT_CLOSED, "the recorded grant does not permit this use" + suffix
-    return GRANT_VALID, "permit provably alive"
+    # A structurally live reference does not establish provider permission.
+    # Callers also use this helper directly, so the provenance barrier must
+    # not exist only in the higher-level artefact validator.
+    return GRANT_CLOSED, "provider rights unverified; reference claims are not authorization"
 
 
 def grant_ref_from_v2_like(**fields) -> GrantRef:

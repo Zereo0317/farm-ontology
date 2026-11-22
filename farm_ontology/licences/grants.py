@@ -211,8 +211,8 @@ class Grant:
             expiry_utc=str(payload["expiry_utc"]).strip(),
             evidence_url=str(payload["evidence_url"]).strip(),
             issued_at_utc=payload.get("issued_at_utc") or None,
-            permits_redistribution=bool(payload.get("permits_redistribution", False)),
-            specimen=bool(payload.get("specimen", False)),
+            permits_redistribution=payload.get("permits_redistribution", False),
+            specimen=payload.get("specimen", False),
             specimen_note=payload.get("specimen_note") or None,
         )
 
