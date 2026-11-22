@@ -4,6 +4,22 @@ import { callRecord } from "@/lib/record";
 
 /** boundary-walk: corner pins in, governed polygon record out. */
 export async function POST(request: Request) {
+  // Browser writes require a same-origin JSON request. A lax shared cookie
+  // alone must not authorize cross-site form submissions.
+  const host = request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") ?? new URL(request.url).protocol.slice(0, -1);
+  let expectedOrigin: string;
+  try {
+    expectedOrigin = host ? new URL(`${proto}://${host}`).origin : new URL(request.url).origin;
+  } catch {
+    return NextResponse.json({ gap: true, reason: "invalid request origin" }, { status: 403 });
+  }
+  if (request.headers.get("origin") !== expectedOrigin) {
+    return NextResponse.json({ gap: true, reason: "cross-origin request refused" }, { status: 403 });
+  }
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return NextResponse.json({ gap: true, reason: "application/json required" }, { status: 415 });
+  }
   let payload: Record<string, unknown>;
   try {
     payload = (await request.json()) as Record<string, unknown>;
