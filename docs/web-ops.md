@@ -1,4 +1,10 @@
-# Web service ops — farm-seges-ai-web (WS8, 2026-11-18)
+# Web service ops — farm-seges-ai-web
+
+Release history and current serving revision are tracked in
+[`pilot-readiness-status.md`](pilot-readiness-status.md). On 2026-11-22,
+Cloud Run revision `farm-seges-ai-web-00030-8mn` was verified at 100% traffic
+after the production web workflow passed its build, test, traffic, and smoke
+checks. The older WS8 revision numbers and build IDs below are historical.
 
 The Next.js field app (`web/`) is hosted as Cloud Run service
 **`farm-seges-ai-web`**, project `seges-ai`, region `asia-east1`. The page's
@@ -244,21 +250,22 @@ source/licence list). Implementation notes for the next operator:
   `web/` files, `Dockerfile.web`, `web/tools/web-image-build.ps1`, this doc,
   and the report-copy guard TEST in `tests/test_i18n_schema.py` (suite grew
   1592 → 1597, all green).
-* Web checks are the Next.js pipeline itself: strict TypeScript + ESLint run
-  inside `next build` (the `npm run build` step of the Dockerfile is the CI
-  gate). A future CI job can wrap `web/tools/web-image-build.ps1` the same way
-  WS1 gates the backend image; deferred until the web service earns its own
-  branch protection story.
+* The active CI/release gate is `.github/workflows/web-image.yml`: it runs
+  `node --test tests/*.test.cjs`, builds and resolves an immutable image
+  digest, deploys that digest as a no-traffic candidate, verifies the 100%
+  traffic shift, and smoke-checks `/livez`, the login redirect, a report, and
+  the protected boundary route. The GitHub Actions run is linked from the
+  current release record.
 * `web/node_modules` stays out of git; reproducibility rides on
   `web/package-lock.json` (`npm ci`).
 
-## Pilot security containment (source change; deployment required)
+## Pilot security containment (deployed; shared-crew scope only)
 
 `/walk` and `/api/boundaries` require the existing shared access cookie. If
 `WEB_ACCESS_TOKEN` is missing, protected routes return 503 instead of opening.
 The backend accepts access credentials only via `X-Access-Token`; query-string
-credentials on observations and leads are rejected. Update clients before
-rollout, review platform logs for exposed tokens, and rotate exposed secrets.
-The shared gate is temporary: it does not implement individual identities,
+credentials on observations and leads are rejected. The existing clients use
+this shared token gate. Review platform logs for exposed tokens and rotate
+exposed secrets. The shared gate does not implement individual identities,
 farm-level authorization, revocation, or cross-farm isolation. Do not onboard
 multiple farms until those controls are implemented and tested end to end.
