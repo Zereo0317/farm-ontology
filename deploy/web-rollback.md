@@ -6,14 +6,23 @@ image line. Service: `farm-seges-ai-web`, region `asia-east1`, project
 `ci-<shortsha>` and records its digest; manual builds historically used
 `report-v2*` / `report-i18n` tags.
 
-## Current forward-deployment hold
+## Current forward-deployment path
 
-The web workflow builds on main changes but does not forward-deploy: a web
-staging service and verified same-digest promotion are still required. The
-manual digest-only rollback lane remains available from the main workflow.
-It preserves existing environment and secret configuration. Verify traffic
-and the gate plus value route after any pin; no authenticated journey is
-proven by `/livez` alone.
+`.github/workflows/web-image.yml` builds the app on Cloud Build when `main`
+changes under `web/`, `farm_ontology/`, the vocabulary manifest, or the
+workflow itself. It runs the web routing/security tests before the build,
+resolves the immutable Artifact Registry digest, deploys that exact digest as
+a no-traffic revision, checks the candidate and serving traffic, then runs
+production smoke routes. A failed post-shift check restores the prior serving
+revision. This web release lane does not require a separate web staging
+service; it deploys only after its build and tests pass.
+
+The manual digest-only rollback lane remains available through
+`workflow_dispatch` with `image_ref`. It preserves the service's environment
+and secret configuration. Verify traffic and the gate plus value routes after
+any pin; `/livez` alone does not prove an authenticated journey. The latest
+recorded web/landing/backend release is in
+[`docs/pilot-readiness-status.md`](../docs/pilot-readiness-status.md).
 
 ## 0. Inventory first (know what you're standing on)
 
