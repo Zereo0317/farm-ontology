@@ -10,6 +10,7 @@ import {
   type FarmSession,
   type OidcState,
 } from "./session";
+import { readBoundedJson } from "./bounded-json";
 
 type Discovery = {
   issuer: string;
@@ -83,7 +84,7 @@ async function discover(config: OidcSettings): Promise<Discovery> {
   try {
     const response = await fetch(discoveryUrl, { signal: timed.signal, cache: "no-store" });
     if (!response.ok) throw new Error(`OIDC discovery failed with HTTP ${response.status}`);
-    const raw = await response.json() as Record<string, unknown>;
+    const raw = await readBoundedJson<Record<string, unknown>>(response);
     if (raw.issuer !== config.issuer) throw new Error("OIDC discovery issuer mismatch");
     const value = {
       issuer: config.issuer,
@@ -140,7 +141,7 @@ async function getJwks(uri: string): Promise<JsonWebKey[]> {
   try {
     const response = await fetch(uri, { signal: timed.signal, cache: "no-store" });
     if (!response.ok) throw new Error("OIDC keys are unavailable");
-    const raw = await response.json() as { keys?: unknown };
+    const raw = await readBoundedJson<{ keys?: unknown }>(response);
     if (!Array.isArray(raw.keys)) throw new Error("invalid OIDC key set");
     const keys = raw.keys.filter((key): key is JsonWebKey => Boolean(key && typeof key === "object"));
     jwksCache.set(uri, { keys, expiresAt: Date.now() + 5 * 60_000 });
@@ -175,6 +176,7 @@ async function verifyIdToken(token: string, config: OidcSettings, discovery: Dis
   const audiences = typeof claims.aud === "string" ? [claims.aud]
     : Array.isArray(claims.aud) ? claims.aud : [];
   if (claims.iss !== config.issuer || !audiences.includes(config.clientId)
+      || (claims.azp !== undefined && claims.azp !== config.clientId)
       || (audiences.length > 1 && claims.azp !== config.clientId)) throw new Error("OIDC issuer or audience mismatch");
   if (!Number.isSafeInteger(claims.exp) || (claims.exp as number) <= now
       || !Number.isSafeInteger(claims.iat) || (claims.iat as number) > now + MAX_CLOCK_SKEW_SECONDS
@@ -209,7 +211,7 @@ export async function finishOidcLogin(code: string, verifier: string, nonce: str
       cache: "no-store",
     });
     if (!response.ok) throw new Error("OIDC token exchange failed");
-    const tokens = await response.json() as { id_token?: unknown };
+    const tokens = await readBoundedJson<{ id_token?: unknown }>(response);
     if (typeof tokens.id_token !== "string") throw new Error("OIDC response has no ID token");
     const identity = await verifyIdToken(tokens.id_token, config, discovery, nonce);
     const actorDigest = await sha256Text(`${config.issuer}\0${identity.subject}`);

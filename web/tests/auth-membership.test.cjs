@@ -19,7 +19,12 @@ function loadTs(relative, extraRequire = () => undefined) {
 }
 
 const sessionTools = loadTs('../lib/auth/session.ts');
-const membership = loadTs('../lib/auth/membership.ts', name => name === './session' ? sessionTools : undefined);
+const boundedJson = loadTs('../lib/auth/bounded-json.ts');
+const membership = loadTs('../lib/auth/membership.ts', name => {
+  if (name === './session') return sessionTools;
+  if (name === './bounded-json') return boundedJson;
+  return undefined;
+});
 const subject = 'subject-private';
 const session = { version: 1, issuer: 'https://issuer.example', actorHash: 'a'.repeat(64), issuedAt: 1, expiresAt: 9999999999 };
 const farmId = 'biratori-hokkaido';
@@ -103,4 +108,22 @@ test('missing access store configuration refuses authorization', async () => {
   hash = session.actorHash;
   delete process.env.FARM_ACCESS_BUCKET;
   assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => record())).status, 503);
+});
+
+test('metadata access-token JSON is size bounded', async () => {
+  global.fetch = async () => new Response(JSON.stringify({ access_token: 'x'.repeat(20 * 1024), expires_in: 3600 }));
+  await assert.rejects(() => membership.fetchMembership('farm-access-test', farmId, hash), /size limit/);
+});
+
+test('membership object JSON is size bounded', async () => {
+  let calls = 0;
+  global.fetch = async input => {
+    calls++;
+    if (String(input).startsWith('http://metadata.google.internal/')) {
+      return Response.json({ access_token: 'metadata-token', expires_in: 3600 });
+    }
+    return new Response(JSON.stringify({ ...record(), padding: 'x'.repeat(40 * 1024) }));
+  };
+  await assert.rejects(() => membership.fetchMembership('farm-access-test', farmId, hash), /size limit/);
+  assert.equal(calls, 2);
 });
