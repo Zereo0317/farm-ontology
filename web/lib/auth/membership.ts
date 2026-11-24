@@ -1,4 +1,5 @@
 import { sha256Text, type FarmSession } from "./session";
+import { readBoundedJson } from "./bounded-json";
 
 export type FarmRole = "viewer" | "operator" | "admin";
 export type FarmMembership = {
@@ -76,7 +77,7 @@ async function accessToken(): Promise<string> {
     cache: "no-store",
   });
   if (!response.ok) throw new Error("metadata identity unavailable");
-  const value = await response.json() as { access_token?: unknown; expires_in?: unknown };
+  const value = await readBoundedJson<{ access_token?: unknown; expires_in?: unknown }>(response, 16 * 1024);
   if (typeof value.access_token !== "string" || !Number.isSafeInteger(value.expires_in)) {
     throw new Error("metadata identity response invalid");
   }
@@ -84,7 +85,7 @@ async function accessToken(): Promise<string> {
   return value.access_token;
 }
 
-async function fetchMembership(bucket: string, farmId: string, actorHash: string): Promise<FarmMembership | null> {
+export async function fetchMembership(bucket: string, farmId: string, actorHash: string): Promise<FarmMembership | null> {
   const object = `farms/${farmId}/members/${actorHash}.json`;
   const url = `${GCS_API}/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(object)}?alt=media`;
   const token = await accessToken();
@@ -95,7 +96,7 @@ async function fetchMembership(bucket: string, farmId: string, actorHash: string
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`membership store unavailable (${response.status})`);
-  const value = await response.json() as Partial<FarmMembership>;
+  const value = await readBoundedJson<Partial<FarmMembership>>(response, 32 * 1024);
   if (!validMembershipDocument(value, farmId, actorHash)) {
     throw new Error("membership record invalid");
   }

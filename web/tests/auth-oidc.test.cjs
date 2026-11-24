@@ -20,7 +20,13 @@ function loadTs(relative, extraRequire = () => undefined) {
 }
 
 const session = loadTs('../lib/auth/session.ts');
-const oidc = loadTs('../lib/auth/oidc.ts', name => name === './session' ? session : undefined);
+const boundedJson = loadTs('../lib/auth/bounded-json.ts');
+const loadOidc = () => loadTs('../lib/auth/oidc.ts', name => {
+  if (name === './session') return session;
+  if (name === './bounded-json') return boundedJson;
+  return undefined;
+});
+const oidc = loadOidc();
 const pair = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const jwk = { ...pair.publicKey.export({ format: 'jwk' }), kid: 'test-key', alg: 'RS256', use: 'sig' };
 const issuer = 'https://identity.example';
@@ -100,6 +106,8 @@ test('wrong issuer, audience, signature, expiry, nonce, or unverified email fail
   const invalid = [
     ['issuer', signedToken({ iss: 'https://attacker.example' })],
     ['audience', signedToken({ aud: 'another-client' })],
+    ['mismatched authorized party', signedToken({ azp: 'another-client' })],
+    ['multi-audience missing authorized party', signedToken({ aud: [clientId, 'another-client'] })],
     ['expired', signedToken({ exp: Math.floor(Date.now() / 1000) - 1 })],
     ['nonce', signedToken({ nonce: 'wrong' })],
     ['unverified email', signedToken({ email_verified: false })],
@@ -111,6 +119,50 @@ test('wrong issuer, audience, signature, expiry, nonce, or unverified email fail
       await assert.rejects(() => oidc.finishOidcLogin('one-time-code', verifier, 'expected-nonce'));
     });
   }
+});
+
+test('multi-audience ID token accepts only the configured authorized party', async () => {
+  installProvider();
+  claims = signedToken({ aud: [clientId, 'another-client'], azp: clientId });
+  const result = await loadOidc().finishOidcLogin('one-time-code', verifier, 'expected-nonce');
+  assert.equal((await session.verifySession(result, process.env.FARM_SESSION_SECRET)).issuer, issuer);
+});
+
+test('OIDC discovery, JWKS and token JSON responses are size bounded', async t => {
+  await t.test('discovery metadata', async () => {
+    const largeIssuer = 'https://oversized-discovery.example';
+    installProvider();
+    process.env.FARM_OIDC_ISSUER = largeIssuer;
+    global.fetch = async () => new Response(JSON.stringify({ issuer: largeIssuer, padding: 'x'.repeat(70 * 1024) }));
+    await assert.rejects(() => loadOidc().beginOidcLogin('/'), /size limit/);
+  });
+
+  await t.test('JWKS document', async () => {
+    installProvider();
+    global.fetch = async input => {
+      const url = String(input);
+      if (url === `${issuer}/.well-known/openid-configuration`) {
+        return Response.json({ issuer, authorization_endpoint: `${issuer}/authorize`, token_endpoint: `${issuer}/token`, jwks_uri: 'https://oversized-keys.example/keys' });
+      }
+      if (url === `${issuer}/token`) return Response.json({ id_token: signedToken() });
+      if (url === 'https://oversized-keys.example/keys') return new Response(JSON.stringify({ keys: [], padding: 'x'.repeat(70 * 1024) }));
+      throw new Error(`unexpected fetch ${url}`);
+    };
+    await assert.rejects(() => loadOidc().finishOidcLogin('one-time-code', verifier, 'expected-nonce'), /size limit/);
+  });
+
+  await t.test('token response', async () => {
+    installProvider();
+    global.fetch = async input => {
+      const url = String(input);
+      if (url === `${issuer}/.well-known/openid-configuration`) {
+        return Response.json({ issuer, authorization_endpoint: `${issuer}/authorize`, token_endpoint: `${issuer}/token`, jwks_uri: 'https://keys.example/keys' });
+      }
+      if (url === `${issuer}/token`) return new Response(JSON.stringify({ id_token: 'x'.repeat(70 * 1024) }));
+      throw new Error(`unexpected fetch ${url}`);
+    };
+    await assert.rejects(() => loadOidc().finishOidcLogin('one-time-code', verifier, 'expected-nonce'), /size limit/);
+  });
 });
 
 test('missing OIDC configuration refuses to start login', async () => {
