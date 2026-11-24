@@ -15,8 +15,12 @@ from farm_ontology.page_io import dispatch
 class PageIoTests(unittest.TestCase):
     def setUp(self):
         self._old = os.environ.get("FARM_RECORD_DIR")
+        self._old_require_tenant = os.environ.get("FARM_REQUIRE_TENANT_CONTEXT")
+        self._old_require_idempotency = os.environ.get("FARM_REQUIRE_IDEMPOTENCY")
         self._tmp = tempfile.TemporaryDirectory()
         os.environ["FARM_RECORD_DIR"] = self._tmp.name
+        os.environ.pop("FARM_REQUIRE_TENANT_CONTEXT", None)
+        os.environ.pop("FARM_REQUIRE_IDEMPOTENCY", None)
 
     def tearDown(self):
         self._tmp.cleanup()
@@ -24,6 +28,14 @@ class PageIoTests(unittest.TestCase):
             os.environ.pop("FARM_RECORD_DIR", None)
         else:
             os.environ["FARM_RECORD_DIR"] = self._old
+        if self._old_require_tenant is None:
+            os.environ.pop("FARM_REQUIRE_TENANT_CONTEXT", None)
+        else:
+            os.environ["FARM_REQUIRE_TENANT_CONTEXT"] = self._old_require_tenant
+        if self._old_require_idempotency is None:
+            os.environ.pop("FARM_REQUIRE_IDEMPOTENCY", None)
+        else:
+            os.environ["FARM_REQUIRE_IDEMPOTENCY"] = self._old_require_idempotency
 
     def test_observe_ignores_weather_and_stays_closed(self):
         saved = dispatch(
@@ -140,6 +152,163 @@ class PageIoTests(unittest.TestCase):
         )
         self.assertIn('"--lat"', flags)
         self.assertIn('"--lon"', flags)
+
+    def test_farm_records_and_reads_are_isolated_and_legacy_rows_stay_unassigned(self):
+        legacy = dispatch(
+            {"op": "observe", "latitude": 1, "longitude": 2, "note": "legacy"}
+        )
+        farm_a = dispatch(
+            {
+                "op": "observe",
+                "farm_id": "biratori-a",
+                "latitude": 3,
+                "longitude": 4,
+                "note": "farm a",
+            }
+        )
+        farm_b = dispatch(
+            {
+                "op": "observe",
+                "farm_id": "biratori-b",
+                "latitude": 5,
+                "longitude": 6,
+                "note": "farm b",
+            }
+        )
+
+        listed_a = dispatch({"op": "list", "farm_id": "biratori-a"})
+        listed_b = dispatch({"op": "list", "farm_id": "biratori-b"})
+        self.assertEqual([row["file"] for row in listed_a["observations"]], [farm_a["file"]])
+        self.assertEqual([row["file"] for row in listed_b["observations"]], [farm_b["file"]])
+        self.assertNotIn(legacy["file"], [row["file"] for row in listed_a["observations"]])
+        self.assertNotIn(farm_b["file"], [row["file"] for row in listed_a["observations"]])
+        self.assertEqual(listed_a["observations"][0]["farm_id"], "biratori-a")
+        self.assertEqual(dispatch({"op": "status", "farm_id": "biratori-a"})["observation_count"], 1)
+
+        corners = [
+            {"corner": "NW", "lat": 42.0, "lon": 142.0, "accuracy_m": 3.0},
+            {"corner": "NE", "lat": 42.0, "lon": 142.001, "accuracy_m": 3.0},
+            {"corner": "SE", "lat": 41.999, "lon": 142.001, "accuracy_m": 3.0},
+            {"corner": "SW", "lat": 41.999, "lon": 142.0, "accuracy_m": 3.0},
+        ]
+        walk_a = dispatch(
+            {
+                "op": "boundary_walk",
+                "farm_id": "biratori-a",
+                "parcel_name": "north field",
+                "corners": corners,
+            }
+        )
+        dispatch(
+            {
+                "op": "boundary_walk",
+                "farm_id": "biratori-b",
+                "parcel_name": "south field",
+                "corners": corners,
+            }
+        )
+        walks_a = dispatch({"op": "list_walks", "farm_id": "biratori-a"})["walks"]
+        self.assertEqual([row["file"] for row in walks_a], [walk_a["file"]])
+        self.assertEqual(walks_a[0]["parcel_name"], "north field")
+
+        with self.assertRaisesRegex(ValueError, "not in the record"):
+            dispatch(
+                {
+                    "op": "note",
+                    "farm_id": "biratori-a",
+                    "kind": "feedback",
+                    "text": "cross farm link must refuse",
+                    "observation_file": farm_b["file"],
+                }
+            )
+
+    def test_hosted_record_operations_require_authenticated_farm_context(self):
+        os.environ["FARM_REQUIRE_TENANT_CONTEXT"] = "true"
+        for operation in ("status", "list", "list_walks"):
+            with self.subTest(operation=operation):
+                with self.assertRaisesRegex(ValueError, "farm_id is required"):
+                    dispatch({"op": operation})
+        with self.assertRaisesRegex(ValueError, "farm_id is required"):
+            dispatch({"op": "observe", "latitude": 1, "longitude": 2})
+
+        saved = dispatch(
+            {
+                "op": "observe",
+                "farm_id": "biratori-a",
+                "latitude": 1,
+                "longitude": 2,
+            }
+        )
+        self.assertEqual(saved["observation"]["farm_id"], "biratori-a")
+
+    def test_invalid_farm_identifier_cannot_escape_tenant_prefix(self):
+        for farm_id in ("../other", "Farm-A", "farm/a", "", "a." ):
+            with self.subTest(farm_id=farm_id):
+                with self.assertRaisesRegex(ValueError, "farm_id"):
+                    dispatch({"op": "list", "farm_id": farm_id})
+
+    def test_hosted_writes_require_stable_request_ids(self):
+        os.environ["FARM_REQUIRE_TENANT_CONTEXT"] = "1"
+        os.environ["FARM_REQUIRE_IDEMPOTENCY"] = "1"
+        with self.assertRaisesRegex(ValueError, "request_id is required"):
+            dispatch({"op": "observe", "farm_id": "biratori-a", "latitude": 1, "longitude": 2})
+
+        observation_request = {
+            "op": "observe",
+            "farm_id": "biratori-a",
+            "request_id": "550e8400-e29b-41d4-a716-446655440000",
+            "latitude": 1,
+            "longitude": 2,
+            "note": "same payload",
+        }
+        first_observation = dispatch(observation_request)
+        retried_observation = dispatch(observation_request)
+        self.assertEqual(first_observation, retried_observation)
+        self.assertEqual(len(list(Path(self._tmp.name).glob("farms/biratori-a/obs-*.json"))), 1)
+        with self.assertRaisesRegex(ValueError, "reused with a different payload"):
+            dispatch({**observation_request, "note": "changed payload"})
+
+        other_farm = dispatch({**observation_request, "farm_id": "biratori-b"})
+        self.assertEqual(first_observation["file"], other_farm["file"])
+        self.assertTrue(
+            (Path(self._tmp.name) / "farms" / "biratori-a" / first_observation["file"]).is_file()
+        )
+        self.assertTrue(
+            (Path(self._tmp.name) / "farms" / "biratori-b" / other_farm["file"]).is_file()
+        )
+
+        note_request = {
+            "op": "note",
+            "farm_id": "biratori-a",
+            "request_id": "550e8400-e29b-41d4-a716-446655440001",
+            "kind": "verification",
+            "text": "checked row",
+            "observation_file": first_observation["file"],
+        }
+        first_note = dispatch(note_request)
+        self.assertEqual(first_note, dispatch(note_request))
+        self.assertEqual(len(list(Path(self._tmp.name).glob("farms/biratori-a/notes/*.json"))), 1)
+        with self.assertRaisesRegex(ValueError, "reused with a different payload"):
+            dispatch({**note_request, "text": "different note"})
+
+        corners = [
+            {"corner": "NW", "lat": 42.0, "lon": 142.0, "accuracy_m": 3.0},
+            {"corner": "NE", "lat": 42.0, "lon": 142.001, "accuracy_m": 3.0},
+            {"corner": "SE", "lat": 41.999, "lon": 142.001, "accuracy_m": 3.0},
+            {"corner": "SW", "lat": 41.999, "lon": 142.0, "accuracy_m": 3.0},
+        ]
+        walk_request = {
+            "op": "boundary_walk",
+            "farm_id": "biratori-a",
+            "request_id": "550e8400-e29b-41d4-a716-446655440002",
+            "parcel_name": "North field",
+            "corners": corners,
+        }
+        first_walk = dispatch(walk_request)
+        self.assertEqual(first_walk, dispatch(walk_request))
+        self.assertEqual(len(list(Path(self._tmp.name).glob("farms/biratori-a/boundary/*.json"))), 1)
+        with self.assertRaisesRegex(ValueError, "reused with a different payload"):
+            dispatch({**walk_request, "parcel_name": "South field"})
 
 
 if __name__ == "__main__":

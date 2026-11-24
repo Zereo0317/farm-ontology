@@ -40,10 +40,35 @@ class HttpServiceRoutingTests(unittest.TestCase):
 
     def test_farm_pin_is_the_current_location(self):
         farm = STATUS_JSON["farm"]
+        self.assertEqual(farm["farm_id"], "biratori-hokkaido")
         self.assertAlmostEqual(farm["latitude"], 42.7018152)
         self.assertAlmostEqual(farm["longitude"], 142.4071291)
         self.assertIn("Biratori", farm["label"])
         self.assertEqual(farm["tenure"], "unknown")
+
+    def test_tenant_feed_route_uses_only_the_configured_farm(self):
+        with mock.patch.object(hs, "_open_meteo_current", return_value={"value": 1}) as fetch:
+            status, payload, kind = handle_target("/farm/biratori-hokkaido/weather")
+        self.assertEqual((status, kind), (200, "json"))
+        self.assertEqual(payload, {"value": 1})
+        fetch.assert_called_once_with(42.7018152, 142.4071291)
+
+        with mock.patch.object(hs, "_open_meteo_current") as fetch:
+            status, payload, kind = handle_target("/farm/another-farm/weather")
+        self.assertEqual((status, kind), (404, "json"))
+        self.assertEqual(payload, {"gap": True, "reason": "farm feeds are not configured"})
+        fetch.assert_not_called()
+
+        status, payload, kind = handle_target("/farm/../weather")
+        self.assertEqual((status, kind), (404, "json"))
+        self.assertEqual(payload["reason"], "invalid farm identifier")
+
+    def test_tenant_licence_route_is_scoped_to_configured_farm(self):
+        with mock.patch.object(hs, "_licences_snapshot", return_value={"feeds": {"x": {}}}) as snap:
+            status, payload, _ = handle_target("/farm/biratori-hokkaido/licences")
+        self.assertEqual(status, 200)
+        self.assertIn("feeds", payload)
+        snap.assert_called_once()
 
     def test_livez_answers(self):
         status, payload, kind = handle_target("/livez")

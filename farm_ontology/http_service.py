@@ -47,6 +47,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
 FARM = {
+    "farm_id": os.environ.get("FARM_ID", "biratori-hokkaido"),
     "label": os.environ.get("FARM_LABEL", "Hiroki Tomiyasu field, Biratori, Hokkaido"),
     "latitude": float(os.environ.get("FARM_LAT", "42.7018152")),
     "longitude": float(os.environ.get("FARM_LON", "142.4071291")),
@@ -359,6 +360,9 @@ STATUS_JSON = {
         "/farm",
         "/farm/weather",
         "/farm/planet",
+        "/farm/{farm_id}/weather",
+        "/farm/{farm_id}/planet",
+        "/farm/{farm_id}/licences",
         "/farm/ee",
         "/farm/memo",
         "/farm/licences",
@@ -495,6 +499,28 @@ def handle_target(path: str, *, token: str | None = None) -> tuple[int, dict | s
         return 200, {"status": "live", "at": _now()}, "json"
     if path == "/farm":
         return 200, STATUS_JSON, "json"
+    parts = [part for part in path.split("/") if part]
+    if len(parts) == 3 and parts[0] == "farm":
+        requested_farm = parts[1]
+        try:
+            from farm_ontology.access_control import normalize_farm_id
+
+            normalize_farm_id(requested_farm)
+        except ValueError:
+            return 404, {"gap": True, "reason": "invalid farm identifier"}, "json"
+        if requested_farm != FARM["farm_id"]:
+            return 404, {"gap": True, "reason": "farm feeds are not configured"}, "json"
+        lat, lon = FARM["latitude"], FARM["longitude"]
+        if parts[2] == "weather":
+            try:
+                return 200, _open_meteo_current(lat, lon), "json"
+            except (urllib.error.HTTPError, urllib.error.URLError, OSError, ValueError) as error:
+                return 200, {"gap": f"weather unreachable: {str(error)[:120]}"}, "json"
+        if parts[2] == "planet":
+            return 200, _planet_search(lat, lon), "json"
+        if parts[2] == "licences":
+            return 200, _licences_snapshot(), "json"
+        return 404, {"gap": True, "reason": "unknown farm feed"}, "json"
     lat, lon = FARM["latitude"], FARM["longitude"]
     if path == "/farm/weather":
         try:
