@@ -273,13 +273,16 @@ class HedgeOrderIntent:
             raise ValueError("intent expiry must follow creation")
 
     def payload(self) -> dict:
+        quantity = format(self.quantity, "f")
+        if "." in quantity:
+            quantity = quantity.rstrip("0").rstrip(".")
         return {
             "version": self.version,
             "intent_id": self.intent_id,
             "artifact_sha256": self.artifact_sha256,
             "instrument_family": self.instrument_family,
             "side": self.side,
-            "quantity": str(self.quantity),
+            "quantity": quantity,
             "quantity_unit": self.quantity_unit,
             "cap_sheet_sha256": self.cap_sheet_sha256,
             "rights_bundle_sha256": self.rights_bundle_sha256,
@@ -628,6 +631,12 @@ class HedgeIntentLedger:
             if event.event_type is EventType.PROPOSED:
                 if state is not None:
                     raise ValueError("intent may be proposed only once")
+                if not _utc(intent.created_at, "intent created_at") <= moment < _utc(
+                    intent.expires_at, "intent expires_at"
+                ):
+                    raise ValueError("replayed proposal is outside its validity window")
+                if event.evidence_sha256 != intent.artifact_sha256:
+                    raise ValueError("replayed proposal evidence does not match the intent artifact digest")
                 self._states[event.intent_id] = IntentState.PROPOSED
             elif event.event_type is EventType.APPROVED_MANUAL and state is IntentState.PROPOSED:
                 self._states[event.intent_id] = IntentState.APPROVED_MANUAL

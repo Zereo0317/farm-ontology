@@ -346,6 +346,32 @@ class FinanceControlTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cryptographic authentication"):
             HedgeIntentLedger((proposal, forged), intents=(value,))
 
+    def test_proposal_replay_checks_validity_window_and_artifact_evidence(self):
+        import hashlib
+
+        value = intent()
+        ledger = HedgeIntentLedger()
+        proposal = ledger.propose(value, at=AT, actor="analyst-charlie")
+        altered_events = (
+            replace(proposal, at=value.created_at - timedelta(seconds=1), event_sha256="0" * 64),
+            replace(proposal, evidence_sha256="f" * 64, event_sha256="0" * 64),
+        )
+        for altered in altered_events:
+            payload_bytes = json.dumps(
+                altered.payload(), sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+            ).encode("utf-8")
+            altered = replace(altered, event_sha256=hashlib.sha256(payload_bytes).hexdigest())
+            with self.subTest(event=altered), self.assertRaisesRegex(ValueError, "outside its validity window|does not match"):
+                HedgeIntentLedger((altered,), intents=(value,))
+
+    def test_equivalent_decimal_scales_have_one_intent_fingerprint(self):
+        value_a = intent(quantity=Decimal("2.0"))
+        value_b = intent(quantity=Decimal("2.00"))
+        self.assertEqual(value_a.fingerprint, value_b.fingerprint)
+        ledger = HedgeIntentLedger()
+        event = ledger.propose(value_a, at=AT, actor="analyst-charlie")
+        self.assertEqual(ledger.propose(value_b, at=AT, actor="analyst-charlie"), event)
+
     def test_ledger_refuses_ordered_approval_bypass_and_halt_freezes_intent(self):
         value = intent()
         ledger = HedgeIntentLedger()
