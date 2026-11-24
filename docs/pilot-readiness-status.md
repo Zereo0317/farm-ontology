@@ -44,7 +44,7 @@ see the release evidence below.
   executed contracts, legal assessment, broker controls, paper-ledger
   reconciliation, emergency drills, and a seasonal validation remain open.
 
-## 2026-11-25 source implementation follow-up (not yet deployed)
+## 2026-11-25 source implementation and backend release follow-up
 
 - Local `main` now contains tenant-scoped record storage and request-UUID
   idempotency for observations, notes, and boundary walks; legacy unscoped
@@ -60,8 +60,8 @@ see the release evidence below.
   activity while Class C is closed.
 - Archive infrastructure now uses a separately provisioned project, bounded
   restore validation, read-only-by-default scheduler handling, and a private
-  state-bucket operator grant. Its IaC is unprovisioned; Terraform validation
-  and a timed restore are still outstanding.
+  state-bucket operator grant. Its IaC validates but is not applied; timed
+  smoke and restore drills are still outstanding.
 - The web release workflow now builds tagged candidates without production
   traffic. Promotion requires a manual exact-digest acceptance, a matching
   `FARM_WEB_ACCEPTANCE_DIGEST` in the `web-production` environment, OIDC
@@ -73,7 +73,7 @@ see the release evidence below.
   dedicated runtime and main-branch deployer identities, prefix-scoped
   append/read access for `field-notes/farms/`, two empty OIDC/session Secret
   Manager entries and scoped grants. Its scheduler remains disabled by
-  default. Terraform validate has not run locally because the CLI is absent.
+  default. Terraform 1.8.5 formatting and validation pass in CI and locally.
 - The final promotion gate now requires the exact dedicated runtime identity,
   exact membership-bucket and tenant-folder direct grants, no direct runtime
   grant on the parent records bucket, no project grant for the runtime, and a
@@ -84,12 +84,40 @@ see the release evidence below.
 - GitHub environment `web-production`, acceptance digest, independent reviewer,
   and `FARM_WEB_DEPLOYER_READY` variable are not configured. The candidate
   deploy job stays skipped until the dedicated WIF identity is provisioned.
-- Promotion IAM checks inspect direct bucket/folder/project bindings. Inherited
-  organization/folder roles and access through broad groups require a separate
-  owner-side effective-IAM review before the membership store is trusted.
-- These are source-level changes only. They have not been pushed, run through
-  GitHub CI, staged, or promoted to production in this follow-up. Recheck
-  current Cloud Run revisions and traffic before describing any release.
+- Promotion IAM checks inspect the membership bucket, records bucket, tenant
+  managed folder, and project direct bindings. Inherited organization/folder
+  roles and access through broad groups require a separate owner-side
+  effective-IAM review before the membership store is trusted.
+- The backend, source changes, and release gates were pushed to `main` at
+  `2b82caac498de34e430b3d81190d47c5d6b5ad78`. GitHub run
+  `45489929774` passed 1,868 unit tests (14 opt-in skips), 13 archive
+  infrastructure contract tests, the web security suite, Docker build, and
+  Terraform 1.8.5 formatting/validation. Staging revision
+  `farm-seges-ai-staging-00165-cps` served 100% and passed `/livez`.
+- The guarded backend production promotion `45490307600` succeeded. Readback
+  confirmed `farm-seges-ai-00066-vk7` is latest-created, ready, and serving
+  100%, on the exact staged image digest
+  `sha256:d2e25a9f5f89a0c403674bbb58b4ba3d546572b62f73ecd1b0350d2d4731b094`.
+  Production `/livez` and `/farm/weather` smoke verification passed.
+- The updated web bundle was built as candidate digest
+  `sha256:08b36961a7cbd2726e1df976ba8cf5ba57369ea69b3930f8d5ea9191ce7248e5`
+  in workflow `45488798307`; candidate deploy and production promotion were
+  skipped because the dedicated deployer/runtime foundation is not ready.
+  Current readback remains `farm-seges-ai-web-00032-bb9` at 100%, with the
+  shared compute service account, no OIDC/access-bucket configuration, and
+  the legacy token setting. Live web smoke returned `/livez` 200, `/` 307,
+  report 200, and unauthenticated boundaries 401. The new farmer-account
+  login, membership, tenant-isolation, and revocation flow is not live or
+  accepted.
+- Landing source was not changed; current readback remains
+  `farm-seges-ai-landing-00020-dj4` at 100%.
+- Terraform is formatted and validated but not applied. The separate archive
+  project, storage resources, identities, secrets, schedule, and restore drill
+  remain unprovisioned. Archive promotion therefore cannot be claimed.
+- These releases do not close source-rights review, prospective agronomy
+  validation, effective inherited-IAM review, distributed rate limiting,
+  archive restore/alert drills, legal/operational sign-offs, or Class C. Class
+  C remains closed and no broker/order path exists.
 
 ## Verification and operating notes
 
