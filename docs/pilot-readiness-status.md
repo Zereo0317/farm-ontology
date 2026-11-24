@@ -11,17 +11,22 @@ see the release evidence below.
 - Provider rights must be checked independently for each data source and
   use. The deployed public metadata path fails closed without verified rights;
   this does not grant commercial rights or establish the terms of any source.
-- The web shared-token gate is containment only. Individual identities,
-  farm-scoped authorization, revocation, and two-farm isolation are not
-  implemented. Boundary POST uses same-origin JSON and a size limit, but rate
-  limiting is not yet implemented. Existing clients need the login gate.
+- Source now includes per-person OIDC sessions, farm-scoped membership and
+  role checks, revocation-on-next-request, tenant-scoped records, and
+  idempotent observation/note/boundary writes. Production is still on the
+  legacy shared-token revision: no OIDC client/session secrets, dedicated
+  access bucket/runtime identity, or farmer membership has been provisioned
+  and accepted. Boundary POST uses same-origin JSON and a size limit, but
+  distributed rate limiting is not implemented.
 - The deployed landing copy describes research and evidence limits. It does
   not establish investment performance, farmer outcomes, or an opportunity
   to trade. Any future finance claims require evidence and review before use.
-- The nightly exporter requires `FARM_ARCHIVE_BUCKET` to identify a separate
-  bucket. Provision access, retention, independent administrative protection,
-  and run an isolated restore drill before releasing the exporter. Local
-  archive storage is not an independent failure domain.
+- Source now includes bounded restore tooling and a Terraform stack for a
+  separate farm-only archive project. It has not been provisioned or applied;
+  project/bucket names, billing, budget and operator identities still require
+  owner confirmation. Complete a timed isolated restore before activating the
+  exporter or scheduler. Local archive storage is not an independent failure
+  domain.
 - The deployed backend and frontend revisions are recorded below. The web
   workflow builds and deploys an immutable image digest after its checks;
   backend production promotion used the tested staging image. Keep these
@@ -38,6 +43,53 @@ see the release evidence below.
 - Actual field trials, equipment purchase and calibration, company formation,
   executed contracts, legal assessment, broker controls, paper-ledger
   reconciliation, emergency drills, and a seasonal validation remain open.
+
+## 2026-11-25 source implementation follow-up (not yet deployed)
+
+- Local `main` now contains tenant-scoped record storage and request-UUID
+  idempotency for observations, notes, and boundary walks; legacy unscoped
+  records remain unassigned. Tenant feed routes return gaps for farms without
+  configured feeds.
+- Web source now has fail-closed OIDC/PKCE identity, issuer/subject-bound
+  sessions, per-request membership/role/revocation checks, bounded request and
+  upstream JSON bodies, and matching tenant request IDs. OIDC `azp` validation
+  rejects mismatches and requires it for multi-audience tokens.
+- Finance controls now honor the authoritative closed Class C switch, reject
+  unverifiable approval replay, bind rights/consent scope, and enforce
+  evidence freshness. They do not create a live-order path or authorize finance
+  activity while Class C is closed.
+- Archive infrastructure now uses a separately provisioned project, bounded
+  restore validation, read-only-by-default scheduler handling, and a private
+  state-bucket operator grant. Its IaC is unprovisioned; Terraform validation
+  and a timed restore are still outstanding.
+- The web release workflow now builds tagged candidates without production
+  traffic. Promotion requires a manual exact-digest acceptance, a matching
+  `FARM_WEB_ACCEPTANCE_DIGEST` in the `web-production` environment, OIDC
+  runtime metadata and direct IAM checks, enabled secret versions, then tagged
+  login/API smoke checks. The protected environment and its accepted digest
+  are not configured in GitHub yet. This protects production from automatic
+  cutover to an unconfigured login.
+- The archive Terraform stack now defines a private web membership bucket,
+  dedicated runtime and main-branch deployer identities, prefix-scoped
+  append/read access for `field-notes/farms/`, two empty OIDC/session Secret
+  Manager entries and scoped grants. Its scheduler remains disabled by
+  default. Terraform validate has not run locally because the CLI is absent.
+- The final promotion gate now requires the exact dedicated runtime identity,
+  exact membership-bucket and tenant-folder direct grants, no direct runtime
+  grant on the parent records bucket, no project grant for the runtime, and a
+  single-purpose project IAM metadata role for the deployer. The explicitly
+  authorized membership administrator principal must match the Terraform
+  output mirrored to GitHub. This still cannot prove effective access from
+  inherited organization/folder IAM or group membership.
+- GitHub environment `web-production`, acceptance digest, independent reviewer,
+  and `FARM_WEB_DEPLOYER_READY` variable are not configured. The candidate
+  deploy job stays skipped until the dedicated WIF identity is provisioned.
+- Promotion IAM checks inspect direct bucket/folder/project bindings. Inherited
+  organization/folder roles and access through broad groups require a separate
+  owner-side effective-IAM review before the membership store is trusted.
+- These are source-level changes only. They have not been pushed, run through
+  GitHub CI, staged, or promoted to production in this follow-up. Recheck
+  current Cloud Run revisions and traffic before describing any release.
 
 ## Verification and operating notes
 

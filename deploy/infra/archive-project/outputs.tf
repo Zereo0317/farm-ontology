@@ -27,3 +27,28 @@ output "state_bucket_name" {
   value       = google_storage_bucket.terraform_state.name
   description = "Private remote state bucket in the isolated archive project with an explicit Terraform operator grant."
 }
+
+output "web_runtime_service_account" {
+  value       = google_service_account.web_runtime.email
+  description = "Dedicated web service identity; attach only after OIDC and membership-store configuration is ready."
+}
+
+output "web_access_bucket_name" {
+  value       = google_storage_bucket.web_access.name
+  description = "Private farm-only bucket containing web OIDC membership documents."
+}
+
+output "web_record_managed_folder" {
+  value       = google_storage_managed_folder.web_tenant_records.name
+  description = "Tenant record prefix for which the web runtime receives read and create-only permissions."
+}
+
+output "web_deployer_service_account" {
+  value       = google_service_account.web_deployer.email
+  description = "Dedicated main-branch deploy identity with service-scoped Cloud Run update permission."
+}
+
+output "web_membership_administrator_member" {
+  value       = var.web_membership_administrator_member
+  description = "Mirror this owner-authorized principal to GitHub FARM_WEB_MEMBERSHIP_ADMINISTRATOR for exact IAM policy checks."
+}

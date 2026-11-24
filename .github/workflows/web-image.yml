@@ -6,14 +6,12 @@ name: web-image
 # repository secrets involved).
 #
 # Pipeline shape:
-#   push to main touching web/** or Dockerfile.web or this file
-#     → build image via Cloud Build (web/tools/web-image-build.ps1)
-#     → run the web security suite, then deploy that exact digest to production
-#       with traffic verification, smoke checks, and rollback.
-#   workflow_dispatch WITHOUT image_ref: build and deploy from main.
-#   workflow_dispatch WITH image_ref (digest only): PIN job only —
-#     rolls the service back to that exact image (explicit digest per
-#     ops discipline; see deploy/web-rollback.md).
+#   push to main: test and build an immutable candidate only.
+#   workflow_dispatch with promotion_image_ref and accepted_image_digest
+#   matching a previously tested candidate:
+#     validate OIDC/access-store config, smoke a tagged no-traffic revision,
+#     then promote that exact digest.
+#   workflow_dispatch with image_ref: explicitly accepted digest rollback.
 
 on:
   push:
@@ -27,7 +25,15 @@ on:
   workflow_dispatch:
     inputs:
       image_ref:
-        description: "PIN ONLY: farm web sha256 digest. Leave EMPTY to build and deploy from main."
+        description: "Rollback target: farm web sha256 digest. Leave empty to build a candidate."
+        required: false
+        default: ""
+      promotion_image_ref:
+        description: "Promote an existing candidate: exact sha256 digest. Leave empty to build a candidate or use image_ref for rollback."
+        required: false
+        default: ""
+      accepted_image_digest:
+        description: "Exact sha256 digest manually accepted after farmer-account and tenant-isolation checks; required to promote or rollback."
         required: false
         default: ""
 
@@ -46,7 +52,7 @@ env:
 jobs:
   build-push:
     # On pushes, or on a manual dispatch that did NOT request a pin.
-    if: ${{ inputs.image_ref == '' || inputs.image_ref == null }}
+    if: ${{ (inputs.image_ref == '' || inputs.image_ref == null) && (inputs.promotion_image_ref == '' || inputs.promotion_image_ref == null) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -92,25 +98,80 @@ jobs:
           echo "image_digest=$DIGEST" >> "$GITHUB_OUTPUT"
           echo "::notice::Image $IMAGE_BASE@$DIGEST (tag $TAG)"
 
-  deploy-web:
+  candidate-web:
     needs: build-push
-    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.image_ref == '')) }}
+    if: ${{ vars.FARM_WEB_DEPLOYER_READY == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.image_ref == '' && inputs.promotion_image_ref == '')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
+          service_account: farm-web-deployer@seges-ai.iam.gserviceaccount.com
+          project_id: seges-ai
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Create a tagged no-traffic candidate
+        env:
+          IMAGE_DIGEST: ${{ needs.build-push.outputs.image_digest }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          IMAGE="$IMAGE_BASE@$IMAGE_DIGEST"
+          gcloud run deploy farm-seges-ai-web --project=seges-ai --region=asia-east1 --image "$IMAGE" --service-account farm-web-runtime@seges-ai.iam.gserviceaccount.com --tag auth-candidate --no-traffic
+          REVISION="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format='value(status.latestCreatedRevisionName)')"
+          ACTUAL_IMAGE="$(gcloud run revisions describe "$REVISION" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
+          test "$ACTUAL_IMAGE" = "$IMAGE"
+          ACTUAL_SERVICE_ACCOUNT="$(gcloud run revisions describe "$REVISION" --project=seges-ai --region=asia-east1 --format='value(spec.serviceAccountName)')"
+          test "$ACTUAL_SERVICE_ACCOUNT" = "farm-web-runtime@seges-ai.iam.gserviceaccount.com"
+          CANDIDATE_URL="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json | python -c 'import json,sys; s=json.load(sys.stdin); rows=[x for x in s["status"]["traffic"] if x.get("tag")=="auth-candidate"]; assert len(rows)==1 and rows[0].get("url"); print(rows[0]["url"])')"
+          echo "::notice::No-traffic web candidate $IMAGE at $CANDIDATE_URL; production traffic is unchanged"
+
+  deploy-web:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.image_ref == '' && inputs.promotion_image_ref != '' && inputs.accepted_image_digest != '' && inputs.accepted_image_digest == inputs.promotion_image_ref }}
+    environment: web-production
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - name: Require protected farmer acceptance for this exact digest
+        env:
+          IMAGE_DIGEST: ${{ inputs.promotion_image_ref }}
+          ACCEPTANCE_DIGEST: ${{ vars.FARM_WEB_ACCEPTANCE_DIGEST }}
+          DEPLOYER_READY: ${{ vars.FARM_WEB_DEPLOYER_READY }}
+        run: |
+          set -euo pipefail
+          python -c 'import os; from deploy.verify_web_promotion_config import verify_promotion_acceptance; verify_promotion_acceptance(os.environ.get("IMAGE_DIGEST", ""), os.environ.get("ACCEPTANCE_DIGEST", ""), os.environ.get("DEPLOYER_READY", ""))'
       - id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
-          service_account: 451400509859-compute@developer.gserviceaccount.com
+          service_account: farm-web-deployer@seges-ai.iam.gserviceaccount.com
           project_id: seges-ai
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Deploy tested digest and verify production
+      - name: Validate production OIDC and read-only membership-store configuration
         env:
-          IMAGE_DIGEST: ${{ needs.build-push.outputs.image_digest }}
+          FARM_WEB_MEMBERSHIP_ADMINISTRATOR: ${{ vars.FARM_WEB_MEMBERSHIP_ADMINISTRATOR }}
+        run: |
+          set -euo pipefail
+          gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web-config.json"
+          ACCESS_BUCKET="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(next(x["value"] for x in d["spec"]["template"]["spec"]["containers"][0]["env"] if x.get("name")=="FARM_ACCESS_BUCKET"))' "$RUNNER_TEMP/web-config.json")"
+          gcloud storage buckets get-iam-policy "gs://$ACCESS_BUCKET" --project=seges-ai --format=json > "$RUNNER_TEMP/access-iam.json"
+          gcloud projects get-iam-policy seges-ai --format=json > "$RUNNER_TEMP/project-iam.json"
+          gcloud storage buckets get-iam-policy gs://farm-seges-ai-records --project=seges-ai --format=json > "$RUNNER_TEMP/record-bucket-iam.json"
+          gcloud storage managed-folders get-iam-policy gs://farm-seges-ai-records/field-notes/farms/ --project=seges-ai --format=json > "$RUNNER_TEMP/record-folder-iam.json"
+          test -n "${FARM_WEB_MEMBERSHIP_ADMINISTRATOR:-}"
+          python deploy/verify_web_promotion_config.py "$RUNNER_TEMP/web-config.json" "$RUNNER_TEMP/access-iam.json" "$RUNNER_TEMP/project-iam.json" "$RUNNER_TEMP/record-bucket-iam.json" "$RUNNER_TEMP/record-folder-iam.json" "$FARM_WEB_MEMBERSHIP_ADMINISTRATOR"
+          for SECRET_NAME in farm-web-oidc-client-secret farm-web-session-secret Planet-labs; do
+            VERSION="$(gcloud secrets versions list "$SECRET_NAME" --project=seges-ai --filter='state=ENABLED' --limit=1 --format='value(name)')"
+            test -n "$VERSION"
+          done
+      - name: Deploy accepted digest and verify candidate before production
+        env:
+          IMAGE_DIGEST: ${{ inputs.promotion_image_ref }}
         shell: bash
         run: |
           set -euo pipefail
@@ -118,12 +179,19 @@ jobs:
           IMAGE="$IMAGE_BASE@$IMAGE_DIGEST"
           BASE="https://farm-seges-ai-web-451400509859.asia-east1.run.app"
           gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web-before.json"
-          PREVIOUS="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; a=[x for x in t if x.get("percent",0)>0]; assert len(a)==1 and a[0]["percent"]==100; print(a[0]["revisionName"])' "$RUNNER_TEMP/web-before.json")"
-          gcloud run deploy farm-seges-ai-web --project=seges-ai --region=asia-east1 --image "$IMAGE" --no-traffic
+          PREVIOUS="$(python -c 'import json,sys; from deploy.verify_web_promotion_config import serving_revision; print(serving_revision(json.load(open(sys.argv[1]))))' "$RUNNER_TEMP/web-before.json")"
+          gcloud run deploy farm-seges-ai-web --project=seges-ai --region=asia-east1 --image "$IMAGE" --service-account farm-web-runtime@seges-ai.iam.gserviceaccount.com --tag auth-candidate --no-traffic
           CANDIDATE="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format='value(status.latestCreatedRevisionName)')"
           test -n "$CANDIDATE" && test "$CANDIDATE" != "$PREVIOUS"
           ACTUAL_IMAGE="$(gcloud run revisions describe "$CANDIDATE" --project=seges-ai --region=asia-east1 --format='value(status.imageDigest)')"
           test "$ACTUAL_IMAGE" = "$IMAGE"
+          ACTUAL_SERVICE_ACCOUNT="$(gcloud run revisions describe "$CANDIDATE" --project=seges-ai --region=asia-east1 --format='value(spec.serviceAccountName)')"
+          test "$ACTUAL_SERVICE_ACCOUNT" = "farm-web-runtime@seges-ai.iam.gserviceaccount.com"
+          gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web-candidate.json"
+          CANDIDATE_URL="$(python -c 'import json,sys; s=json.load(open(sys.argv[1])); rows=[x for x in s["status"]["traffic"] if x.get("tag")=="auth-candidate"]; assert len(rows)==1 and rows[0].get("url"); print(rows[0]["url"])' "$RUNNER_TEMP/web-candidate.json")"
+          test "$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "$CANDIDATE_URL/livez")" = 200
+          test "$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "$CANDIDATE_URL/api/auth/login")" = 302
+          test "$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "$CANDIDATE_URL/api/boundaries")" = 401
           rollback() { gcloud run services update-traffic farm-seges-ai-web --project=seges-ai --region=asia-east1 --to-revisions "${PREVIOUS}=100"; }
           trap rollback ERR
           gcloud run services update-traffic farm-seges-ai-web --project=seges-ai --region=asia-east1 --to-revisions "${CANDIDATE}=100"
@@ -134,11 +202,12 @@ jobs:
           curl --fail --silent --show-error --max-time 20 "$BASE/report/biratori-1119" > /dev/null
           test "$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "$BASE/api/boundaries")" = 401
           trap - ERR
-          echo "::notice::Deployed $IMAGE to $CANDIDATE and passed production smoke checks"
+          echo "::notice::Promoted accepted $IMAGE to $CANDIDATE and passed production smoke checks"
 
   pin-rollback:
-    # Dispatch-only: pin the live service to an EXPLICIT older image ref.
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.image_ref != '' }}
+    # Dispatch-only: rollback to an explicit digest which the operator also
+    # enters as accepted_image_digest. Tags and implicit latest are rejected.
+    if: ${{ vars.FARM_WEB_DEPLOYER_READY == 'true' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.image_ref != '' && inputs.accepted_image_digest != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -149,19 +218,22 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
-          service_account: 451400509859-compute@developer.gserviceaccount.com
+          service_account: farm-web-deployer@seges-ai.iam.gserviceaccount.com
           project_id: seges-ai
       - uses: google-github-actions/setup-gcloud@v2
       - name: Pin farm-seges-ai-web to the requested image ref
         env:
           INPUT_IMAGE_REF: ${{ inputs.image_ref }}
+          INPUT_ACCEPTED_IMAGE_DIGEST: ${{ inputs.accepted_image_digest }}
         run: |
           set -euo pipefail
           REF="$(python deploy/web_image_ref.py "$INPUT_IMAGE_REF")"
+          EXPECTED="$(python -c 'import sys; print(sys.argv[1].split("@",1)[1])' "$REF")"
+          test "$INPUT_ACCEPTED_IMAGE_DIGEST" = "$EXPECTED"
           echo "Pinning to: $REF"
           # Preserve the existing env and secret set during rollback.
-          PREVIOUS="$(gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format='value(status.traffic[0].revisionName)')"
-          test -n "$PREVIOUS"
+          gcloud run services describe farm-seges-ai-web --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/web-before.json"
+          PREVIOUS="$(python -c 'import json,sys; from deploy.verify_web_promotion_config import serving_revision; print(serving_revision(json.load(open(sys.argv[1]))))' "$RUNNER_TEMP/web-before.json")"
           gcloud run deploy farm-seges-ai-web \
             --project=seges-ai --region=asia-east1 \
             --image "$REF" --no-traffic

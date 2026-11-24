@@ -8,19 +8,21 @@ image line. Service: `farm-seges-ai-web`, region `asia-east1`, project
 
 ## Current forward-deployment path
 
-`.github/workflows/web-image.yml` builds the app on Cloud Build when `main`
-changes under `web/`, `farm_ontology/`, the vocabulary manifest, or the
-workflow itself. It runs the web routing/security tests before the build,
-resolves the immutable Artifact Registry digest, deploys that exact digest as
-a no-traffic revision, checks the candidate and serving traffic, then runs
-production smoke routes. A failed post-shift check restores the prior serving
-revision. This web release lane does not require a separate web staging
-service; it deploys only after its build and tests pass.
+`.github/workflows/web-image.yml` tests and builds an immutable candidate on
+`main` changes under `web/`, `farm_ontology/`, the vocabulary manifest, or the
+workflow itself. A tagged candidate receives no production traffic. Promotion
+is a separate manual dispatch: enter the exact digest in
+`accepted_image_digest` after farmer-account and tenant-isolation acceptance.
+The workflow then checks OIDC runtime configuration, dedicated service
+identity, read-only membership-bucket access, and candidate login/API smoke
+before moving traffic. A failed post-shift check restores the prior serving
+revision. This lane does not replace the farmer's authenticated acceptance.
 
-The manual digest-only rollback lane remains available through
-`workflow_dispatch` with `image_ref`. It preserves the service's environment
-and secret configuration. Verify traffic and the gate plus value routes after
-any pin; `/livez` alone does not prove an authenticated journey. The latest
+The manual rollback lane remains available through `workflow_dispatch` with
+`image_ref`; repeat the exact digest in `accepted_image_digest`. It preserves
+the service's environment and secret configuration. Verify traffic and the
+gate plus value routes after any pin; `/livez` alone does not prove an
+authenticated journey. The latest
 recorded web/landing/backend release is in
 [`docs/pilot-readiness-status.md`](../docs/pilot-readiness-status.md).
 
@@ -56,33 +58,27 @@ gcloud run services update-traffic farm-seges-ai-web \
   --to-revisions farm-seges-ai-web-00017-hvq=100
 ```
 
-## 2. Image pin (the durable rollback): explicit digest redeploy
+## 2. Image pin (the durable rollback): explicit digest via guarded workflow
 
 Cloud Run revisions are immutable, but a code regression may need rolling
 BACKWARD across several commits; pin the last known-good IMAGE digest (per
 the fleet rule: **always pin by explicit digest — a tag can silently
 resolve to something newer than you verified**):
 
-```bash
-# Pick the digest from the inventory above, then EITHER the CLI:
-gcloud run deploy farm-seges-ai-web \
-  --project seges-ai --region asia-east1 \
-  --image "asia-east1-docker.pkg.dev/seges-ai/cloud-run-source-deploy/farm-seges-ai-web@sha256:d5b50c0c9624e88f4343fe0b8951080b7d60ab512e7fe76df86910f4366ca044" \
-  --allow-unauthenticated \
-  --set-secrets "WEB_ACCESS_TOKEN=web-access-token:latest,PLANET_API_KEY=Planet-labs:latest" \
-  --set-env-vars "FARM_API_BASE=https://farm-seges-ai-451400509859.asia-east1.run.app,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records,FARM_RECORD_DIR=/tmp/field-notes" \
-  --memory 512Mi --cpu 1 --max-instances 2 --timeout 60
-gcloud run services update-traffic farm-seges-ai-web \
-  --project seges-ai --region asia-east1 --to-latest
-
-# OR the CI lane (preferred when GitHub availability is fine — it smoke-tests
-# for you): Actions → "web-image" → Run workflow → paste the FULL DIGEST or
-# artifact URI into image_ref (leave empty ONLY for forward deploys).
-#   dispatch inputs.image_ref examples:
-#     d5b50c0c9624e88f4343fe0b8951080b7d60ab512e7fe76df86910f4366ca044
-#     sha256:d5b50c0c…
-#     asia-east1-docker.pkg.dev/seges-ai/cloud-run-source-deploy/farm-seges-ai-web@sha256:d5b50c0c…
-```
+Use GitHub Actions → `web-image` → **Run workflow**. For a previously
+validated web candidate, set `promotion_image_ref` and
+`accepted_image_digest` to the same full `sha256:<64 lowercase hex>` value.
+First provision the dedicated farm web deployer/runtime identities and set the
+repository variable `FARM_WEB_DEPLOYER_READY=true`. The `web-production`
+environment must hold `FARM_WEB_ACCEPTANCE_DIGEST` with that exact digest,
+after a protected reviewer records the farmer-account callback, membership,
+tenant-isolation, retry, and write acceptance. The workflow validates
+the OIDC configuration, dedicated runtime identity, membership bucket and
+secret setup, then smoke-tests a tagged no-traffic revision before promotion.
+For an emergency rollback to an older image, use `image_ref` and repeat the
+same digest in `accepted_image_digest`; traffic rollback remains protected by
+the current serving-revision check. Do not use raw `gcloud run deploy` or
+`--to-latest` for a web image pin.
 
 ⚠ Do NOT pin by bare tag in an incident (`ci-9fdc1ba1`) — the tag may have
 been re-pushed; resolve it to a digest FIRST (`gcloud artifacts docker
@@ -93,19 +89,14 @@ images describe ...:TAG --format='value(digest)'`) and pin that.
 The usual suspects are documented in docs/web-ops.md §3 (`--set-env-vars`
 FULL-REPLACEMENT semantics) and §4 (secret `\r\n` bytes). Steps:
 
-```bash
-# See exactly what the serving revision carries
-gcloud run services describe farm-seges-ai-web \
-  --project seges-ai --region asia-east1 \
-  --format='yaml(spec.template.spec.containers[0].env)'
-
-# Repair forward (ALWAYS the complete list in ONE call), or:
-# recreate the same env set against the pinned good revision's values.
-gcloud run services update farm-seges-ai-web \
-  --project seges-ai --region asia-east1 \
-  --set-env-vars "FARM_API_BASE=https://farm-seges-ai-451400509859.asia-east1.run.app,FARM_RECORD_BACKEND=gcs,FARM_RECORD_BUCKET=farm-seges-ai-records,FARM_RECORD_DIR=/tmp/field-notes" \
-  --set-secrets "WEB_ACCESS_TOKEN=web-access-token:latest,PLANET_API_KEY=Planet-labs:latest"
-```
+Capture the complete current revision environment and secret references as
+metadata without printing secret payloads. For a known-good configuration,
+restore traffic directly to its revision using §1. If the broken configuration
+must be repaired forward, use the reviewed `web-production` deployment
+procedure and pass the entire intended env/secret set in one operation.
+Never replay the legacy-only environment below an OIDC revision: Cloud Run's
+`--set-env-vars` and `--set-secrets` flags replace their entire respective
+sets.
 
 Secret rotations that went sideways: create a corrected VERSION of the
 secret (byte-clean: write ASCII bytes to a file, `gcloud secrets versions
@@ -121,8 +112,10 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' "$BASE/api/scene-thumb"
 curl -s -o /dev/null -w '%{http_code}\n' "$BASE/report/biratori-1119"       # expect 200
 ```
 
-Then eyeball one authenticated page load (login with the crew token) and
-one report variant (`?lang=th&tab=investor`) — cheap end-to-end assurance.
+Then verify the authenticated journey against the approved identity provider
+and authorized farmer membership, plus one report variant
+(`?lang=th&tab=investor`). A health endpoint alone does not prove identity,
+tenant isolation, or membership access.
 
 ## 5. Dry-run drills (quarterly, ~5 min)
 

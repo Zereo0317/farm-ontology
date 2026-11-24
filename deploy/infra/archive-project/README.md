@@ -80,6 +80,23 @@ Git; protect it in the operator's local environment during this short phase.
    Import alone changes Terraform state, not the live scheduler. The apply is
    the explicit activation that moves it to twice-hourly runs.
 
+### Break-glass pause and IAM rotation
+
+After Terraform has imported the scheduler, do not set
+`enable_archive_schedule=false`: `prevent_destroy` intentionally blocks the
+resulting destroy plan. For an emergency pause, first run
+`gcloud scheduler jobs pause farm-sched-record-export --project=seges-ai
+--location=asia-east1`, record the incident, then update Terraform state and
+the reviewed schedule configuration before resuming. Do not apply the normal
+activation plan during incident response.
+
+The Terraform-state operator grant is intentionally rotatable. For an operator
+change, update `terraform_state_operator_member` and review a plan containing
+only the expected IAM-member replacement. `create_before_destroy` adds the new
+principal before removing the old one. Verify the replacement can read and
+write remote state before completing the rotation; never remove the last
+usable state operator before the replacement is tested.
+
 ## IAM boundaries
 
 - The archive exporter service account is in `seges-ai` so the existing Cloud
@@ -95,6 +112,13 @@ Git; protect it in the operator's local environment during this short phase.
   bucket scope. Runtime identities receive no explicit state-bucket grant.
   Project owners and inherited organization/project roles can still access
   resources; bucket IAM does not override inherited grants.
+- The web runtime identity receives objectViewer on its dedicated membership
+  bucket, viewer/create on the farm tenant record managed folder, and
+  secretAccessor on the OIDC/session and Planet-labs secrets. Promotion
+  rejects direct project IAM assignments, any direct runtime binding on the
+  parent records bucket, and extra/conditional access-bucket or record-folder
+  bindings. Inherited org/folder/group grants still require owner-side
+  effective-IAM review.
 - Persistent project, bucket, IAM, scheduler, service-account, and budget
   resources have `prevent_destroy` guards. Keep a separate protected backup of
   the remote state.
@@ -121,15 +145,40 @@ alert delivery and a missing-run watchdog remain operational gates. A budget
 alert is project-filtered at 50%, 90%, and 100%, and does not cap spend. The
 archive amount must fit the existing farm-wide TWD 2,000/month budget.
 
-## Separate web access-control follow-up
+## Web access-control foundation
 
-The web authentication branch still needs a dedicated identity foundation
-before its OIDC membership-write denial can be accepted: a private,
-farm-prefixed access bucket in `seges-ai`; a dedicated web runtime service
-account with read-only access to membership objects plus only the exact
-record-store permissions needed by the field app; and a constrained
-`roles/iam.serviceAccountUser` attachment grant for the web deployer. The live
-web service currently uses the shared default compute identity. Keep this as a
-separate reviewed infrastructure task; do not grant web access to the archive
-or Terraform state bucket, and do not treat this archive stack as closing the
-web identity gate.
+This stack also creates a separate private membership bucket in `seges-ai`,
+two empty OIDC/session Secret Manager entries, and the dedicated
+`farm-web-runtime` and `farm-web-deployer` service accounts. The runtime gets
+read-only access to membership objects, accessor on only the OIDC/session and
+existing `Planet-labs` secrets, and viewer plus create-only permissions on the
+`field-notes/farms/` managed folder of the existing records bucket. It cannot
+list legacy root records, read pipeline/archive/state data, overwrite or
+delete records, or modify memberships through its direct grants. These folder
+permissions support the web record bridge's list/get/first-write-only
+contract; tenant authorization still requires end-to-end acceptance.
+Their IDs are intentionally fixed because the GitHub identity and promotion
+checks pin these exact principals.
+An explicitly configured user or group principal receives the membership
+administrator role. Mirror Terraform output
+`web_membership_administrator_member` to GitHub's
+`FARM_WEB_MEMBERSHIP_ADMINISTRATOR`; the promotion gate compares complete
+direct bucket and managed-folder IAM policies against the expected principals.
+
+The web deployer is distinct from the shared compute/exporter identity. Its
+GitHub WIF grant binds only the repository's `main` branch subject. It gets
+Cloud Run Developer on `farm-seges-ai-web`, Artifact Registry Reader on
+`cloud-run-source-deploy`, Service Account User on the web runtime, and
+only IAM-policy metadata reader permissions needed by the promotion gate. The
+project-level custom role contains only `resourcemanager.projects.getIamPolicy`;
+it has no project-wide Cloud Run deploy role. The configured Terraform operator
+receives `secretVersionAdder` on the two new secrets; the operator must add
+the provider-issued OIDC client secret and random session key as versions.
+Secret payloads are not stored in Terraform state.
+
+No identity-provider client or farmer membership is created here. Before the
+runtime is used, review effective organization/folder/project IAM inherited by
+the shared-project resources, including custom and group grants; this stack
+cannot remove inherited access. The live web service keeps its current
+identity until OIDC configuration and farmer acceptance are completed, and
+the dedicated runtime is attached only on a no-traffic candidate revision.

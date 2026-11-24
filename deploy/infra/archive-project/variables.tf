@@ -94,6 +94,54 @@ variable "source_record_bucket_name" {
   }
 }
 
+variable "web_access_bucket_name" {
+  description = "Private farm-only bucket for OIDC membership documents in the service project."
+  type        = string
+  default     = "farm-seges-ai-access-control"
+
+  validation {
+    condition = (
+      startswith(var.web_access_bucket_name, "farm-seges-ai-access") &&
+      var.web_access_bucket_name != var.source_record_bucket_name &&
+      var.web_access_bucket_name != var.archive_bucket_name &&
+      var.web_access_bucket_name != var.restore_bucket_name
+    )
+    error_message = "The membership bucket must be a distinct farm-prefixed bucket."
+  }
+}
+
+variable "web_runtime_service_account_id" {
+  description = "Dedicated runtime identity for the farm field web service."
+  type        = string
+  default     = "farm-web-runtime"
+
+  validation {
+    condition     = var.web_runtime_service_account_id == "farm-web-runtime"
+    error_message = "The web promotion workflow is pinned to the farm-web-runtime service account ID."
+  }
+}
+
+variable "web_deployer_service_account_id" {
+  description = "Dedicated GitHub Actions identity for the farm web deployment lane."
+  type        = string
+  default     = "farm-web-deployer"
+
+  validation {
+    condition     = var.web_deployer_service_account_id == "farm-web-deployer"
+    error_message = "The GitHub OIDC binding and workflow are pinned to the farm-web-deployer service account ID."
+  }
+}
+
+variable "web_membership_administrator_member" {
+  description = "Owner-approved human or group principal that creates and revokes farm membership records."
+  type        = string
+
+  validation {
+    condition     = can(regex("^(user|group):[^\\s]+$", var.web_membership_administrator_member))
+    error_message = "Provide an explicitly authorized user: or group: membership-administrator principal."
+  }
+}
+
 variable "region" {
   description = "Farm stack region."
   type        = string

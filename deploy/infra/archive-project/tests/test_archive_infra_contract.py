@@ -36,7 +36,33 @@ class ArchiveInfrastructureContractTests(unittest.TestCase):
     def test_all_persistent_resources_have_destroy_guards(self) -> None:
         for resource in (
             'google_storage_bucket" "terraform_state',
-            'google_storage_bucket_iam_member" "terraform_state_operator',
+            'google_service_account" "web_runtime',
+            'google_service_account" "web_deployer',
+            'google_project_iam_custom_role" "web_policy_reader',
+            'google_project_iam_custom_role" "web_project_policy_reader',
+            'google_service_account_iam_member" "github_main_can_use_web_deployer',
+            'google_project_iam_member" "web_deployer_reads_project_policy',
+            'google_artifact_registry_repository_iam_member" "web_deployer_reads_images',
+            'google_cloud_run_v2_service_iam_member" "web_deployer_updates_web',
+            'google_storage_bucket" "web_access',
+            'google_storage_bucket_iam_member" "web_runtime_reads_memberships',
+            'google_storage_bucket_iam_member" "web_membership_administrator',
+            'google_storage_managed_folder" "web_tenant_records',
+            'google_storage_managed_folder_iam_member" "web_runtime_reads_tenant_records',
+            'google_storage_managed_folder_iam_member" "web_runtime_creates_tenant_records',
+            'google_secret_manager_secret_iam_member" "web_runtime_reads_planet_thumbnail',
+            'google_storage_bucket_iam_member" "web_deployer_reads_access_policy',
+            'google_storage_bucket_iam_member" "web_deployer_reads_records_policy',
+            'google_storage_managed_folder_iam_member" "web_deployer_reads_records_folder_policy',
+            'google_secret_manager_secret" "web_oidc_client',
+            'google_secret_manager_secret" "web_session',
+            'google_secret_manager_secret_iam_member" "web_runtime_reads_oidc_client',
+            'google_secret_manager_secret_iam_member" "web_runtime_reads_session_secret',
+            'google_secret_manager_secret_iam_member" "web_deployer_lists_oidc_client_versions',
+            'google_secret_manager_secret_iam_member" "web_deployer_lists_session_versions',
+            'google_service_account_iam_member" "web_deployer_can_attach_runtime',
+            'google_secret_manager_secret_iam_member" "web_secret_operator_adds_oidc_versions',
+            'google_secret_manager_secret_iam_member" "web_secret_operator_adds_session_versions',
             'google_project" "archive',
             'google_project_service" "archive_services',
             'google_storage_bucket" "archive',
@@ -88,6 +114,9 @@ class ArchiveInfrastructureContractTests(unittest.TestCase):
         self.assertIn('role   = "roles/storage.objectAdmin"', state_iam)
         self.assertIn("var.terraform_state_operator_member", state_iam)
         self.assertIn("inherited", (STACK / "README.md").read_text(encoding="utf-8"))
+        state_iam = self.main_tf.split('google_storage_bucket_iam_member" "terraform_state_operator', 1)[1].split("\nresource ", 1)[0]
+        self.assertIn("create_before_destroy = true", state_iam)
+        self.assertNotIn("prevent_destroy = true", state_iam)
 
     def test_state_bootstrap_accepts_flat_snake_case_gcloud_json(self) -> None:
         sample = {
@@ -123,11 +152,27 @@ class ArchiveInfrastructureContractTests(unittest.TestCase):
         self.assertNotIn("gcloud storage buckets create", bootstrap_script)
         self.assertNotIn("iamConfiguration", bootstrap_script)
 
-    def test_web_runtime_identity_foundation_is_explicit_follow_up(self) -> None:
+    def test_web_runtime_identity_has_private_read_only_membership_foundation(self) -> None:
         readme = (STACK / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Separate web access-control follow-up", readme)
-        self.assertIn("dedicated web runtime service", readme)
-        self.assertIn("shared default compute identity", readme)
+        self.assertIn('google_storage_bucket_iam_member" "web_runtime_reads_memberships', self.main_tf)
+        self.assertIn('role   = "roles/storage.objectViewer"', self.main_tf)
+        self.assertIn('role      = "roles/secretmanager.secretAccessor"', self.main_tf)
+        self.assertIn('var.web_runtime_service_account_id == "farm-web-runtime"', self.variables_tf)
+        self.assertIn('var.web_deployer_service_account_id == "farm-web-deployer"', self.variables_tf)
+        self.assertIn("Web access-control foundation", readme)
+        self.assertIn("separate private membership bucket", readme)
+        self.assertIn('role           = "roles/storage.objectCreator"', self.main_tf)
+        self.assertIn("principal://iam.googleapis.com", self.main_tf)
+        self.assertNotIn("var.exporter_deployer_service_account}", self.main_tf.split('resource "google_service_account_iam_member" "web_deployer_can_attach_runtime"', 1)[1].split("\nresource ", 1)[0])
+
+    def test_web_project_policy_reader_is_narrow_and_membership_admin_is_explicit(self) -> None:
+        project_role = self.main_tf.split('resource "google_project_iam_custom_role" "web_project_policy_reader"', 1)[1].split("\nresource ", 1)[0]
+        self.assertIn('permissions = ["resourcemanager.projects.getIamPolicy"]', project_role)
+        self.assertNotIn("roles/iam.securityReviewer", self.main_tf)
+        membership_admin = self.main_tf.split('resource "google_storage_bucket_iam_member" "web_membership_administrator"', 1)[1].split("\nresource ", 1)[0]
+        self.assertIn('role   = "roles/storage.objectUser"', membership_admin)
+        self.assertIn("var.web_membership_administrator_member", membership_admin)
+        self.assertIn('variable "web_membership_administrator_member"', self.variables_tf)
 
     def test_restore_enforces_manifest_and_download_bounds_before_copy(self) -> None:
         with self.assertRaisesRegex(ValueError, "member count"):
