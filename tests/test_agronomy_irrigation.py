@@ -191,9 +191,9 @@ class BalanceMathTests(unittest.TestCase):
              else advice.raw_mm),
         )
         for step in advice.daily_trace:
-            depleted = max(
-                0.0,
-                depleted - step["effective_rain_mm"] + step["etc_adj_mm"],
+            depleted = min(
+                advice.taw_mm,
+                max(0.0, depleted - step["effective_rain_mm"] + step["etc_adj_mm"]),
             )
         self.assertAlmostEqual(depleted, advice.root_depletion_mm, places=2)
 

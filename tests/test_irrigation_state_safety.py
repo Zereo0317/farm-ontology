@@ -61,4 +61,27 @@ class IrrigationStateSafetyTests(unittest.TestCase):
         self.assertAlmostEqual(whole.ending_state.cumulative_gdd, second.ending_state.cumulative_gdd)
         self.assertAlmostEqual(whole.ending_state.surface_depletion_mm, second.ending_state.surface_depletion_mm)
 
+    def test_root_depletion_never_exceeds_total_available_water(self):
+        from datetime import date
+
+        at = datetime(2026, 9, 10, 12, tzinfo=timezone.utc)
+        data = []
+        first = date(2026, 8, 11)
+        for offset in range(30):
+            day = first + timedelta(days=offset)
+            data.append({"date": day.isoformat(), "t_mean_c": 28, "eto_mm": 8,
+                         "rain_mm": 0, "native_resolution_km": 5,
+                         "source_kind": "observation",
+                         "availability_time": "2026-09-10T00:00:00+00:00"})
+        state = IrrigationInitialState("2026-08-10", 0, 100, 12, "synthetic test state")
+        advice = irrigation_advisory(data, reading=READING, at=at, initial_state=state)
+        self.assertLessEqual(advice.root_depletion_mm, advice.taw_mm)
+        self.assertLessEqual(advice.net_irrigation_requirement_mm, advice.taw_mm - advice.raw_mm)
+
+    def test_initial_root_depletion_above_taw_refuses(self):
+        state = IrrigationInitialState("2026-08-06", 250, 105.01, 10, "synthetic invalid state")
+        with self.assertRaises(AgronomyGap) as ctx:
+            self.call(rows(), state)
+        self.assertEqual(ctx.exception.gap, "malformed-initial-state")
+
 if __name__ == "__main__": unittest.main()
