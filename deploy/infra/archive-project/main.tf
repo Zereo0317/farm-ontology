@@ -108,6 +108,15 @@ resource "google_storage_bucket" "web_access" {
 
   lifecycle {
     prevent_destroy = true
+
+    precondition {
+      condition = alltrue([
+        var.web_access_bucket_name != var.source_record_bucket_name,
+        var.web_access_bucket_name != var.archive_bucket_name,
+        var.web_access_bucket_name != var.restore_bucket_name,
+      ])
+      error_message = "The membership bucket must be distinct from source, archive, and restore buckets."
+    }
   }
 }
 
@@ -398,7 +407,7 @@ resource "google_storage_bucket" "archive" {
       age            = var.retention_days
       matches_prefix = ["field-archive/"]
       matches_suffix = [".tar.gz"]
-      is_live        = true
+      with_state     = "LIVE"
     }
   }
 
@@ -407,8 +416,8 @@ resource "google_storage_bucket" "archive" {
       type = "Delete"
     }
     condition {
-      matches_prefix            = ["field-archive/"]
-      matches_suffix            = [".tar.gz"]
+      matches_prefix             = ["field-archive/"]
+      matches_suffix             = [".tar.gz"]
       days_since_noncurrent_time = var.retention_days
     }
   }
@@ -441,7 +450,7 @@ resource "google_storage_bucket" "restore_drill" {
     condition {
       age            = 7
       matches_prefix = ["restore-drills/"]
-      is_live        = true
+      with_state     = "LIVE"
     }
   }
 
@@ -450,13 +459,21 @@ resource "google_storage_bucket" "restore_drill" {
       type = "Delete"
     }
     condition {
-      matches_prefix            = ["restore-drills/"]
+      matches_prefix             = ["restore-drills/"]
       days_since_noncurrent_time = 7
     }
   }
 
   lifecycle {
     prevent_destroy = true
+
+    precondition {
+      condition = alltrue([
+        var.restore_bucket_name != var.archive_bucket_name,
+        var.restore_bucket_name != var.source_record_bucket_name,
+      ])
+      error_message = "The restore bucket must be distinct from source and archive buckets."
+    }
   }
 
   depends_on = [google_project_service.archive_services]
@@ -547,7 +564,7 @@ resource "google_storage_bucket_iam_member" "exporter_verifies_archive" {
 
 resource "google_service_account" "scheduler" {
   project      = var.source_project_id
-  account_id   = "farm-seges-ai-archive-scheduler"
+  account_id   = "farm-seges-ai-arch-sched"
   display_name = "Farm archive scheduler invoker"
   description  = "Can invoke only the farm nightly-export Cloud Run job."
 

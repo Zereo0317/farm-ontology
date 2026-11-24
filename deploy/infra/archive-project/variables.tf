@@ -15,7 +15,7 @@ variable "archive_project_id" {
   default     = "farm-seges-ai-records-archive"
 
   validation {
-    condition     = startswith(var.archive_project_id, "farm-seges-ai-records-archive") && var.archive_project_id != var.source_project_id
+    condition     = startswith(var.archive_project_id, "farm-seges-ai-records-archive") && var.archive_project_id != "seges-ai"
     error_message = "The archive project must be separate from seges-ai and use the farm-seges-ai prefix."
   }
 }
@@ -26,8 +26,8 @@ variable "archive_bucket_name" {
   default     = "farm-seges-ai-records-archive"
 
   validation {
-    condition     = startswith(var.archive_bucket_name, "farm-seges-ai-records-archive") && var.archive_bucket_name != var.source_record_bucket_name
-    error_message = "Archive bucket names must use the dedicated records-archive prefix and differ from the source bucket."
+    condition     = startswith(var.archive_bucket_name, "farm-seges-ai-records-archive") && var.archive_bucket_name != "farm-seges-ai-records"
+    error_message = "Archive bucket names must use the dedicated records-archive prefix and differ from the fixed source bucket."
   }
 }
 
@@ -37,8 +37,8 @@ variable "restore_bucket_name" {
   default     = "farm-seges-ai-archive-restore"
 
   validation {
-    condition     = startswith(var.restore_bucket_name, "farm-seges-ai-archive-restore") && var.restore_bucket_name != var.archive_bucket_name
-    error_message = "The restore drill bucket must be a separate farm-prefixed bucket."
+    condition     = startswith(var.restore_bucket_name, "farm-seges-ai-archive-restore")
+    error_message = "The restore drill bucket must use the dedicated farm-prefixed name."
   }
 }
 
@@ -100,13 +100,8 @@ variable "web_access_bucket_name" {
   default     = "farm-seges-ai-access-control"
 
   validation {
-    condition = (
-      startswith(var.web_access_bucket_name, "farm-seges-ai-access") &&
-      var.web_access_bucket_name != var.source_record_bucket_name &&
-      var.web_access_bucket_name != var.archive_bucket_name &&
-      var.web_access_bucket_name != var.restore_bucket_name
-    )
-    error_message = "The membership bucket must be a distinct farm-prefixed bucket."
+    condition     = startswith(var.web_access_bucket_name, "farm-seges-ai-access")
+    error_message = "The membership bucket must use the dedicated farm-prefixed name."
   }
 }
 
