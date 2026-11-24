@@ -1,15 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth/session";
 
 /**
- * Shared-cookie gate for the hosted field app.
+ * Signed per-user session gate for the hosted field app.
  *
- * When WEB_ACCESS_TOKEN is unset, protected routes fail closed.
- * Every route except /login,
- * /api/access, /livez and static assets requires a cookie holding the token.
+ * When managed identity is unset, protected routes fail closed.
+ * Every route except explicitly public product/auth routes requires a valid
+ * OIDC session. Farm membership is re-checked by every farm API handler.
  * API paths answer 401 in the backend's gap shape instead of redirecting.
  */
 
-const ACCESS_COOKIE = "farm_access";
 const LOCALE_COOKIE = "farm-locale";
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
@@ -45,7 +45,7 @@ export function negotiateLocale(acceptLanguage: string | null): Supported {
   return "en";
 }
 
-const PUBLIC_PREFIXES = ("/login|/api/access|/livez|/report|/fieldday|/api/scene-thumb|/reports|/icon.svg|/pitch").split("|");
+const PUBLIC_PREFIXES = ("/login|/api/auth|/livez|/report|/fieldday|/api/scene-thumb|/reports|/icon.svg|/pitch").split("|");
 
 export const config = {
   // every page including /login participates, so first-visit language
@@ -53,10 +53,7 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 
-export function middleware(request: NextRequest) {
-  // Trim: tolerate editor/pipeline trailing newlines in the secret env value.
-  const expected = process.env.WEB_ACCESS_TOKEN?.trim();
-
+export async function middleware(request: NextRequest) {
   // Language negotiation happens on EVERY route the middleware sees (even
   // when the gate is off): a first-visit browser gets its locale cookie set
   // on whatever response this produces, so the server-rendered advisories
@@ -82,16 +79,25 @@ export function middleware(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
   );
 
-  // Public paths remain available, but missing credentials never open the gate.
-  if (isPublic || (expected && request.cookies.get(ACCESS_COOKIE)?.value === expected)) {
-    return stamp(NextResponse.next());
-  }
+  if (isPublic) return stamp(NextResponse.next());
 
-  if (!expected) {
+  const secret = process.env.FARM_SESSION_SECRET ?? "";
+  const issuer = process.env.FARM_OIDC_ISSUER?.trim();
+  const clientId = process.env.FARM_OIDC_CLIENT_ID?.trim();
+  const clientSecret = process.env.FARM_OIDC_CLIENT_SECRET?.trim();
+  const redirectUri = process.env.FARM_OIDC_REDIRECT_URI?.trim();
+  const accessBucket = process.env.FARM_ACCESS_BUCKET?.trim();
+  if (secret.length < 32 || !issuer || !clientId || !clientSecret || !redirectUri || !accessBucket) {
     return stamp(NextResponse.json(
-      { gap: true, reason: "web gate: access is not configured", upstream_status: null },
+      { gap: true, reason: "web gate: identity and farm access are not configured", upstream_status: null },
       { status: 503 },
     ));
+  }
+
+  const session = request.cookies.get(SESSION_COOKIE)?.value;
+  if (session) {
+    const verified = await verifySession(session, secret);
+    if (verified && verified.issuer === issuer) return stamp(NextResponse.next());
   }
 
   if (pathname.startsWith("/api/")) {

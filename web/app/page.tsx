@@ -17,9 +17,9 @@ async function currentLocale(): Promise<"zh-TW" | "zh-CN" | "en" | "ja" | "th"> 
     : "en";
 }
 
-async function AdvisoriesLocaleBound() {
+async function AdvisoriesLocaleBound({ farmId }: { farmId: string }) {
   const locale = await currentLocale();
-  return <Advisories locale={locale} />;
+  return <Advisories locale={locale} farmId={farmId} />;
 }
 
 function AdvisoriesFallback() {
@@ -31,12 +31,16 @@ function AdvisoriesFallback() {
   );
 }
 
-export default function Page() {
+export default async function Page(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await props.searchParams;
+  const farmId = typeof params.farm_id === "string" ? params.farm_id : "";
   return (
     <>
-      <FieldSheet />
+      <FieldSheet initialFarmId={farmId} />
       <Suspense fallback={<AdvisoriesFallback />}>
-        <AdvisoriesLocaleBound />
+        <AdvisoriesLocaleBound farmId={farmId} />
       </Suspense>
     </>
   );

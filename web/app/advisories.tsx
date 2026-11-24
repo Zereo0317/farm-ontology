@@ -1,5 +1,8 @@
+import { cookies } from "next/headers";
+
 import {
   FEED_REVALIDATE_SECONDS,
+  feedGap,
   fetchLicencesFeed,
   fetchPlanetFeed,
   fetchWeatherFeed,
@@ -8,6 +11,8 @@ import {
   type PlanetDocument,
   type WeatherDocument,
 } from "@/lib/backend";
+import { authorizeFarmToken } from "@/lib/auth/authorize";
+import { SESSION_COOKIE } from "@/lib/auth/session";
 import { advisoryCopy, type Locale } from "@/lib/copy";
 
 const UNKNOWN = "—";
@@ -170,13 +175,31 @@ function LicencesCard({
   );
 }
 
-export async function Advisories({ locale = "en" }: { locale?: Locale }) {
+export async function Advisories({ locale = "en", farmId = "" }: { locale?: Locale; farmId?: string }) {
   const copy = advisoryCopy[locale];
-  const [weather, planet, licences] = await Promise.all([
-    fetchWeatherFeed(),
-    fetchPlanetFeed(),
-    fetchLicencesFeed(),
-  ]);
+  let weather: AdvisoryFeed<WeatherDocument>;
+  let planet: AdvisoryFeed<PlanetDocument>;
+  let licences: AdvisoryFeed<LicencesDocument>;
+  if (!farmId) {
+    weather = feedGap("farm_id is required to read farm feeds", null);
+    planet = feedGap("farm_id is required to read farm feeds", null);
+    licences = feedGap("farm_id is required to read farm feeds", null);
+  } else {
+    const jar = await cookies();
+    const access = await authorizeFarmToken(jar.get(SESSION_COOKIE)?.value ?? null, farmId, "viewer");
+    if (!access.ok) {
+      const reason = access.reason;
+      weather = feedGap(reason, null);
+      planet = feedGap(reason, null);
+      licences = feedGap(reason, null);
+    } else {
+      [weather, planet, licences] = await Promise.all([
+        fetchWeatherFeed(access.actor.farmId),
+        fetchPlanetFeed(access.actor.farmId),
+        fetchLicencesFeed(access.actor.farmId),
+      ]);
+    }
+  }
 
   return (
     <section className="advisories" aria-labelledby="advisories-title">

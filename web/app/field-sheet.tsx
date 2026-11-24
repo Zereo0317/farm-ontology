@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { copy, localeHtmlLang, localeLabels, locales, type Locale } from "@/lib/copy";
 
@@ -28,20 +28,48 @@ type FieldSheetProps = {
   /** Prefilled from the /farm/<lat>,<lon> "open this farm" deep link. */
   initialLat?: string;
   initialLon?: string;
+  initialFarmId?: string;
 };
 
-export function FieldSheet({ initialLat = "", initialLon = "" }: FieldSheetProps) {
+export function FieldSheet({ initialLat = "", initialLon = "", initialFarmId = "" }: FieldSheetProps) {
   const [locale, setLocale] = useState<Locale>("zh-TW");
   const [status, setStatus] = useState<Status | null>(null);
   const [listed, setListed] = useState<Listed>({ observations: [], notes: [] });
   const [lat, setLat] = useState(initialLat);
   const [lon, setLon] = useState(initialLon);
+  const [farmId] = useState(initialFarmId);
   const [locateMsg, setLocateMsg] = useState("");
   const [obsMsg, setObsMsg] = useState("");
   const [obsBad, setObsBad] = useState(false);
   const [noteMsg, setNoteMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const text = copy[locale];
+  const pendingWrites = useRef(new Map<string, { fingerprint: string; requestId: string }>());
+
+  async function requestIdFor(kind: string, payload: Record<string, unknown>): Promise<string> {
+    const canonical = JSON.stringify(payload);
+    const digest = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+    const fingerprint = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const storageKey = `farm-pending-write:${farmId}:${kind}`;
+    const current = pendingWrites.current.get(kind)
+      ?? (() => {
+        try {
+          const saved = window.localStorage.getItem(storageKey);
+          return saved ? JSON.parse(saved) as { fingerprint: string; requestId: string } : undefined;
+        } catch { return undefined; }
+      })();
+    if (current?.fingerprint === fingerprint && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(current.requestId)) return current.requestId;
+    const requestId = window.crypto.randomUUID();
+    const pending = { fingerprint, requestId };
+    pendingWrites.current.set(kind, pending);
+    try { window.localStorage.setItem(storageKey, JSON.stringify(pending)); } catch { /* memory retry remains available */ }
+    return requestId;
+  }
+
+  function clearRequestId(kind: string) {
+    pendingWrites.current.delete(kind);
+    try { window.localStorage.removeItem(`farm-pending-write:${farmId}:${kind}`); } catch { /* no persistent entry */ }
+  }
 
   useEffect(() => {
     const saved = window.localStorage.getItem("farm-locale");
@@ -58,9 +86,11 @@ export function FieldSheet({ initialLat = "", initialLon = "" }: FieldSheetProps
   }, [locale]);
 
   async function load() {
+    if (!farmId) return;
+    const query = `?farm_id=${encodeURIComponent(farmId)}`;
     const [statusResponse, notesResponse] = await Promise.all([
-      fetch("/api/status"),
-      fetch("/api/notes"),
+      fetch(`/api/status${query}`),
+      fetch(`/api/notes${query}`),
     ]);
     if (statusResponse.ok) setStatus(await statusResponse.json());
     if (notesResponse.ok) setListed(await notesResponse.json());
@@ -68,7 +98,7 @@ export function FieldSheet({ initialLat = "", initialLon = "" }: FieldSheetProps
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [farmId]);
 
   function locate() {
     if (!navigator.geolocation) {
@@ -107,24 +137,29 @@ export function FieldSheet({ initialLat = "", initialLon = "" }: FieldSheetProps
         setObsBad(true);
         return;
       }
+      const payload = {
+        farm_id: farmId,
+        latitude,
+        longitude,
+        note: String(form.get("field-note") ?? ""),
+        sample_id: String(form.get("sample") ?? ""),
+        photo: String(form.get("photo") ?? ""),
+        harvest_unit: String(form.get("unit") ?? ""),
+        metres: numberOrNull(String(form.get("metres") ?? "")),
+        moisture: numberOrNull(String(form.get("moisture") ?? "")),
+        dry_run: dry,
+      };
+      if (!farmId) throw new Error("Open the farm-specific link to record data.");
+      const requestId = await requestIdFor("observation", payload);
       const response = await fetch("/api/observations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude,
-          longitude,
-          note: String(form.get("field-note") ?? ""),
-          sample_id: String(form.get("sample") ?? ""),
-          photo: String(form.get("photo") ?? ""),
-          harvest_unit: String(form.get("unit") ?? ""),
-          metres: numberOrNull(String(form.get("metres") ?? "")),
-          moisture: numberOrNull(String(form.get("moisture") ?? "")),
-          dry_run: dry,
-        }),
+        body: JSON.stringify({ ...payload, request_id: requestId }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "save failed");
       setObsMsg(text.saved(body.file));
+      clearRequestId("observation");
       setObsBad(false);
       if (fileInput) fileInput.value = body.file;
       await load();
@@ -141,18 +176,23 @@ export function FieldSheet({ initialLat = "", initialLon = "" }: FieldSheetProps
     const form = new FormData(event.currentTarget);
     setNoteMsg(text.saving);
     try {
+      const payload = {
+        farm_id: farmId,
+        kind: String(form.get("kind") ?? ""),
+        text: String(form.get("text") ?? ""),
+        observation_file: String(form.get("file") ?? ""),
+      };
+      if (!farmId) throw new Error("Open the farm-specific link to record data.");
+      const requestId = await requestIdFor("note", payload);
       const response = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: String(form.get("kind") ?? ""),
-          text: String(form.get("text") ?? ""),
-          observation_file: String(form.get("file") ?? ""),
-        }),
+        body: JSON.stringify({ ...payload, request_id: requestId }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "save failed");
       setNoteMsg(text.noteSaved(body.file));
+      clearRequestId("note");
       event.currentTarget.reset();
       await load();
     } catch (error) {

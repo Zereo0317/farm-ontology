@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { authorizeFarm } from "@/lib/auth/authorize";
 import {
   fetchLicencesFeed,
   fetchPlanetFeed,
@@ -16,27 +17,32 @@ export const revalidate = 60;
  * never a invented value.
  */
 export async function GET(request: Request) {
-  const feed = new URL(request.url).searchParams.get("feed");
+  const url = new URL(request.url);
+  const feed = url.searchParams.get("feed");
+  const farmId = url.searchParams.get("farm_id") ?? "";
+  const access = await authorizeFarm(request, farmId, "viewer");
+  if (!access.ok) return NextResponse.json({ gap: true, reason: access.reason, upstream_status: null }, { status: access.status, headers: { "cache-control": "private, no-store" } });
+  const tenantId = access.actor.farmId;
 
   if (feed === "weather") {
-    return NextResponse.json({ fetched_at: new Date().toISOString(), weather: await fetchWeatherFeed() });
+    return NextResponse.json({ fetched_at: new Date().toISOString(), weather: await fetchWeatherFeed(tenantId) }, { headers: { "cache-control": "private, no-store" } });
   }
   if (feed === "planet") {
-    return NextResponse.json({ fetched_at: new Date().toISOString(), planet: await fetchPlanetFeed() });
+    return NextResponse.json({ fetched_at: new Date().toISOString(), planet: await fetchPlanetFeed(tenantId) }, { headers: { "cache-control": "private, no-store" } });
   }
   if (feed === "licences") {
-    return NextResponse.json({ fetched_at: new Date().toISOString(), licences: await fetchLicencesFeed() });
+    return NextResponse.json({ fetched_at: new Date().toISOString(), licences: await fetchLicencesFeed(tenantId) }, { headers: { "cache-control": "private, no-store" } });
   }
 
   const [weather, planet, licences] = await Promise.all([
-    fetchWeatherFeed(),
-    fetchPlanetFeed(),
-    fetchLicencesFeed(),
+    fetchWeatherFeed(tenantId),
+    fetchPlanetFeed(tenantId),
+    fetchLicencesFeed(tenantId),
   ]);
   return NextResponse.json({
     fetched_at: new Date().toISOString(),
     weather,
     planet,
     licences,
-  });
+  }, { headers: { "cache-control": "private, no-store" } });
 }
