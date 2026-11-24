@@ -22,6 +22,25 @@ jobs:
         env:
           GCLOUD_CONFIGURATION: segescloud
           GCP_PROJECT: seges-ai
+      - name: Archive infrastructure contract tests
+        run: python -m unittest discover -s deploy/infra/archive-project/tests -v
+
+  archive-infra-validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/infra/archive-project
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.5"
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+      - name: Initialize providers without a backend
+        run: terraform init -backend=false
+      - name: Validate archive infrastructure
+        run: terraform validate
 
   web-test:
     runs-on: ubuntu-latest
@@ -41,7 +60,7 @@ jobs:
         run: node --test tests/*.test.cjs
 
   build:
-    needs: [unittest, web-test]
+    needs: [unittest, web-test, archive-infra-validate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
