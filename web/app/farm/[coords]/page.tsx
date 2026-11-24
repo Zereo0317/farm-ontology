@@ -11,9 +11,11 @@ export const metadata = {
 /** QR "open this farm" deep link: /farm/<lat>,<lon> preloads the coordinates. */
 export default async function FarmCoordinatesPage(props: {
   params: Promise<{ coords: string }>;
+  searchParams: Promise<{ farm_id?: string }>;
 }) {
   // Dynamic params arrive URL-encoded (the comma becomes %2C) — decode first.
   const { coords: rawCoords } = await props.params;
+  const query = await props.searchParams;
   const coords = decodeURIComponent(rawCoords);
   const match = COORDS_PATTERN.exec(coords);
 
@@ -21,5 +23,5 @@ export default async function FarmCoordinatesPage(props: {
     redirect("/");
   }
 
-  return <FieldSheet initialLat={match[1]} initialLon={match[2]} />;
+  return <FieldSheet initialLat={match[1]} initialLon={match[2]} initialFarmId={query.farm_id ?? ""} />;
 }

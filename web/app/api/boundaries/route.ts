@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { authorizeFarm, hasSameOrigin, validRequestId } from "@/lib/auth/authorize";
 import { callRecord } from "@/lib/record";
 
 /** boundary-walk: corner pins in, governed polygon record out. */
 export async function POST(request: Request) {
-  // Browser writes require a same-origin JSON request. A lax shared cookie
-  // alone must not authorize cross-site form submissions.
-  const host = request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") ?? new URL(request.url).protocol.slice(0, -1);
-  let expectedOrigin: string;
-  try {
-    expectedOrigin = host ? new URL(`${proto}://${host}`).origin : new URL(request.url).origin;
-  } catch {
-    return NextResponse.json({ gap: true, reason: "invalid request origin" }, { status: 403 });
-  }
-  if (request.headers.get("origin") !== expectedOrigin) {
+  if (!hasSameOrigin(request)) {
     return NextResponse.json({ gap: true, reason: "cross-origin request refused" }, { status: 403 });
   }
   if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
@@ -49,9 +40,14 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  const access = await authorizeFarm(request, typeof payload.farm_id === "string" ? payload.farm_id : "", "operator");
+  if (!access.ok) return NextResponse.json({ gap: true, reason: access.reason, upstream_status: null }, { status: access.status });
+  if (!validRequestId(payload.request_id)) return NextResponse.json({ gap: true, reason: "valid request_id required", upstream_status: null }, { status: 400 });
   try {
     const result = await callRecord({
       op: "boundary_walk",
+      farm_id: access.actor.farmId,
+      request_id: payload.request_id,
       parcel_name: payload.parcel_name,
       crop: payload.crop,
       corners: payload.corners,
@@ -59,7 +55,7 @@ export async function POST(request: Request) {
       note: payload.note,
       dry_run: payload.dry_run,
     });
-    return NextResponse.json(result.body, { status: result.status });
+    return NextResponse.json(result.body, { status: result.status, headers: { "cache-control": "private, no-store" } });
   } catch (error) {
     return NextResponse.json(
       {
@@ -72,10 +68,13 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const farmId = new URL(request.url).searchParams.get("farm_id") ?? "";
+  const access = await authorizeFarm(request, farmId, "viewer");
+  if (!access.ok) return NextResponse.json({ gap: true, reason: access.reason, upstream_status: null }, { status: access.status });
   try {
-    const result = await callRecord({ op: "list_walks" });
-    return NextResponse.json(result.body, { status: result.status });
+    const result = await callRecord({ op: "list_walks", farm_id: access.actor.farmId });
+    return NextResponse.json(result.body, { status: result.status, headers: { "cache-control": "private, no-store" } });
   } catch (error) {
     return NextResponse.json(
       {

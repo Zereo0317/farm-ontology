@@ -12,11 +12,16 @@ let calls = 0;
 m.require = name => {
   if (name === 'next/server') return { NextResponse: { json: (body, opts) => ({ body, status: opts.status }) } };
   if (name === '@/lib/record') return { callRecord: async () => { calls++; return { status: 200, body: {} }; } };
+  if (name === '@/lib/auth/authorize') return {
+    authorizeFarm: async (_request, farmId) => farmId ? { ok: true, actor: { farmId, actorId: 'actor', role: 'operator' } } : { ok: false, status: 400, reason: 'farm required' },
+    hasSameOrigin: request => request.headers.get('origin') === 'https://farm.example',
+    validRequestId: value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
+  };
   throw Error(`unexpected module ${name}`);
 };
 m._compile(source, filename);
 function request(origin, type = 'application/json') {
-  return new Request('https://farm.example/api/boundaries', { method: 'POST', headers: { host: 'farm.example', origin, 'content-type': type }, body: '{}' });
+  return new Request('https://farm.example/api/boundaries', { method: 'POST', headers: { host: 'farm.example', origin, 'content-type': type }, body: JSON.stringify({ farm_id: 'farm-1', request_id: '123e4567-e89b-42d3-a456-426614174000' }) });
 }
 test('only same-origin JSON boundary writes reach the record', async () => {
   calls = 0;

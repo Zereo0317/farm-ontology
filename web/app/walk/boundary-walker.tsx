@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Corner = "NW" | "NE" | "SE" | "SW" | "CENTRE";
 
@@ -129,7 +129,7 @@ const LABELS: Record<
   },
 };
 
-export function BoundaryWalker({ initialLang = "zh-TW" }: { initialLang?: Lang }) {
+export function BoundaryWalker({ initialLang = "zh-TW", initialFarmId = "" }: { initialLang?: Lang; initialFarmId?: string }) {
   const [lang, setLang] = useState<Lang>(initialLang);
   const [pins, setPins] = useState<Pin[]>(
     ORDER.map((c) => ({ corner: c, lat: "", lon: "", accuracy: "", pinned: false })),
@@ -141,6 +141,7 @@ export function BoundaryWalker({ initialLang = "zh-TW" }: { initialLang?: Lang }
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState(false);
   const [result, setResult] = useState<{ file: string; areaHa: number | null; accuracyNote: string } | null>(null);
+  const pendingWrite = useRef<{ fingerprint: string; requestId: string } | null>(null);
 
   useEffect(() => {
     const saved = document.cookie.match(/farm-locale=([^;]+)/)?.[1];
@@ -210,6 +211,7 @@ export function BoundaryWalker({ initialLang = "zh-TW" }: { initialLang?: Lang }
         }));
       const centrePin = pins.find((p) => p.corner === "CENTRE" && p.pinned);
       const body = {
+        farm_id: initialFarmId,
         parcel_name: parcel || `walk-${new Date().toISOString().slice(0, 10)}`,
         corners,
         centre: centrePin
@@ -222,10 +224,22 @@ export function BoundaryWalker({ initialLang = "zh-TW" }: { initialLang?: Lang }
         note,
         dry_run: dry,
       };
+      if (!initialFarmId) throw new Error("Open the farm-specific link to record data.");
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(body)));
+      const fingerprint = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      const storageKey = `farm-pending-write:${initialFarmId}:boundary`;
+      let saved = pendingWrite.current;
+      if (!saved) {
+        try { saved = JSON.parse(localStorage.getItem(storageKey) ?? "null") as typeof saved; } catch { saved = null; }
+      }
+      const requestId = saved?.fingerprint === fingerprint && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(saved.requestId)
+        ? saved.requestId : crypto.randomUUID();
+      pendingWrite.current = { fingerprint, requestId };
+      try { localStorage.setItem(storageKey, JSON.stringify(pendingWrite.current)); } catch { /* memory retry remains available */ }
       const response = await fetch("/api/boundaries", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, request_id: requestId }),
       });
       const doc = await response.json();
       if (!response.ok) throw new Error(doc.error || "save failed");
@@ -235,6 +249,8 @@ export function BoundaryWalker({ initialLang = "zh-TW" }: { initialLang?: Lang }
         accuracyNote: doc.walk?.accuracy_note ?? "",
       });
       setMsg(t.saved(doc.file));
+      pendingWrite.current = null;
+      try { localStorage.removeItem(storageKey); } catch { /* no persistent entry */ }
     } catch (error) {
       setErr(true);
       setMsg(String(error));

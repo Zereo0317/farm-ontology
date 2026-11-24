@@ -206,14 +206,21 @@ async function fetchFeed<T>(
   }
 }
 
-export function fetchWeatherFeed(): Promise<AdvisoryFeed<WeatherDocument>> {
-  return fetchFeed("/farm/weather", normalizeWeather);
+function tenantFeedPath(farmId: string, feed: "weather" | "planet" | "licences"): string {
+  if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(farmId)) throw new Error("valid farm_id required");
+  return `/farm/${encodeURIComponent(farmId)}/${feed}`;
 }
 
-export function fetchPlanetFeed(): Promise<AdvisoryFeed<PlanetDocument>> {
-  return fetchFeed("/farm/planet", normalizePlanet);
+export function fetchWeatherFeed(farmId?: string): Promise<AdvisoryFeed<WeatherDocument>> {
+  // Public dated reports are intentionally preserved on the legacy read route;
+  // authenticated farm surfaces always pass an authorized farmId.
+  return fetchFeed(farmId ? tenantFeedPath(farmId, "weather") : "/farm/weather", normalizeWeather);
 }
 
-export function fetchLicencesFeed(): Promise<AdvisoryFeed<LicencesDocument>> {
-  return fetchFeed("/farm/licences", normalizeLicences);
+export function fetchPlanetFeed(farmId: string): Promise<AdvisoryFeed<PlanetDocument>> {
+  return fetchFeed(tenantFeedPath(farmId, "planet"), normalizePlanet);
+}
+
+export function fetchLicencesFeed(farmId: string): Promise<AdvisoryFeed<LicencesDocument>> {
+  return fetchFeed(tenantFeedPath(farmId, "licences"), normalizeLicences);
 }
