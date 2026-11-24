@@ -17,6 +17,7 @@ from farm_ontology.markets.finance_controls import (
     IntentEvent,
     IntentState,
     PaperReconciliationJournal,
+    ReconciliationEntry,
     SignedEvidence,
     evaluate_manual_approval,
 )
@@ -129,6 +130,47 @@ def approval_evidence(value):
 
 
 class FinanceControlTests(unittest.TestCase):
+    def test_evidence_and_intent_reject_malformed_runtime_types(self):
+        value = intent()
+        cap, _rights, _kill, approvals = approval_evidence(value)
+        for changes, message in (
+            ({"issuer": 7}, "evidence issuer"),
+            ({"claims": [("a", "b")]}, "claims must be a tuple"),
+            ({"claims": ((" padded ", "value"),)}, "keys must be nonempty and unpadded"),
+        ):
+            with self.subTest(changes=changes), self.assertRaisesRegex(ValueError, message):
+                replace(cap, **changes)
+        for changes, message in (
+            ({"intent_id": 3}, "intent_id"),
+            ({"version": True}, "version"),
+            ({"instrument_family": None}, "instrument_family"),
+            ({"farmer_consent_grant_fingerprints": [7]}, "tuple or list of strings"),
+        ):
+            with self.subTest(changes=changes), self.assertRaisesRegex(ValueError, message):
+                intent(**changes)
+        with self.assertRaisesRegex(ValueError, "two signed evidence"):
+            ApprovalBundle(cap, None)
+        with self.assertRaisesRegex(TypeError, "mapping keys must be strings"):
+            PaperReconciliationJournal().record(
+                "recon-bad", statement={1: "not canonical"}, result={}, recorded_at=AT,
+            )
+
+    def test_lifecycle_and_reconciliation_records_validate_shape_on_construction(self):
+        with self.assertRaisesRegex(ValueError, "positive integer"):
+            IntentEvent(0, "intent", "a" * 64, EventType.PROPOSED, AT, "actor", "b" * 64, "0" * 64, "c" * 64)
+        with self.assertRaisesRegex(ValueError, "event type"):
+            IntentEvent(1, "intent", "a" * 64, "proposed", AT, "actor", "b" * 64, "0" * 64, "c" * 64)
+        with self.assertRaisesRegex(ValueError, "reconciliation_id"):
+            ReconciliationEntry(7, "a" * 64, "b" * 64, AT, "0" * 64, "c" * 64)
+        with self.assertRaisesRegex(ValueError, "statement and result must be mappings"):
+            PaperReconciliationJournal().record("recon-001", statement=[], result={}, recorded_at=AT)
+        with self.assertRaisesRegex(ValueError, "HedgeOrderIntent records"):
+            HedgeIntentLedger(intents=(object(),))
+        with self.assertRaisesRegex(ValueError, "IntentEvent records"):
+            HedgeIntentLedger(events=(object(),))
+        with self.assertRaisesRegex(ValueError, "ReconciliationEntry records"):
+            PaperReconciliationJournal((object(),))
+
     def test_missing_trust_evidence_and_unconfigured_verifier_fail_closed(self):
         value = intent()
         decision = evaluate_manual_approval(

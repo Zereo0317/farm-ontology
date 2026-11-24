@@ -62,7 +62,9 @@ def _canonical(value: object) -> bytes:
         if isinstance(item, Enum):
             return item.value
         if isinstance(item, Mapping):
-            return {str(key): jsonable(val) for key, val in item.items()}
+            if any(not isinstance(key, str) for key in item):
+                raise TypeError("canonical mapping keys must be strings")
+            return {key: jsonable(val) for key, val in item.items()}
         if isinstance(item, (tuple, list)):
             return [jsonable(val) for val in item]
         if item is None or isinstance(item, (str, int, float, bool)):
@@ -136,17 +138,22 @@ class SignedEvidence:
         if not isinstance(self.purpose, EvidencePurpose):
             raise ValueError("evidence purpose must be an explicit EvidencePurpose")
         _hash(self.subject_sha256, "subject_sha256")
-        if not self.issuer or self.issuer != self.issuer.strip():
-            raise ValueError("evidence issuer must be nonempty and unpadded")
+        _actor(self.issuer, "evidence issuer")
         start, end = _utc(self.issued_at, "issued_at"), _utc(self.expires_at, "expires_at")
         if end <= start:
             raise ValueError("evidence expiry must follow issue time")
+        if not isinstance(self.claims, tuple) or any(
+            not isinstance(claim, tuple) or len(claim) != 2
+            or not isinstance(claim[0], str) or not isinstance(claim[1], str)
+            for claim in self.claims
+        ):
+            raise ValueError("evidence claims must be a tuple of string key/value pairs")
         if tuple(sorted(self.claims)) != self.claims:
             raise ValueError("evidence claims must be sorted for canonical signing")
         if len({key for key, _ in self.claims}) != len(self.claims):
             raise ValueError("evidence claims cannot contain duplicate keys")
-        if any(not key or not isinstance(value, str) for key, value in self.claims):
-            raise ValueError("evidence claims require nonempty keys and string values")
+        if any(not key or key != key.strip() for key, _value in self.claims):
+            raise ValueError("evidence claim keys must be nonempty and unpadded")
         if not isinstance(self.signature_hex, str) or not _SIGNATURE.fullmatch(self.signature_hex):
             raise ValueError("evidence signature must be 64-byte lowercase hex")
 
@@ -177,6 +184,8 @@ def _verified(
     at: datetime,
     verifier: SignatureVerifier | None,
 ) -> bool:
+    if not isinstance(evidence, SignedEvidence):
+        return False
     moment = _utc(at, "at")
     if evidence.purpose is not purpose or evidence.subject_sha256 != subject_sha256:
         return False
@@ -213,15 +222,15 @@ class HedgeOrderIntent:
     version: int = 1
 
     def __post_init__(self) -> None:
-        if not self.intent_id or self.intent_id != self.intent_id.strip():
-            raise ValueError("intent_id must be nonempty and unpadded")
-        if self.version != 1:
+        _actor(self.intent_id, "intent_id")
+        if type(self.version) is not int or self.version != 1:
             raise ValueError("unsupported hedge intent version")
         _hash(self.artifact_sha256, "artifact_sha256")
         _hash(self.cap_sheet_sha256, "cap_sheet_sha256")
         _hash(self.rights_bundle_sha256, "rights_bundle_sha256")
-        if not self.scope or self.scope != self.scope.strip():
-            raise ValueError("intent scope must be explicit and unpadded")
+        _actor(self.instrument_family, "instrument_family")
+        _actor(self.side, "intent side")
+        _actor(self.scope, "intent scope")
         if not isinstance(self.feeds, (tuple, list)):
             raise ValueError("intent feeds must be an explicit tuple or list of feed identifiers")
         if any(not isinstance(feed, str) for feed in self.feeds):
@@ -232,10 +241,14 @@ class HedgeOrderIntent:
             raise ValueError("intent feeds must be nonempty, sorted, and unique")
         if any(not feed or feed != feed.strip() for feed in self.feeds):
             raise ValueError("intent feed identifiers must be nonempty and unpadded")
-        if not self.territory or self.territory != self.territory.strip():
-            raise ValueError("intent territory must be explicit and unpadded")
+        _actor(self.territory, "intent territory")
         if not isinstance(self.uses_farmer_data, bool):
             raise ValueError("intent uses_farmer_data must be explicit boolean")
+        if not isinstance(self.farmer_consent_grant_fingerprints, (tuple, list)) or any(
+            not isinstance(value, str) for value in self.farmer_consent_grant_fingerprints
+        ):
+            raise ValueError("farmer consent fingerprints must be an explicit tuple or list of strings")
+        object.__setattr__(self, "farmer_consent_grant_fingerprints", tuple(self.farmer_consent_grant_fingerprints))
         if tuple(sorted(set(self.farmer_consent_grant_fingerprints))) != self.farmer_consent_grant_fingerprints:
             raise ValueError("farmer consent fingerprints must be sorted and unique")
         for fingerprint in self.farmer_consent_grant_fingerprints:
@@ -252,9 +265,8 @@ class HedgeOrderIntent:
             raise ValueError("intent side must be buy, sell, or reduce")
         if not isinstance(self.quantity, Decimal) or not self.quantity.is_finite() or self.quantity <= 0:
             raise ValueError("intent quantity must be a finite positive Decimal")
-        if not self.quantity_unit or self.quantity_unit != self.quantity_unit.strip():
-            raise ValueError("intent quantity_unit must be nonempty and unpadded")
-        if self.class_c_policy != "closed":
+        _actor(self.quantity_unit, "intent quantity_unit")
+        if not isinstance(self.class_c_policy, str) or self.class_c_policy != "closed":
             raise ValueError("Class C must remain closed")
         created, expires = _utc(self.created_at, "created_at"), _utc(self.expires_at, "expires_at")
         if expires <= created:
@@ -290,6 +302,12 @@ class HedgeOrderIntent:
 class ApprovalBundle:
     risk_owner: SignedEvidence
     independent_reviewer: SignedEvidence
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.risk_owner, SignedEvidence) or not isinstance(
+            self.independent_reviewer, SignedEvidence
+        ):
+            raise ValueError("approval bundle must contain two signed evidence records")
 
 
 @dataclass(frozen=True)
@@ -444,6 +462,17 @@ class IntentEvent:
     previous_sha256: str
     event_sha256: str
 
+    def __post_init__(self) -> None:
+        if type(self.sequence) is not int or self.sequence < 1:
+            raise ValueError("intent event sequence must be a positive integer")
+        _actor(self.intent_id, "event intent_id")
+        if not isinstance(self.event_type, EventType):
+            raise ValueError("intent event type must be an explicit EventType")
+        _actor(self.actor, "event actor")
+        for name in ("intent_sha256", "evidence_sha256", "previous_sha256", "event_sha256"):
+            _hash(getattr(self, name), f"event {name}")
+        _utc(self.at, "event at")
+
     def payload(self) -> dict:
         return {
             "sequence": self.sequence,
@@ -466,6 +495,8 @@ class HedgeIntentLedger:
         self._intents: dict[str, HedgeOrderIntent] = {}
         self._states: dict[str, IntentState] = {}
         for intent in intents:
+            if not isinstance(intent, HedgeOrderIntent):
+                raise ValueError("intent replay inputs must be HedgeOrderIntent records")
             if intent.intent_id in self._intents:
                 raise ValueError("duplicate immutable intent id in replay input")
             self._intents[intent.intent_id] = intent
@@ -501,7 +532,7 @@ class HedgeIntentLedger:
             sequence=len(self._events) + 1, intent_id=intent.intent_id,
             intent_sha256=intent.fingerprint, event_type=event_type,
             at=moment, actor=actor, evidence_sha256=evidence_sha256,
-            previous_sha256=previous, event_sha256="",
+            previous_sha256=previous, event_sha256="0" * 64,
         )
         event = IntentEvent(**{**provisional.__dict__, "event_sha256": _digest(provisional.payload())})
         self._events.append(event)
@@ -573,6 +604,8 @@ class HedgeIntentLedger:
         previous = "0" * 64
         last_at: datetime | None = None
         for index, event in enumerate(events, 1):
+            if not isinstance(event, IntentEvent):
+                raise ValueError("intent event replay inputs must be IntentEvent records")
             if event.sequence != index or event.previous_sha256 != previous:
                 raise ValueError("intent event sequence or previous hash is invalid")
             if event.event_sha256 != _digest(event.payload()):
@@ -617,6 +650,12 @@ class ReconciliationEntry:
     previous_sha256: str
     entry_sha256: str
 
+    def __post_init__(self) -> None:
+        _actor(self.reconciliation_id, "reconciliation_id")
+        for name in ("statement_sha256", "unverified_result_sha256", "previous_sha256", "entry_sha256"):
+            _hash(getattr(self, name), f"reconciliation {name}")
+        _utc(self.recorded_at, "recorded_at")
+
     def payload(self) -> dict:
         return {
             "reconciliation_id": self.reconciliation_id,
@@ -646,8 +685,9 @@ class PaperReconciliationJournal:
 
     def record(self, reconciliation_id: str, *, statement: Mapping[str, object],
                result: Mapping[str, object], recorded_at: datetime) -> ReconciliationEntry:
-        if not reconciliation_id or reconciliation_id != reconciliation_id.strip():
-            raise ValueError("reconciliation_id must be nonempty and unpadded")
+        _actor(reconciliation_id, "reconciliation_id")
+        if not isinstance(statement, Mapping) or not isinstance(result, Mapping):
+            raise ValueError("reconciliation statement and result must be mappings")
         statement_hash, result_hash = _digest(statement), _digest(result)
         old = self._by_id.get(reconciliation_id)
         if old:
@@ -660,7 +700,7 @@ class PaperReconciliationJournal:
         previous = self._entries[-1].entry_sha256 if self._entries else "0" * 64
         provisional = ReconciliationEntry(
             reconciliation_id, statement_hash, result_hash,
-            _utc(recorded_at, "recorded_at"), previous, "",
+            _utc(recorded_at, "recorded_at"), previous, "0" * 64,
         )
         entry = ReconciliationEntry(**{**provisional.__dict__, "entry_sha256": _digest(provisional.payload())})
         self._entries.append(entry)
@@ -672,6 +712,8 @@ class PaperReconciliationJournal:
         previous = "0" * 64
         last_at: datetime | None = None
         for entry in entries:
+            if not isinstance(entry, ReconciliationEntry):
+                raise ValueError("reconciliation replay inputs must be ReconciliationEntry records")
             moment = _utc(entry.recorded_at, "recorded_at")
             if not entry.reconciliation_id or not _HASH.fullmatch(entry.statement_sha256) or not _HASH.fullmatch(entry.unverified_result_sha256):
                 raise ValueError("reconciliation entry has invalid identity or digest")
