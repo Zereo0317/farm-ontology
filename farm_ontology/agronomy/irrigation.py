@@ -504,8 +504,13 @@ def irrigation_advisory(
     state_numbers = tuple(_number(x) for x in (initial_state.cumulative_gdd, initial_state.root_depletion_mm, initial_state.surface_depletion_mm))
     if (initial_day + timedelta(days=1) != first_day or
         not isinstance(initial_state.evidence, str) or not initial_state.evidence.strip() or
-        any(x is None or x < 0 for x in state_numbers)):
-        raise AgronomyGap("malformed-initial-state", "state must precede the first row by one day, name evidence, and have finite nonnegative values")
+        any(x is None or x < 0 for x in state_numbers) or
+        (state_numbers[1] is not None and state_numbers[1] > soil.taw_mm)):
+        raise AgronomyGap(
+            "malformed-initial-state",
+            "state must precede the first row by one day, name evidence, "
+            "have finite nonnegative values, and keep root depletion within TAW",
+        )
     cumulative, root, surface = state_numbers
     assert cumulative is not None and root is not None and surface is not None
     if surface > cfg.tew_mm:
@@ -581,7 +586,11 @@ def irrigation_advisory(
         ke = max(0.0, ke)
         etc_adj = (kcb + ke) * eto
         surface = surface_after_wetting + ke * eto
-        root = max(0.0, root - effective_rain + etc_adj)
+        # Root-zone depletion is a finite reservoir. Potential ETc can exceed
+        # the water remaining during a long dry run, but the depletion state
+        # cannot exceed TAW; otherwise the reported irrigation requirement
+        # grows beyond the physical amount needed to refill the profile.
+        root = min(soil.taw_mm, max(0.0, root - effective_rain + etc_adj))
         if t_contrib is not None:
             cumulative += t_contrib
         trace.append(

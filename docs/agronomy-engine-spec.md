@@ -111,9 +111,15 @@ flat 20 % runoff haircut (conservative: never hides water need), no
 climate adjustment of Kc_max, `fc ≈ Kcb/Kc_max`, surface layer TEW 12 /
 REW 5 mm.
 
+Root depletion is bounded to `[0, TAW]` after each daily balance step. The
+dated initial state's root depletion must also be within that physical range;
+otherwise the trace refuses it. Potential ETc can continue to exceed available
+water in a long dry trace, but the reported refill requirement cannot exceed
+`TAW − RAW` and does not pretend to model actual crop water stress.
+
 Output: net irrigation requirement (mm) = `max(0, Dr_end − RAW)` at the
-horizon end, `recommend` bool, `why` sentence, full daily trace, and the
-**support declaration**:
+horizon end, bounded by `TAW − RAW`, `recommend` bool, `why` sentence, full
+daily trace, and the **support declaration**:
 
 | Rung | Requirement | Claim text |
 | --- | --- | --- |
