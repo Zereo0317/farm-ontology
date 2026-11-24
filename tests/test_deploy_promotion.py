@@ -28,6 +28,11 @@ class PromotionTests(unittest.TestCase):
             if change == "ready": self.revision["status"]["conditions"][0]["status"] = "False"
             with self.subTest(change=change), self.assertRaises(ValueError): self.check()
 
+    def test_workflow_queries_completed_runs_then_checks_success_conclusion(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy-prod-tag.yml").read_text(encoding="utf-8")
+        self.assertIn("actions/workflows/test.yml/runs?head_sha=${SHA}&event=push&status=completed&per_page=100", workflow)
+        self.assertNotIn("&status=success&", workflow)
+
 class ProductionConfigTests(unittest.TestCase):
     def test_required_secrets_and_storage_must_be_present(self):
         env = [{"name": k, "value": v} for k, v in {"GCP_PROJECT": "seges-ai", "EE_PROJECT": "seges-ai", "FARM_RECORD_BACKEND": "gcs", "FARM_RECORD_BUCKET": "farm-seges-ai-records"}.items()]

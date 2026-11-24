@@ -48,7 +48,10 @@ jobs:
           REV="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; s=[x for x in t if x.get("percent",0)>0]; assert len(s)==1 and s[0]["percent"]==100; print(s[0]["revisionName"])' "$RUNNER_TEMP/staging.json")"
           gcloud run revisions describe "$REV" --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/revision.json"
           gcloud run services describe farm-seges-ai --project=seges-ai --region=asia-east1 --format=json > "$RUNNER_TEMP/prod.json"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/test.yml/runs?head_sha=${SHA}&event=push&status=success&per_page=100" > "$RUNNER_TEMP/runs.json"
+          # `status` filters workflow runs by lifecycle state (queued,
+          # in_progress, completed); success is a conclusion. Fetch completed
+          # candidates and let verify-promotion.py require conclusion=success.
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/test.yml/runs?head_sha=${SHA}&event=push&status=completed&per_page=100" > "$RUNNER_TEMP/runs.json"
           IMAGE="$(python deploy/verify-promotion.py --service "$RUNNER_TEMP/staging.json" --revision "$RUNNER_TEMP/revision.json" --production "$RUNNER_TEMP/prod.json" --runs "$RUNNER_TEMP/runs.json" --sha "$SHA")"
           curl --fail --silent --show-error --max-time 15 https://farm-seges-ai-staging-451400509859.asia-east1.run.app/livez > /dev/null
           PREVIOUS="$(python -c 'import json,sys; t=json.load(open(sys.argv[1]))["status"]["traffic"]; s=[x for x in t if x.get("percent",0)>0]; assert len(s)==1 and s[0]["percent"]==100; print(s[0]["revisionName"])' "$RUNNER_TEMP/prod.json")"
