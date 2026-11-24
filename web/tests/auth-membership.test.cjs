@@ -20,7 +20,8 @@ function loadTs(relative, extraRequire = () => undefined) {
 
 const sessionTools = loadTs('../lib/auth/session.ts');
 const membership = loadTs('../lib/auth/membership.ts', name => name === './session' ? sessionTools : undefined);
-const session = { version: 1, issuer: 'https://issuer.example', subject: 'subject-private', issuedAt: 1, expiresAt: 9999999999 };
+const subject = 'subject-private';
+const session = { version: 1, issuer: 'https://issuer.example', actorHash: 'a'.repeat(64), issuedAt: 1, expiresAt: 9999999999 };
 const farmId = 'biratori-hokkaido';
 let hash = 'a'.repeat(64);
 const record = (overrides = {}) => ({
@@ -38,12 +39,15 @@ const record = (overrides = {}) => ({
 test('membership records use the exact hash-scoped tenant object path', () => {
   assert.equal(membership.membershipObjectPath(farmId, hash), `farms/${farmId}/members/${hash}.json`);
   assert.throws(() => membership.membershipObjectPath('../other', hash));
+  assert.throws(() => membership.membershipObjectPath('farm-', hash));
+  assert.equal(membership.validateFarmId('farm-'), false);
   assert.throws(() => membership.membershipObjectPath(farmId, 'subject-private'));
 });
 
 test('membership is isolated by farm and role and the lookup is fresh for each request', async () => {
   process.env.FARM_ACCESS_BUCKET = 'farm-access-test';
-  hash = await membership.farmActorHash(session.issuer, session.subject);
+  hash = await membership.farmActorHash(session.issuer, subject);
+  session.actorHash = hash;
   let current = record();
   let reads = 0;
   const lookup = async (_bucket, requestedFarm, actorHash) => {
@@ -54,7 +58,7 @@ test('membership is isolated by farm and role and the lookup is fresh for each r
   };
   const allowed = await membership.authorizeFarmActor(session, farmId, 'operator', lookup);
   assert.equal(allowed.ok, true);
-  if (allowed.ok) assert.deepEqual(allowed.actor, { actorId: 'subject-private', farmId, role: 'operator' });
+  if (allowed.ok) assert.deepEqual(allowed.actor, { actorId: hash, farmId, role: 'operator' });
   assert.equal((await membership.authorizeFarmActor(session, farmId, 'admin', lookup)).status, 403);
   current = record({ status: 'revoked' });
   assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', lookup)).status, 403);
@@ -63,15 +67,40 @@ test('membership is isolated by farm and role and the lookup is fresh for each r
 
 test('unassigned farms, expired grants and mismatched membership documents fail closed', async () => {
   process.env.FARM_ACCESS_BUCKET = 'farm-access-test';
-  hash = await membership.farmActorHash(session.issuer, session.subject);
+  hash = session.actorHash;
   assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => null)).status, 403);
-  assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => record({ expires_at: '2000-01-01T00:00:00.000Z' }))).status, 403);
+  assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => record({ granted_at: '1990-01-01T00:00:00.000Z', expires_at: '2000-01-01T00:00:00.000Z' }))).status, 403);
   assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => record({ farm_id: 'another-farm' }))).status, 503);
   assert.equal((await membership.authorizeFarmActor(session, '../other', 'viewer', async () => record())).status, 400);
+  assert.equal((await membership.authorizeFarmActor(session, 'farm-', 'viewer', async () => record())).status, 400);
+});
+
+test('membership timestamps require timezone-aware RFC3339 and valid grant chronology', async () => {
+  process.env.FARM_ACCESS_BUCKET = 'farm-access-test';
+  hash = session.actorHash;
+  const validOffset = record({
+    granted_at: '2026-01-01T09:00:00+09:00',
+    updated_at: '2026-01-01T09:00:00+09:00',
+  });
+  assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => validOffset)).ok, true);
+
+  const future = new Date(Date.now() + 60_000).toISOString();
+  const malformed = [
+    record({ granted_at: future }),
+    record({ updated_at: future }),
+    record({ granted_at: '2026-01-01T00:00:00' }),
+    record({ updated_at: '2026-01-01 00:00:00+00:00' }),
+    record({ expires_at: '2026-02-30T00:00:00Z' }),
+    record({ expires_at: '2025-12-31T23:59:59Z' }),
+    record({ expires_at: '2026-01-01T00:00:00Z' }),
+  ];
+  for (const document of malformed) {
+    assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => document)).status, 503);
+  }
 });
 
 test('missing access store configuration refuses authorization', async () => {
-  hash = await membership.farmActorHash(session.issuer, session.subject);
+  hash = session.actorHash;
   delete process.env.FARM_ACCESS_BUCKET;
   assert.equal((await membership.authorizeFarmActor(session, farmId, 'viewer', async () => record())).status, 503);
 });

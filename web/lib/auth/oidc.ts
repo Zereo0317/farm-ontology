@@ -212,11 +212,13 @@ export async function finishOidcLogin(code: string, verifier: string, nonce: str
     const tokens = await response.json() as { id_token?: unknown };
     if (typeof tokens.id_token !== "string") throw new Error("OIDC response has no ID token");
     const identity = await verifyIdToken(tokens.id_token, config, discovery, nonce);
+    const actorDigest = await sha256Text(`${config.issuer}\0${identity.subject}`);
+    const actorHash = Array.from(actorDigest, (byte) => byte.toString(16).padStart(2, "0")).join("");
     const now = Math.floor(Date.now() / 1000);
     const session: FarmSession = {
       version: 1,
       issuer: config.issuer,
-      subject: identity.subject,
+      actorHash,
       issuedAt: now,
       expiresAt: now + SESSION_SECONDS,
     };

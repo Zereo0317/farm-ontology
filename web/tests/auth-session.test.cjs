@@ -21,18 +21,25 @@ const secret = 'a'.repeat(48);
 const now = Math.floor(Date.now() / 1000);
 
 test('session signature validates and tampered signatures fail', async () => {
-  const value = { version: 1, issuer: 'https://identity.example', subject: 'user-1', issuedAt: now, expiresAt: now + 600 };
+  const value = { version: 1, issuer: 'https://identity.example', actorHash: 'a'.repeat(64), issuedAt: now, expiresAt: now + 600 };
   const token = await auth.signSession(value, secret);
-  assert.equal((await auth.verifySession(token, secret)).subject, 'user-1');
+  assert.equal((await auth.verifySession(token, secret)).actorHash, 'a'.repeat(64));
   assert.equal(await auth.verifySession(`${token}x`, secret), null);
   assert.equal(await auth.verifySession(token, 'b'.repeat(48)), null);
 });
 
 test('expired and future-issued sessions are refused', async () => {
-  const expired = await auth.signSession({ version: 1, issuer: 'https://identity.example', subject: 'u', issuedAt: now - 700, expiresAt: now - 1 }, secret);
-  const future = await auth.signSession({ version: 1, issuer: 'https://identity.example', subject: 'u', issuedAt: now + 500, expiresAt: now + 600 }, secret);
+  const expired = await auth.signSession({ version: 1, issuer: 'https://identity.example', actorHash: 'a'.repeat(64), issuedAt: now - 700, expiresAt: now - 1 }, secret);
+  const future = await auth.signSession({ version: 1, issuer: 'https://identity.example', actorHash: 'a'.repeat(64), issuedAt: now + 500, expiresAt: now + 600 }, secret);
   assert.equal(await auth.verifySession(expired, secret), null);
   assert.equal(await auth.verifySession(future, secret), null);
+});
+
+test('session validation requires a pseudonymous actor hash', async () => {
+  const legacy = await auth.signSession({ version: 1, issuer: 'https://identity.example', subject: 'raw-subject', issuedAt: now, expiresAt: now + 600 }, secret);
+  const malformed = await auth.signSession({ version: 1, issuer: 'https://identity.example', actorHash: 'not-a-hash', issuedAt: now, expiresAt: now + 600 }, secret);
+  assert.equal(await auth.verifySession(legacy, secret), null);
+  assert.equal(await auth.verifySession(malformed, secret), null);
 });
 
 test('OIDC state is signed, short-lived, and rejects unsafe redirect destinations', async () => {

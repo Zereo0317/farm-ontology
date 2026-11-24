@@ -19,7 +19,7 @@ m.require = name => {
     json: (_body, options) => makeResponse('json', options.status),
     redirect: () => makeResponse('redirect', 307),
   } };
-  if (name === '@/lib/auth/session') return { SESSION_COOKIE: 'farm_session', verifySession: async token => token === 'valid' ? { issuer: 'https://identity.example', subject: 'actor' } : null };
+  if (name === '@/lib/auth/session') return { SESSION_COOKIE: 'farm_session', verifySession: async token => token === 'valid' ? { issuer: 'https://identity.example', actorHash: 'a'.repeat(64) } : null };
   return originalRequire(name);
 };
 m._compile(compiled, filename);

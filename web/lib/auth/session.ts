@@ -6,7 +6,7 @@ export const OIDC_STATE_SECONDS = 10 * 60;
 export type FarmSession = {
   version: 1;
   issuer: string;
-  subject: string;
+  actorHash: string;
   issuedAt: number;
   expiresAt: number;
 };
@@ -110,7 +110,8 @@ export async function signSession(session: FarmSession, secret: string): Promise
 export async function verifySession(token: string, secret: string, nowSeconds = Math.floor(Date.now() / 1000)) {
   const value = await unseal<FarmSession>(token, secret);
   if (!value || value.version !== 1 || typeof value.issuer !== "string" || !value.issuer
-      || typeof value.subject !== "string" || !value.subject || !validTimes(value, nowSeconds)) return null;
+      || typeof value.actorHash !== "string" || !/^[a-f0-9]{64}$/.test(value.actorHash)
+      || !validTimes(value, nowSeconds)) return null;
   return value;
 }
 

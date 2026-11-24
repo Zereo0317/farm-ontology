@@ -86,7 +86,13 @@ test('authorization code exchange verifies issuer, audience, signature, expiry, 
   installProvider();
   claims = signedToken();
   const sessionToken = await oidc.finishOidcLogin('one-time-code', verifier, 'expected-nonce');
-  assert.equal((await session.verifySession(sessionToken, process.env.FARM_SESSION_SECRET)).subject, 'subject-1');
+  const verified = await session.verifySession(sessionToken, process.env.FARM_SESSION_SECRET);
+  const expectedActorHash = crypto.createHash('sha256').update(`${issuer}\0subject-1`).digest('hex');
+  assert.equal(verified.actorHash, expectedActorHash);
+  assert.equal(Object.hasOwn(verified, 'subject'), false);
+  const cookiePayload = JSON.parse(Buffer.from(sessionToken.split('.')[0], 'base64url').toString('utf8'));
+  assert.equal(cookiePayload.actorHash, expectedActorHash);
+  assert.equal(Object.hasOwn(cookiePayload, 'subject'), false);
 });
 
 test('wrong issuer, audience, signature, expiry, nonce, or unverified email fail closed', async t => {

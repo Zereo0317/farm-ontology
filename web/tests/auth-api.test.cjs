@@ -19,9 +19,43 @@ function loadObservationRoute({ authorization, record }) {
       hasSameOrigin: () => true,
       validRequestId: value => typeof value === 'string' && /^[0-9a-f-]{36}$/.test(value),
     };
+    if (name === '@/lib/auth/request-body') return loadTs('../lib/auth/request-body.ts');
     if (name === '@/lib/record') return { callRecord: record };
     throw new Error(`unexpected import ${name}`);
   };
+  m._compile(compiled, filename);
+  return m.exports;
+}
+
+function loadNotesRoute({ authorization, record }) {
+  const filename = path.join(__dirname, '../app/api/notes/route.ts');
+  const source = fs.readFileSync(filename, 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const m = new Module(filename, module);
+  m.filename = filename;
+  m.paths = module.paths;
+  m.require = name => {
+    if (name === 'next/server') return { NextResponse: { json: (body, options) => Response.json(body, options) } };
+    if (name === '@/lib/auth/authorize') return {
+      authorizeFarm: authorization,
+      hasSameOrigin: () => true,
+      validRequestId: value => typeof value === 'string' && /^[0-9a-f-]{36}$/.test(value),
+    };
+    if (name === '@/lib/auth/request-body') return loadTs('../lib/auth/request-body.ts');
+    if (name === '@/lib/record') return { callRecord: record };
+    throw new Error(`unexpected import ${name}`);
+  };
+  m._compile(compiled, filename);
+  return m.exports;
+}
+
+function loadTs(relative) {
+  const filename = path.join(__dirname, relative);
+  const source = fs.readFileSync(filename, 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const m = new Module(filename, module);
+  m.filename = filename;
+  m.paths = module.paths;
   m._compile(compiled, filename);
   return m.exports;
 }
@@ -58,5 +92,19 @@ test('observation writes refuse missing authorization and malformed request ids'
   const allowed = loadObservationRoute({ authorization: async () => ({ ok: true, actor: { actorId: 'actor', farmId: 'farm-1', role: 'operator' } }), record });
   assert.equal((await allowed.POST(request({ farm_id: 'farm-1' }))).status, 400);
   assert.equal((await allowed.POST(request({ farm_id: 'farm-1', request_id: '123E4567-E89B-42D3-A456-426614174000' }))).status, 400);
+  assert.equal(calls, 0);
+});
+
+test('observation and note routes cap JSON reads at 64 KiB before authorization or storage', async () => {
+  let calls = 0;
+  const dependencies = {
+    authorization: async () => ({ ok: true, actor: { actorId: 'actor', farmId: 'farm-1', role: 'operator' } }),
+    record: async () => { calls++; return { status: 200, body: {} }; },
+  };
+  const largePayload = { farm_id: 'farm-1', request_id: '123e4567-e89b-42d3-a456-426614174000', note: 'x'.repeat(70 * 1024) };
+  const observation = loadObservationRoute(dependencies);
+  const note = loadNotesRoute(dependencies);
+  assert.equal((await observation.POST(request(largePayload))).status, 413);
+  assert.equal((await note.POST(request(largePayload))).status, 413);
   assert.equal(calls, 0);
 });
