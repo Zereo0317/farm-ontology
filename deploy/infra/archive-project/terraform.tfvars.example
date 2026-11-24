@@ -1,0 +1,5 @@
+billing_account_id                = "000000-000000-000000"
+archive_monthly_budget_twd        = 250
+budget_alert_email                = "segescloud@gmail.com"
+exporter_deployer_service_account = "451400509859-compute@developer.gserviceaccount.com"
+terraform_state_operator_member   = "serviceAccount:terraform-farm-seges-ai@seges-ai.iam.gserviceaccount.com"
