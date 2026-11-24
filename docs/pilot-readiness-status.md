@@ -68,3 +68,25 @@ image digest, check outputs, owners, and approvals in the release record.
   provider rights. Class C remains closed. The paper ledger and synthetic
   backtest are research tools; there is no broker integration or live order
   execution.
+
+## 2026-11-24 follow-up release
+
+- Current `main`: `0f8bfa5a8aede4a2e287938cebff805601821766`. The application
+  changes are from `6c3badd19136834a98ecc7b2471134625cd8ed8b`; the final
+  follow-up only corrects the production verifier's GitHub Actions query to
+  request completed runs and check `conclusion=success` itself.
+- Verification: GitHub Actions run `45403797712` passed tests, byte compile,
+  Docker build, and staging deployment. Staging
+  `farm-seges-ai-staging-00162-4g2` receives 100% traffic and passed `/livez`.
+  The combined local hermetic suite passed **1,822 tests, 14 skipped**.
+- Backend production: promotion run `45404296836` succeeded. Cloud Run
+  `farm-seges-ai-00065-mz2` is latest created/ready and receives 100% traffic;
+  the workflow verified the staged digest and passed `/livez` plus weather
+  smoke before completing.
+- Field web: workflow `45402610167` succeeded after building the updated
+  backend bundle. Cloud Run `farm-seges-ai-web-00032-bb9` is latest
+  created/ready and receives 100% traffic; web gate, report, and protected
+  boundary smoke checks passed.
+- Landing source was unchanged in this follow-up. Cloud Run
+  `farm-seges-ai-landing-00020-dj4` remains latest created/ready at 100%; the
+  public apex release and locale smoke passed on the 2026-11-22 release.
