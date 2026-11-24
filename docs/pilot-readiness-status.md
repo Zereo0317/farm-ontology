@@ -99,6 +99,15 @@ see the release evidence below.
   100%, on the exact staged image digest
   `sha256:d2e25a9f5f89a0c403674bbb58b4ba3d546572b62f73ecd1b0350d2d4731b094`.
   Production `/livez` and `/farm/weather` smoke verification passed.
+- Follow-up release `e4c18c6f56924c8815cb497f6583b4d1597be86f` passed CI
+  workflow `45492426634`: 1,872 unit tests (14 opt-in skips), 13 archive
+  contract tests, web security checks, Docker build, and Terraform
+  formatting/validation. Staging revision `farm-seges-ai-staging-00168-54r`
+  served 100% and passed `/livez`. Guarded production promotion
+  `45492796202` completed; readback confirmed `farm-seges-ai-00067-68g` is
+  latest-created, ready, and serving 100% on the exact staged image digest
+  `sha256:6d24474362ed27982108aa9e2af24e4dec7347a6723860d933065d7d6765a6af`.
+  Production `/livez` and `/farm/weather` smoke verification passed.
 - The updated web bundle was built as candidate digest
   `sha256:08b36961a7cbd2726e1df976ba8cf5ba57369ea69b3930f8d5ea9191ce7248e5`
   in workflow `45488798307`; candidate deploy and production promotion were
