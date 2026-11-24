@@ -115,3 +115,19 @@ variable "retention_days" {
     error_message = "This rollout uses the approved initial 90-day retention period."
   }
 }
+
+variable "enable_archive_schedule" {
+  description = "Opt in only after the archive smoke execution and isolated restore drill are accepted."
+  type        = bool
+  default     = false
+}
+
+variable "terraform_state_operator_member" {
+  description = "IAM principal that runs Terraform and needs object-level access to the remote state bucket."
+  type        = string
+
+  validation {
+    condition     = can(regex("^(user|serviceAccount|group):[^\\s]+$", var.terraform_state_operator_member))
+    error_message = "Provide one explicit user:, serviceAccount:, or group: principal for Terraform state access."
+  }
+}

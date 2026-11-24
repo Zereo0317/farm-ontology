@@ -18,6 +18,13 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
+from typing import Iterable
+
+MAX_MANIFEST_BYTES = 1 * 1024 * 1024
+MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 100_000
+MAX_MEMBER_BYTES = 64 * 1024 * 1024
+MAX_TOTAL_MEMBER_BYTES = 8 * 1024 * 1024 * 1024
 
 
 def _run_gcloud(*args: str) -> str:
@@ -42,10 +49,78 @@ def _safe_member_name(name: str) -> PurePosixPath:
     return path
 
 
-def _download(bucket: str, object_name: str, destination: Path) -> None:
+def _validate_member_metadata(
+    members: Iterable[tarfile.TarInfo], expected_members: int
+) -> set[str]:
+    names: set[str] = set()
+    total_member_bytes = 0
+    member_count = 0
+    for member in members:
+        member_count += 1
+        if member_count > MAX_ARCHIVE_MEMBERS:
+            raise ValueError("archive exceeds the maximum member count")
+        relative = _safe_member_name(member.name)
+        name = relative.as_posix()
+        if name in names:
+            raise ValueError(f"archive contains a duplicate member path: {name}")
+        names.add(name)
+        if not member.isfile() or relative.suffix.lower() != ".json":
+            raise ValueError("archive contains a non-regular member; restore refused")
+        if member.size < 0 or member.size > MAX_MEMBER_BYTES:
+            raise ValueError(f"archive member exceeds the per-file size limit: {name}")
+        total_member_bytes += member.size
+        if total_member_bytes > MAX_TOTAL_MEMBER_BYTES:
+            raise ValueError("archive exceeds the aggregate uncompressed size limit")
+    if member_count != expected_members:
+        raise ValueError("archive member count does not match its manifest")
+    return names
+
+
+def _validate_manifest_limits(expected_members: object, expected_bytes: object) -> tuple[int, int]:
+    if (
+        not isinstance(expected_members, int)
+        or isinstance(expected_members, bool)
+        or expected_members <= 0
+        or expected_members > MAX_ARCHIVE_MEMBERS
+    ):
+        raise ValueError("manifest member count is missing or invalid")
+    if (
+        not isinstance(expected_bytes, int)
+        or isinstance(expected_bytes, bool)
+        or expected_bytes <= 0
+        or expected_bytes > MAX_ARCHIVE_BYTES
+    ):
+        raise ValueError("manifest byte count is missing or invalid")
+    return expected_members, expected_bytes
+
+
+def _download(
+    bucket: str,
+    object_name: str,
+    destination: Path,
+    *,
+    max_bytes: int,
+    expected_size: int | None = None,
+) -> int:
     if not object_name.startswith("field-archive/") or ".." in PurePosixPath(object_name).parts:
         raise ValueError("manifest and archive objects must stay under field-archive/")
-    _run_gcloud("storage", "cp", f"gs://{bucket}/{object_name}", str(destination))
+    uri = f"gs://{bucket}/{object_name}"
+    metadata = json.loads(
+        _run_gcloud("storage", "objects", "describe", uri, "--format=json(size)")
+    )
+    try:
+        remote_size = int(metadata["size"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"could not read object size for {object_name}") from error
+    if remote_size < 0 or remote_size > max_bytes:
+        raise ValueError(f"object exceeds the {max_bytes}-byte download limit: {object_name}")
+    if expected_size is not None and remote_size != expected_size:
+        raise ValueError(f"object size differs from its manifest: {object_name}")
+    _run_gcloud("storage", "cp", uri, str(destination))
+    local_size = destination.stat().st_size
+    if local_size != remote_size:
+        raise ValueError(f"downloaded object size changed during transfer: {object_name}")
+    return local_size
 
 
 def restore(manifest_bucket: str, manifest_object: str, target_bucket: str) -> dict:
@@ -66,18 +141,20 @@ def restore(manifest_bucket: str, manifest_object: str, target_bucket: str) -> d
     with tempfile.TemporaryDirectory(prefix="farm-archive-restore-") as temporary:
         root = Path(temporary)
         manifest_path = root / "manifest.json"
-        _download(manifest_bucket, manifest_object, manifest_path)
+        _download(
+            manifest_bucket,
+            manifest_object,
+            manifest_path,
+            max_bytes=MAX_MANIFEST_BYTES,
+        )
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         archive_relative_object = str(manifest.get("archive_object", ""))
         expected_digest = str(manifest.get("sha256", ""))
-        expected_members = manifest.get("members")
-        expected_bytes = manifest.get("bytes")
+        expected_members, expected_bytes = _validate_manifest_limits(
+            manifest.get("members"), manifest.get("bytes")
+        )
         if not re.fullmatch(r"[0-9a-f]{64}", expected_digest):
             raise ValueError("manifest digest is missing or malformed")
-        if not isinstance(expected_members, int) or expected_members <= 0:
-            raise ValueError("manifest member count is missing or invalid")
-        if not isinstance(expected_bytes, int) or expected_bytes <= 0:
-            raise ValueError("manifest byte count is missing or invalid")
         relative_archive_path = PurePosixPath(archive_relative_object)
         if (
             relative_archive_path.is_absolute()
@@ -90,7 +167,13 @@ def restore(manifest_bucket: str, manifest_object: str, target_bucket: str) -> d
         archive_object = f"field-archive/{archive_relative_object}"
 
         archive_path = root / "snapshot.tar.gz"
-        _download(manifest_bucket, archive_object, archive_path)
+        _download(
+            manifest_bucket,
+            archive_object,
+            archive_path,
+            max_bytes=MAX_ARCHIVE_BYTES,
+            expected_size=expected_bytes,
+        )
         if archive_path.stat().st_size != expected_bytes:
             raise ValueError("downloaded archive byte count does not match its manifest")
         with archive_path.open("rb") as stream:
@@ -103,13 +186,12 @@ def restore(manifest_bucket: str, manifest_object: str, target_bucket: str) -> d
         written = 0
         expected_files: dict[str, str] = {}
         with tarfile.open(archive_path, mode="r:gz") as archive:
-            members = archive.getmembers()
-            if len(members) != expected_members:
-                raise ValueError("archive member count does not match its manifest")
+            _validate_member_metadata(archive, expected_members)
+
+        with tarfile.open(archive_path, mode="r:gz") as archive:
+            members = archive
             for member in members:
                 relative = _safe_member_name(member.name)
-                if not member.isfile() or relative.suffix.lower() != ".json":
-                    raise ValueError("archive contains a non-regular member; restore refused")
                 destination = extracted.joinpath(*relative.parts)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 source = archive.extractfile(member)

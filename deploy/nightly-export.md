@@ -10,14 +10,16 @@ daily NDJSON manifests remain historical records.
 
 ## Durability targets and current status
 
-The archive infrastructure stack in `deploy/infra/archive-project/` sets a
-30-minute scheduler cadence in `Asia/Tokyo`, with one retry, to target RPO of
-one hour or less. The export task timeout is ten minutes. The Terraform stack
-places the archive in a separate farm-only project and bucket, grants a
-dedicated exporter identity create/read access there, and starts with 90-day
-unlocked retention. A lifecycle rule expires only `.tar.gz` snapshots under
-`field-archive/`; manifest JSON is preserved. The scratch restore bucket is
-separate and expires drill objects after seven days.
+After explicit post-smoke/restore activation, the archive infrastructure stack
+in `deploy/infra/archive-project/` sets a 30-minute scheduler cadence in
+`Asia/Tokyo`, with one retry, to target RPO of one hour or less. Its default
+configuration does not manage or alter the existing export scheduler. The
+export task timeout is ten minutes. The Terraform stack places the archive in
+a separate farm-only project and bucket, grants a dedicated exporter identity
+create/read access there, and starts with 90-day unlocked retention. A
+lifecycle rule expires only `.tar.gz` snapshots under `field-archive/`;
+manifest JSON is preserved. The scratch restore bucket is separate and
+expires drill objects after seven days.
 
 These are configuration targets, not proof of achieved RPO/RTO. The 4-hour
 RTO target becomes operationally evidenced only after a timed restore drill
@@ -47,9 +49,10 @@ isolated archive is provisioned or serving traffic.
    owner-approved monthly TWD budget, budget notification recipient, billing
    account, and deployer identity. The checked-in `.tfvars.example` is not a
    set of approved values.
-2. Bootstrap and import the dedicated Terraform state bucket and existing
-   scheduler using the runbook. Review a plan that contains only farm-prefixed
-   resources. No apply is authorized by this repository change.
+2. Bootstrap the dedicated archive project and state bucket under local state,
+   then migrate that state to the private bucket using the infrastructure
+   runbook. The existing scheduler remains unmanaged while
+   `enable_archive_schedule=false`. No apply was performed by this code task.
 3. After an approved apply, build and deploy the worker from the current
    committed source using:
 
@@ -60,8 +63,8 @@ isolated archive is provisioned or serving traffic.
 
    The helper verifies the active project/region, builds an image, resolves
    its digest, and updates the complete Cloud Run job environment in one
-   operation. Verify the newest manifest and the job execution before
-   accepting the scheduler cadence.
+   operation. Verify the newest manifest and job execution before making any
+   scheduler change.
 4. Perform an isolated restore from a specific manifest and preserve its
    printed JSON receipt with deployment evidence:
 
@@ -71,6 +74,12 @@ isolated archive is provisioned or serving traffic.
      --manifest-object field-archive/manifest/YYYYMMDD/<manifest>.json `
      --target-bucket farm-seges-ai-archive-restore
    ```
+
+   After both the smoke and restore are accepted, set
+   `enable_archive_schedule=true`, import the existing resource at
+   `google_cloud_scheduler_job.archive_export[0]`, review the plan, and apply
+   to activate the half-hourly cadence. Import itself does not change the live
+   scheduler.
 
    The restore program downloads and hashes the archive, rejects unsafe or
    non-JSON members, restores only to the dedicated scratch bucket, compares
@@ -96,8 +105,11 @@ or delete source history as part of infrastructure provisioning.
 - Scheduler identity: `roles/run.invoker` on only `farm-nightly-export`.
 - Restore drill: operator's gcloud identity writes only to the separate
   scratch bucket; no production record bucket is a restore destination.
-- Terraform state: dedicated versioned private bucket; runtime identities do
-  not receive state access. Protect and back up Terraform state separately.
+- Terraform state: dedicated versioned private bucket in the archive project,
+  with an explicit bucket-level object-admin grant for the configured
+  Terraform operator. Runtime identities get no explicit state grant, though
+  inherited project/org administration remains effective. Protect and back up
+  Terraform state separately.
 - Budget: project-filtered TWD alerts at 50%, 90%, and 100%. A budget sends
   alerts and does not stop spend. The archive amount must fit the farm-wide
   TWD 2,000/month budget and needs owner confirmation.
@@ -106,6 +118,8 @@ or delete source history as part of infrastructure provisioning.
 
 The former nightly cadence was 03:30 JST (`30 3 * * *`). Earlier evidence
 showed one execution and nine snapshot members, but those records were in the
-primary bucket and there was no completed isolated restore procedure. The new
-schedule must be imported as the existing `farm-sched-record-export` resource
-before Terraform manages it, so its current state is preserved and reviewed.
+primary bucket and there was no completed isolated restore procedure. The
+scheduler remains outside Terraform state while the activation gate is closed.
+After smoke and restore evidence are accepted, import the existing
+`farm-sched-record-export` resource at its count-indexed address so Terraform
+can apply the new cadence without replacing the scheduler.

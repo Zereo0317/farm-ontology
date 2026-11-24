@@ -25,5 +25,5 @@ output "scheduler_service_account" {
 
 output "state_bucket_name" {
   value       = google_storage_bucket.terraform_state.name
-  description = "Restricted remote state bucket; no runtime service account receives access."
+  description = "Private remote state bucket in the isolated archive project with an explicit Terraform operator grant."
 }

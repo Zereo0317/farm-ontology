@@ -3,8 +3,9 @@ data "google_project" "source" {
 }
 
 resource "google_storage_bucket" "terraform_state" {
+  provider                    = google.archive
   name                        = "farm-seges-ai-iac-state"
-  project                     = var.source_project_id
+  project                     = google_project.archive.project_id
   location                    = var.region
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
@@ -13,6 +14,18 @@ resource "google_storage_bucket" "terraform_state" {
   versioning {
     enabled = true
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [google_project_service.archive_services]
+}
+
+resource "google_storage_bucket_iam_member" "terraform_state_operator" {
+  bucket = google_storage_bucket.terraform_state.name
+  role   = "roles/storage.objectAdmin"
+  member = var.terraform_state_operator_member
 
   lifecycle {
     prevent_destroy = true
@@ -89,10 +102,9 @@ resource "google_storage_bucket" "archive" {
       type = "Delete"
     }
     condition {
-      age            = var.retention_days
-      matches_prefix = ["field-archive/"]
-      matches_suffix = [".tar.gz"]
-      is_live        = false
+      matches_prefix            = ["field-archive/"]
+      matches_suffix            = [".tar.gz"]
+      days_since_noncurrent_time = var.retention_days
     }
   }
 
@@ -133,9 +145,8 @@ resource "google_storage_bucket" "restore_drill" {
       type = "Delete"
     }
     condition {
-      age            = 7
-      matches_prefix = ["restore-drills/"]
-      is_live        = false
+      matches_prefix            = ["restore-drills/"]
+      days_since_noncurrent_time = 7
     }
   }
 
@@ -253,6 +264,8 @@ resource "google_cloud_run_v2_job_iam_member" "scheduler_can_run_export" {
 }
 
 resource "google_cloud_scheduler_job" "archive_export" {
+  count = var.enable_archive_schedule ? 1 : 0
+
   project          = var.source_project_id
   region           = var.region
   name             = "farm-sched-record-export"

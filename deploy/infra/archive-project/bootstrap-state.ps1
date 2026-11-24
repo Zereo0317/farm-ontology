@@ -1,46 +1,29 @@
 [CmdletBinding()]
 param(
-  [string]$Project = "seges-ai",
+  [string]$Project = "farm-seges-ai-records-archive",
   [string]$Region = "asia-east1",
   [string]$Bucket = "farm-seges-ai-iac-state"
 )
 
 $ErrorActionPreference = "Stop"
-if ($Project -ne "seges-ai" -or $Bucket -ne "farm-seges-ai-iac-state") {
-  throw "This bootstrap is restricted to the approved farm Terraform state bucket in seges-ai."
-}
-
-$activeProject = (& gcloud config get-value project 2>$null).Trim()
-if ($activeProject -ne $Project) {
-  throw "Active gcloud project must be $Project (found '$activeProject')."
+if (-not $Project.StartsWith("farm-seges-ai-records-archive", [StringComparison]::Ordinal) -or
+    $Region -ne "asia-east1" -or $Bucket -ne "farm-seges-ai-iac-state") {
+  throw "State verification is restricted to the dedicated farm archive project and state bucket."
 }
 
 $uri = "gs://$Bucket"
-$existing = & gcloud storage buckets describe $uri --project=$Project --format=json 2>$null
-if ($LASTEXITCODE -ne 0) {
-  & gcloud storage buckets create $uri `
-    --project=$Project `
-    --location=$Region `
-    --uniform-bucket-level-access `
-    --public-access-prevention
-  if ($LASTEXITCODE -ne 0) { throw "Could not create the dedicated farm Terraform state bucket." }
-  & gcloud storage buckets update $uri --project=$Project --versioning
-  if ($LASTEXITCODE -ne 0) { throw "Could not enable object versioning on the state bucket." }
-  $existing = & gcloud storage buckets describe $uri --project=$Project --format=json
+$json = & gcloud storage buckets describe $uri --project=$Project --format=json
+if ($LASTEXITCODE -ne 0 -or -not $json) {
+  throw "State bucket must already exist in the dedicated archive project; bootstrap it through the reviewed Terraform phase."
 }
 
-$bucketInfo = $existing | ConvertFrom-Json
-if ($bucketInfo.name -ne $Bucket -or $bucketInfo.location -ne $Region) {
-  throw "State bucket identity or region does not match the farm-only target."
-}
-if ($bucketInfo.iamConfiguration.uniformBucketLevelAccess.enabled -ne $true) {
-  throw "State bucket must have uniform bucket-level access enabled."
-}
-if ($bucketInfo.iamConfiguration.publicAccessPrevention -ne "enforced") {
-  throw "State bucket must enforce public access prevention."
-}
-if ($bucketInfo.versioning.enabled -ne $true) {
-  throw "State bucket must have object versioning enabled."
+$jsonPath = [IO.Path]::GetTempFileName()
+try {
+  [IO.File]::WriteAllText($jsonPath, ($json -join [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+  & python (Join-Path $PSScriptRoot "verify_state_bucket.py") --json $jsonPath --bucket $Bucket --region $Region
+  if ($LASTEXITCODE -ne 0) { throw "State bucket settings failed verification." }
+} finally {
+  Remove-Item -LiteralPath $jsonPath -Force -ErrorAction SilentlyContinue
 }
 
-Write-Output "Verified $uri. Import it into google_storage_bucket.terraform_state before any Terraform plan/apply."
+Write-Output "Verified $uri. Its Terraform state IAM grant is managed in the archive project."

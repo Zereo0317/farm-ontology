@@ -19,6 +19,12 @@ SPEC = importlib.util.spec_from_file_location("restore_archive", STACK / "restor
 restore_archive = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(restore_archive)
+VERIFY_SPEC = importlib.util.spec_from_file_location(
+    "verify_state_bucket", STACK / "verify_state_bucket.py"
+)
+verify_state_bucket = importlib.util.module_from_spec(VERIFY_SPEC)
+assert VERIFY_SPEC.loader is not None
+VERIFY_SPEC.loader.exec_module(verify_state_bucket)
 
 
 class ArchiveInfrastructureContractTests(unittest.TestCase):
@@ -30,8 +36,8 @@ class ArchiveInfrastructureContractTests(unittest.TestCase):
     def test_all_persistent_resources_have_destroy_guards(self) -> None:
         for resource in (
             'google_storage_bucket" "terraform_state',
+            'google_storage_bucket_iam_member" "terraform_state_operator',
             'google_project" "archive',
-            'google_project_service" "archive_services',
             'google_project_service" "archive_services',
             'google_storage_bucket" "archive',
             'google_storage_bucket" "restore_drill',
@@ -59,12 +65,129 @@ class ArchiveInfrastructureContractTests(unittest.TestCase):
         self.assertIn('matches_prefix = ["field-archive/"]', self.main_tf)
         self.assertIn('matches_suffix = [".tar.gz"]', self.main_tf)
         self.assertIn("retention_days == 90", self.variables_tf)
+        self.assertIn("days_since_noncurrent_time = var.retention_days", self.main_tf)
+        self.assertIn("days_since_noncurrent_time = 7", self.main_tf)
+        self.assertEqual(self.main_tf.count("days_since_noncurrent_time ="), 2)
 
-    def test_scheduler_supports_one_hour_rpo_target(self) -> None:
+    def test_scheduler_is_unmanaged_until_explicit_post_drill_activation(self) -> None:
         self.assertIn('schedule         = "*/30 * * * *"', self.main_tf)
         self.assertIn('time_zone        = "Asia/Tokyo"', self.main_tf)
         self.assertIn('role     = "roles/run.invoker"', self.main_tf)
         self.assertIn('name     = "farm-nightly-export"', self.main_tf)
+        self.assertIn('count = var.enable_archive_schedule ? 1 : 0', self.main_tf)
+        variables = (STACK / "variables.tf").read_text(encoding="utf-8")
+        self.assertIn('variable "enable_archive_schedule"', variables)
+        self.assertIn("default     = false", variables)
+        self.assertIn("google_cloud_scheduler_job.archive_export[0]", (STACK / "README.md").read_text(encoding="utf-8"))
+
+    def test_state_bucket_is_in_archive_project_with_explicit_operator_grant(self) -> None:
+        state_block = self.main_tf.split('google_storage_bucket" "terraform_state', 1)[1].split("\nresource ", 1)[0]
+        self.assertIn("provider                    = google.archive", state_block)
+        self.assertIn("project                     = google_project.archive.project_id", state_block)
+        state_iam = self.main_tf.split('google_storage_bucket_iam_member" "terraform_state_operator', 1)[1].split("\nresource ", 1)[0]
+        self.assertIn('role   = "roles/storage.objectAdmin"', state_iam)
+        self.assertIn("var.terraform_state_operator_member", state_iam)
+        self.assertIn("inherited", (STACK / "README.md").read_text(encoding="utf-8"))
+
+    def test_state_bootstrap_accepts_flat_snake_case_gcloud_json(self) -> None:
+        sample = {
+            "name": "farm-seges-ai-iac-state",
+            "location": "ASIA-EAST1",
+            "uniform_bucket_level_access": True,
+            "public_access_prevention": "enforced",
+            "versioning": True,
+        }
+        verify_state_bucket.verify_bucket_json(
+            sample, bucket="farm-seges-ai-iac-state", region="asia-east1"
+        )
+        nested = {
+            "name": "farm-seges-ai-iac-state",
+            "location": "asia-east1",
+            "uniform_bucket_level_access": {"enabled": True},
+            "iam_configuration": {
+                "public_access_prevention": "enforced",
+            },
+            "versioning": {"enabled": True},
+        }
+        verify_state_bucket.verify_bucket_json(
+            nested, bucket="farm-seges-ai-iac-state", region="asia-east1"
+        )
+        with self.assertRaisesRegex(ValueError, "versioning"):
+            verify_state_bucket.verify_bucket_json(
+                {**sample, "versioning": False},
+                bucket="farm-seges-ai-iac-state",
+                region="asia-east1",
+            )
+        bootstrap_script = (STACK / "bootstrap-state.ps1").read_text(encoding="utf-8")
+        self.assertIn("verify_state_bucket.py", bootstrap_script)
+        self.assertNotIn("gcloud storage buckets create", bootstrap_script)
+        self.assertNotIn("iamConfiguration", bootstrap_script)
+
+    def test_web_runtime_identity_foundation_is_explicit_follow_up(self) -> None:
+        readme = (STACK / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Separate web access-control follow-up", readme)
+        self.assertIn("dedicated web runtime service", readme)
+        self.assertIn("shared default compute identity", readme)
+
+    def test_restore_enforces_manifest_and_download_bounds_before_copy(self) -> None:
+        with self.assertRaisesRegex(ValueError, "member count"):
+            restore_archive._validate_manifest_limits(
+                restore_archive.MAX_ARCHIVE_MEMBERS + 1, 100
+            )
+        with self.assertRaisesRegex(ValueError, "byte count"):
+            restore_archive._validate_manifest_limits(1, restore_archive.MAX_ARCHIVE_BYTES + 1)
+
+        with tempfile.TemporaryDirectory() as directory:
+            for object_name, limit, remote_size in (
+                (
+                    "field-archive/manifest/20261125/snapshot.json",
+                    restore_archive.MAX_MANIFEST_BYTES,
+                    restore_archive.MAX_MANIFEST_BYTES + 1,
+                ),
+                (
+                    "field-archive/20261125/snapshot.tar.gz",
+                    restore_archive.MAX_ARCHIVE_BYTES,
+                    restore_archive.MAX_ARCHIVE_BYTES + 1,
+                ),
+            ):
+                with self.subTest(object_name=object_name):
+                    destination = Path(directory) / "bounded-object"
+                    with patch.object(
+                        restore_archive,
+                        "_run_gcloud",
+                        return_value=json.dumps({"size": remote_size}),
+                    ) as run_gcloud:
+                        with self.assertRaisesRegex(ValueError, "download limit"):
+                            restore_archive._download(
+                                "farm-seges-ai-records-archive",
+                                object_name,
+                                destination,
+                                max_bytes=limit,
+                            )
+                    self.assertEqual(run_gcloud.call_count, 1)
+
+    def test_restore_rejects_oversized_per_member_and_aggregate_metadata(self) -> None:
+        too_large = tarfile.TarInfo("large.json")
+        too_large.size = restore_archive.MAX_MEMBER_BYTES + 1
+        with self.assertRaisesRegex(ValueError, "per-file"):
+            restore_archive._validate_member_metadata([too_large], 1)
+
+        members = []
+        for index in range(129):
+            member = tarfile.TarInfo(f"{index}.json")
+            member.size = restore_archive.MAX_MEMBER_BYTES
+            members.append(member)
+        with self.assertRaisesRegex(ValueError, "aggregate"):
+            restore_archive._validate_member_metadata(members, len(members))
+
+        def over_count():
+            for index in range(restore_archive.MAX_ARCHIVE_MEMBERS + 1):
+                yield tarfile.TarInfo(f"{index}.json")
+
+        with self.assertRaisesRegex(ValueError, "member count"):
+            restore_archive._validate_member_metadata(
+                over_count(), restore_archive.MAX_ARCHIVE_MEMBERS + 1
+            )
 
     def test_cost_alert_is_project_scoped_and_requires_owner_inputs(self) -> None:
         self.assertIn('projects = ["projects/${google_project.archive.number}"]', self.main_tf)
@@ -109,6 +232,8 @@ class ArchiveInfrastructureContractTests(unittest.TestCase):
         }
 
         def fake_gcloud(*args: str) -> str:
+            if args[:3] == ("storage", "objects", "describe"):
+                return json.dumps({"size": len(objects[args[3]])})
             if args[:2] == ("storage", "cp"):
                 source, destination = args[2], Path(args[3])
                 if source.startswith("gs://"):
