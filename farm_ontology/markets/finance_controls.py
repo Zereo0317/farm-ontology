@@ -222,6 +222,12 @@ class HedgeOrderIntent:
         _hash(self.rights_bundle_sha256, "rights_bundle_sha256")
         if not self.scope or self.scope != self.scope.strip():
             raise ValueError("intent scope must be explicit and unpadded")
+        if not isinstance(self.feeds, (tuple, list)):
+            raise ValueError("intent feeds must be an explicit tuple or list of feed identifiers")
+        if any(not isinstance(feed, str) for feed in self.feeds):
+            raise ValueError("intent feed identifiers must be strings")
+        # Store immutable canonical content even when a caller supplies a list.
+        object.__setattr__(self, "feeds", tuple(self.feeds))
         if not self.feeds or tuple(sorted(set(self.feeds))) != self.feeds:
             raise ValueError("intent feeds must be nonempty, sorted, and unique")
         if any(not feed or feed != feed.strip() for feed in self.feeds):

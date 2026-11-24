@@ -344,6 +344,16 @@ class FinanceControlTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Class C"):
             intent(instrument_family="settlement")
 
+    def test_intent_feeds_require_an_explicit_collection_of_feed_names(self):
+        with self.assertRaisesRegex(ValueError, "tuple or list"):
+            intent(feeds="exchange-settlement")
+        with self.assertRaisesRegex(ValueError, "must be strings"):
+            intent(feeds=("exchange-settlement", 7))
+        with self.assertRaisesRegex(ValueError, "nonempty, sorted, and unique"):
+            intent(feeds=())
+        normalized = intent(feeds=["exchange-settlement"])
+        self.assertEqual(normalized.feeds, ("exchange-settlement",))
+
     def test_approved_state_is_time_derived_and_expires(self):
         value = intent()
         ledger = HedgeIntentLedger()
