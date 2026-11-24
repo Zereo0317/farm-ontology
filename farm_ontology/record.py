@@ -7,11 +7,14 @@ function. Weather is optional and stays on the 0.05 degree grid.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
+from farm_ontology.access_control import normalize_farm_id
 from farm_ontology.fieldkit import (
     DRY_LATITUDE,
     DRY_LONGITUDE,
@@ -50,6 +53,79 @@ def _stamp(at: datetime) -> str:
     return at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+def _farm_prefix(farm_id: str | None) -> str:
+    """Return a safe tenant prefix, refusing unscoped production operations.
+
+    Local development and the existing single-tenant command-line tools keep
+    their historical root layout unless ``FARM_REQUIRE_TENANT_CONTEXT`` is
+    enabled. Hosted field APIs set that flag and must pass an authenticated
+    farm identifier for every read and write. Legacy root records are never
+    implicitly assigned to a tenant.
+    """
+    if farm_id is None:
+        if os.environ.get("FARM_REQUIRE_TENANT_CONTEXT", "").strip().lower() in {
+            "1", "true", "yes", "on"
+        }:
+            raise ValueError("farm_id is required for this record operation")
+        return ""
+    normalize_farm_id(farm_id)
+    return f"farms/{farm_id}/"
+
+
+def _request_id(value: str | None) -> str | None:
+    """Validate a client UUID and require it for hosted record writes."""
+    required = os.environ.get("FARM_REQUIRE_IDEMPOTENCY", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+    if value is None:
+        if required:
+            raise ValueError("request_id is required for this record operation")
+        return None
+    pattern = r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+    if not isinstance(value, str) or not re.fullmatch(pattern, value):
+        raise ValueError("request_id must be a canonical lowercase UUID")
+    return value
+
+
+def _request_fingerprint(operation: str, payload: dict) -> str:
+    encoded = json.dumps(
+        {"operation": operation, "payload": payload},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _write_record_once(
+    store,
+    name: str,
+    document: dict,
+    *,
+    request_id: str | None,
+    payload_fingerprint: str,
+) -> dict:
+    """Create a record, returning the original on an exact request retry."""
+    if request_id is not None:
+        document["idempotency"] = {
+            "request_id": request_id,
+            "payload_sha256": payload_fingerprint,
+        }
+    data = (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    try:
+        store.write_once(name, data)
+        return document
+    except FileExistsError:
+        if request_id is None:
+            raise
+        existing = json.loads(store.read_text(name))
+        expected = {"request_id": request_id, "payload_sha256": payload_fingerprint}
+        if existing.get("idempotency") != expected:
+            raise ValueError("request_id was reused with a different payload")
+        return existing
+
+
 def read_playbook() -> str:
     return PLAYBOOK.read_text(encoding="utf-8")
 
@@ -58,12 +134,13 @@ def read_sop() -> str:
     return SOP.read_text(encoding="utf-8")
 
 
-def status() -> dict:
+def status(*, farm_id: str | None = None) -> dict:
     document = load_manifest()
     folder = record_dir()
     store = _store()
-    observations = sorted(store.list_paths("", "obs-*.json"))
-    notes = sorted(store.list_paths("notes/", "note-*.json"))
+    prefix = _farm_prefix(farm_id)
+    observations = sorted(store.list_paths(prefix, "obs-*.json"))
+    notes = sorted(store.list_paths(f"{prefix}notes/", "note-*.json"))
     return {
         "crop": "soybean",
         "crop_stage": "harvest",
@@ -74,6 +151,7 @@ def status() -> dict:
         "weather_model": "jma_msm",
         "native_resolution_deg": GRID_DEG,
         "spatial_support": "grid-cell",
+        "farm_id": farm_id,
         "shrunk_to_plant": False,
         "iri_base": document["iri_base"],
         "iri_base_status": document["iri_base_status"],
@@ -126,8 +204,12 @@ def record_observation(
     moisture: float | None = None,
     dry_run: bool = False,
     attach_weather: bool = False,
+    farm_id: str | None = None,
+    request_id: str | None = None,
     at: datetime | None = None,
 ) -> dict:
+    prefix = _farm_prefix(farm_id)
+    request_id = _request_id(request_id)
     moment = at or _now()
     if dry_run:
         latitude = DRY_LATITUDE
@@ -140,6 +222,22 @@ def record_observation(
         moisture = None
     if latitude is None or longitude is None:
         raise ValueError("latitude and longitude are required")
+    payload_fingerprint = _request_fingerprint(
+        "observation",
+        {
+            "latitude": float(latitude),
+            "longitude": float(longitude),
+            "note": note,
+            "metres": metres,
+            "sample_id": sample_id,
+            "photo_path": photo_path,
+            "harvest_unit": harvest_unit,
+            "moisture": moisture,
+            "dry_run": dry_run,
+            "attach_weather": attach_weather,
+            "farm_id": farm_id,
+        },
+    )
     document = build_observation(
         latitude=float(latitude),
         longitude=float(longitude),
@@ -164,10 +262,22 @@ def record_observation(
             document["weather"] = weather
     if document["class_c_policy"] != "closed" or document["permits_financial_use"]:
         raise RuntimeError("the field record refuses an open class C or a financial use")
+    if farm_id is not None:
+        document["farm_id"] = farm_id
     store = _store()
-    name = f"obs-{_stamp(moment)}-{uuid.uuid4().hex}.json"
-    store.write_once(name, (json.dumps(document, indent=2) + "\n").encode("utf-8"))
-    return {"file": name, "observation": document}
+    name = (
+        f"obs-request-{request_id}.json"
+        if request_id is not None
+        else f"obs-{_stamp(moment)}-{uuid.uuid4().hex}.json"
+    )
+    stored = _write_record_once(
+        store,
+        f"{prefix}{name}",
+        document,
+        request_id=request_id,
+        payload_fingerprint=payload_fingerprint,
+    )
+    return {"file": name, "observation": stored}
 
 
 def _note_name(name: str | None) -> str | None:
@@ -183,17 +293,30 @@ def add_note(
     kind: str,
     text: str,
     observation_file: str | None = None,
+    farm_id: str | None = None,
+    request_id: str | None = None,
     at: datetime | None = None,
 ) -> dict:
+    prefix = _farm_prefix(farm_id)
+    request_id = _request_id(request_id)
     if kind not in {"verification", "feedback"}:
         raise ValueError("note kind is verification or feedback")
     body = text.strip()
     if not body:
         raise ValueError("note text is empty")
     target = _note_name(observation_file)
-    if target is not None and not _store().exists(target):
+    if target is not None and not _store().exists(f"{prefix}{target}"):
         raise ValueError("that observation file is not in the record")
     moment = at or _now()
+    payload_fingerprint = _request_fingerprint(
+        "note",
+        {
+            "kind": kind,
+            "text": body,
+            "observation_file": PurePosixPath(target).name if target else None,
+            "farm_id": farm_id,
+        },
+    )
     note = {
         "kind": kind,
         "text": body,
@@ -203,21 +326,35 @@ def add_note(
         "permits_financial_use": False,
         "trade_signal": False,
     }
+    if farm_id is not None:
+        note["farm_id"] = farm_id
     store = _store()
-    name = f"notes/note-{kind}-{_stamp(moment)}-{uuid.uuid4().hex}.json"
-    store.write_once(name, (json.dumps(note, indent=2) + "\n").encode("utf-8"))
-    return {"file": PurePosixPath(name).name, "note": note}
+    name = (
+        f"notes/note-request-{request_id}.json"
+        if request_id is not None
+        else f"notes/note-{kind}-{_stamp(moment)}-{uuid.uuid4().hex}.json"
+    )
+    stored = _write_record_once(
+        store,
+        f"{prefix}{name}",
+        note,
+        request_id=request_id,
+        payload_fingerprint=payload_fingerprint,
+    )
+    return {"file": PurePosixPath(name).name, "note": stored}
 
 
-def list_notes() -> dict:
+def list_notes(*, farm_id: str | None = None) -> dict:
+    prefix = _farm_prefix(farm_id)
     store = _store()
     observations = []
-    for name in sorted(store.list_paths("", "obs-*.json")):
+    for name in sorted(store.list_paths(prefix, "obs-*.json")):
         document = json.loads(store.read_text(name))
         weather = document.get("weather") or {}
         observations.append(
             {
-                "file": name,
+                "file": PurePosixPath(name).name,
+                "farm_id": document.get("farm_id"),
                 "phenomenon_time": document.get("phenomenon_time"),
                 "crop": document.get("crop"),
                 "crop_ontology_id": document.get("crop_ontology_id"),
@@ -233,7 +370,7 @@ def list_notes() -> dict:
             }
         )
     notes = []
-    for name in sorted(store.list_paths("notes/", "note-*.json")):
+    for name in sorted(store.list_paths(f"{prefix}notes/", "note-*.json")):
         note_body = json.loads(store.read_text(name))
         notes.append({"file": PurePosixPath(name).name, **note_body})
     return {"observations": observations, "notes": notes}
@@ -258,6 +395,8 @@ def record_boundary_walk(
     note: str = "",
     operator: str | None = None,
     dry_run: bool = False,
+    farm_id: str | None = None,
+    request_id: str | None = None,
     at: datetime | None = None,
 ) -> dict:
     """Turn ordered corner pins into a governed boundary-walk record.
@@ -270,6 +409,8 @@ def record_boundary_walk(
     an unknown-accuracy polygon, which this record prints as such rather
     than averaging into fairy metres.
     """
+    prefix = _farm_prefix(farm_id)
+    request_id = _request_id(request_id)
     name = parcel_name.strip()
     if not name:
         raise ValueError("parcel name is empty")
@@ -364,21 +505,48 @@ def record_boundary_walk(
         "permits_financial_use": False,
         "trade_signal": False,
     }
+    if farm_id is not None:
+        document["farm_id"] = farm_id
     store = _store()
-    name_ = f"boundary/walk-{_stamp(moment)}-{uuid.uuid4().hex}.json"
+    payload_fingerprint = _request_fingerprint(
+        "boundary_walk",
+        {
+            "parcel_name": name,
+            "crop": crop,
+            "corners": corners,
+            "centre": centre,
+            "note": note,
+            "operator": operator,
+            "dry_run": dry_run,
+            "farm_id": farm_id,
+        },
+    )
+    name_ = (
+        f"boundary/walk-request-{request_id}.json"
+        if request_id is not None
+        else f"boundary/walk-{_stamp(moment)}-{uuid.uuid4().hex}.json"
+    )
     if not dry_run:
-        store.write_once(name_, (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+        document = _write_record_once(
+            store,
+            f"{prefix}{name_}",
+            document,
+            request_id=request_id,
+            payload_fingerprint=payload_fingerprint,
+        )
     return {"file": PurePosixPath(name_).name, "walk": document}
 
 
-def list_boundary_walks() -> dict:
+def list_boundary_walks(*, farm_id: str | None = None) -> dict:
+    prefix = _farm_prefix(farm_id)
     store = _store()
     walks = []
-    for name in sorted(store.list_paths("boundary/", "walk-*.json")):
+    for name in sorted(store.list_paths(f"{prefix}boundary/", "walk-*.json")):
         body = json.loads(store.read_text(name))
         walks.append(
             {
                 "file": PurePosixPath(name).name,
+                "farm_id": body.get("farm_id"),
                 "parcel_name": body.get("parcel_name"),
                 "pinned_at": body.get("pinned_at"),
                 "corner_count": body.get("corner_count"),

@@ -22,10 +22,11 @@ from farm_ontology.record import (
 
 def dispatch(req: dict) -> dict:
     op = req.get("op")
+    farm_id = req.get("farm_id")
     if op == "status":
-        return status()
+        return status(farm_id=farm_id)
     if op == "list":
-        return list_notes()
+        return list_notes(farm_id=farm_id)
     if op == "observe":
         return record_observation(
             latitude=req.get("latitude"),
@@ -38,12 +39,16 @@ def dispatch(req: dict) -> dict:
             moisture=req.get("moisture"),
             dry_run=bool(req.get("dry_run")),
             attach_weather=False,
+            farm_id=farm_id,
+            request_id=req.get("request_id"),
         )
     if op == "note":
         return add_note(
             kind=str(req.get("kind") or ""),
             text=str(req.get("text") or ""),
             observation_file=req.get("observation_file") or None,
+            farm_id=farm_id,
+            request_id=req.get("request_id"),
         )
     if op == "boundary_walk":
         return record_boundary_walk(
@@ -54,9 +59,11 @@ def dispatch(req: dict) -> dict:
             note=str(req.get("note") or ""),
             operator=req.get("operator") or None,
             dry_run=bool(req.get("dry_run")),
+            farm_id=farm_id,
+            request_id=req.get("request_id"),
         )
     if op == "list_walks":
-        return list_boundary_walks()
+        return list_boundary_walks(farm_id=farm_id)
     if op == "schema":
         return PAGE_API_SCHEMA
     if op == "read_header":
