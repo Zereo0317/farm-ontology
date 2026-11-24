@@ -103,6 +103,8 @@ SIM_SEASON_SHAPES: dict[str, dict] = {
 #: The strategy's own scenario yield (task-7's farmer-book constant), reused
 #: so the pitch's numbers stay one consistent world: 120 ha at 3.0 t/ha.
 DEFAULT_YIELD_T_PER_HA = 3.0
+SIM_CITATION_URL = "constants declared in farm_ontology/markets/backtest.py"
+SIM_UNIT_NOTE = "USD per bushel at stooq print scale (see SOURCE_FACTS)"
 
 
 def bushels_per_ha(yield_t_per_ha: float) -> float:
@@ -164,8 +166,8 @@ def build_sim_season(year: str) -> PriceSeriesFrame:
         interval="d",
         rows=tuple(rows),
         captured_live=False,
-        citation_url="constants declared in farm_ontology/markets/backtest.py",
-        unit_note="USD per bushel at stooq print scale (see SOURCE_FACTS)",
+        citation_url=SIM_CITATION_URL,
+        unit_note=SIM_UNIT_NOTE,
     )
 
 
@@ -306,7 +308,21 @@ def run_season(year: str, frame: PriceSeriesFrame, *, yield_t_per_ha: float) -> 
     """The 40/30/30 walk over ONE season window, against all-at-once."""
     # This scaffold has neither a historical signal manifest nor verified quote
     # units. Never silently label external price series as synthetic evidence.
-    if frame.source != "sim-declared" or frame.captured_live:
+    # Inspect row-level provenance as well as the envelope: adapters retain
+    # their own source and symbol on every row, so relabeling only the outer
+    # frame must not turn an external series into a declared simulation.
+    if (
+        frame.source != "sim-declared"
+        or frame.captured_live is not False
+        or frame.symbol != SYMBOL_ZS_F
+        or frame.interval != "d"
+        or frame.citation_url != SIM_CITATION_URL
+        or frame.unit_note != SIM_UNIT_NOTE
+        or any(
+            row.get("source") != "sim-declared" or row.get("symbol") != SYMBOL_ZS_F
+            for row in frame.rows
+        )
+    ):
         raise ValueError("external prices require a verified point-in-time backtest; this scaffold accepts synthetic frames only")
     calendar = SEASON_CALENDAR[year]
     bu_per_ha = bushels_per_ha(yield_t_per_ha)
