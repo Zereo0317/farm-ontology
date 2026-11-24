@@ -102,6 +102,23 @@ class EngineBehaviourTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "synthetic frames only"):
             bt.run_season("2021", frame, yield_t_per_ha=3.0)
 
+    def test_external_rows_cannot_be_relabelled_as_synthetic(self) -> None:
+        source = bt.simulated_seasons()[0]
+        external_rows = tuple(dict(row, source="stooq") for row in source.rows)
+        external = replace(
+            source,
+            source="stooq",
+            captured_live=True,
+            citation_url="https://stooq.com/q/d/?s=zs.f",
+            unit_note="external close; source quote units require review",
+            rows=external_rows,
+        )
+        # Changing only the frame envelope must not bypass the external-data
+        # refusal while row-level source, unit and citation evidence disagree.
+        spoofed = replace(external, source="sim-declared", captured_live=False)
+        with self.assertRaisesRegex(ValueError, "synthetic frames only"):
+            bt.run_season("2021", spoofed, yield_t_per_ha=3.0)
+
     def test_drawdown_uses_only_sale_window(self) -> None:
         frame = bt.simulated_seasons()[0]
         outside = dict(frame.rows[0], date=date(2021, 1, 1), close=10000.0)
