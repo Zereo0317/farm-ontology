@@ -71,7 +71,7 @@ image digest, check outputs, owners, and approvals in the release record.
 
 ## 2026-11-24 follow-up release
 
-- Current `main`: `0f8bfa5a8aede4a2e287938cebff805601821766`. The application
+- Runtime source tested and promoted: `0f8bfa5a8aede4a2e287938cebff805601821766`. The application
   changes are from `6c3badd19136834a98ecc7b2471134625cd8ed8b`; the final
   follow-up only corrects the production verifier's GitHub Actions query to
   request completed runs and check `conclusion=success` itself.
