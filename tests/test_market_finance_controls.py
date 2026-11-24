@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import json
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -13,6 +14,7 @@ from farm_ontology.markets.finance_controls import (
     EvidencePurpose,
     HedgeIntentLedger,
     HedgeOrderIntent,
+    IntentEvent,
     IntentState,
     PaperReconciliationJournal,
     SignedEvidence,
@@ -59,6 +61,11 @@ def intent(**changes):
         quantity_unit="contracts",
         cap_sheet_sha256="b" * 64,
         rights_bundle_sha256="c" * 64,
+        scope="public-feed-only",
+        feeds=("exchange-settlement",),
+        territory="JP-Hokkaido",
+        uses_farmer_data=False,
+        farmer_consent_grant_fingerprints=(),
         created_at=AT - timedelta(minutes=5),
         expires_at=AT + timedelta(hours=1),
     )
@@ -78,19 +85,30 @@ def approval_evidence(value):
             "instrument_family": value.instrument_family,
             "quantity_unit": value.quantity_unit,
             "max_order_quantity": "3",
+            "period_start": (AT - timedelta(days=20)).isoformat(),
+            "period_end": (AT + timedelta(days=70)).isoformat(),
         },
     )
     rights = evidence(
         EvidencePurpose.SOURCE_RIGHTS,
         value.rights_bundle_sha256,
         "licence-registry",
-        {"status": "active", "purpose": "hedge"},
+        {
+            "status": "active", "purpose": "hedge", "scope": value.scope,
+            "feeds": json.dumps(value.feeds, separators=(",", ":")), "territory": value.territory,
+            "uses_farmer_data": "true" if value.uses_farmer_data else "false",
+            "instrument_family": value.instrument_family,
+            "farmer_consent_grant_fingerprints": json.dumps(
+                value.farmer_consent_grant_fingerprints, separators=(",", ":"),
+            ),
+        },
     )
     kill = evidence(
         EvidencePurpose.KILL_SWITCH,
         value.fingerprint,
         "independent-watchdog",
         {"halt_raised": "false"},
+        start=AT - timedelta(seconds=30),
     )
     approvals = ApprovalBundle(
         risk_owner=evidence(
@@ -233,29 +251,58 @@ class FinanceControlTests(unittest.TestCase):
         self.assertFalse(decision.approved_for_manual_review)
         self.assertIn("risk-owner-approval-must-precede-independent-review", decision.violations)
 
-    def test_manual_approval_event_is_hash_chained_replayable_and_not_execution(self):
+    def test_global_class_c_policy_refuses_all_approval_even_when_intent_claims_closed(self):
         value = intent()
         cap, rights, kill, approvals = approval_evidence(value)
+        decision = evaluate_manual_approval(
+            value, at=AT, cap_sheet=cap, source_rights=rights,
+            kill_switch=kill, approvals=approvals, verifier=verifier,
+        )
+        self.assertFalse(decision.approved_for_manual_review)
+        self.assertIn("class-c-policy-closed", decision.violations)
         ledger = HedgeIntentLedger()
         proposed = ledger.propose(value, at=AT, actor="analyst-charlie")
         repeated = ledger.propose(value, at=AT, actor="analyst-charlie")
         self.assertEqual(proposed, repeated)
-        approved = ledger.approve_for_manual_review(
-            value.intent_id, at=AT + timedelta(minutes=1), actor="reviewer-bob",
-            cap_sheet=cap, source_rights=rights, kill_switch=kill,
-            approvals=approvals, verifier=verifier,
-        )
-        self.assertEqual(approved.event_type, EventType.APPROVED_MANUAL)
-        self.assertEqual(ledger.state(value.intent_id), IntentState.APPROVED_MANUAL)
+        with self.assertRaisesRegex(ValueError, "approval gates"):
+            ledger.approve_for_manual_review(
+                value.intent_id, at=AT + timedelta(minutes=1), actor="reviewer-bob",
+                cap_sheet=cap, source_rights=rights, kill_switch=kill,
+                approvals=approvals, verifier=verifier,
+            )
         replayed = HedgeIntentLedger(ledger.events, intents=(value,))
         self.assertEqual(replayed.events, ledger.events)
-        self.assertEqual(replayed.state(value.intent_id), IntentState.APPROVED_MANUAL)
+        self.assertEqual(replayed.state(value.intent_id, at=AT), IntentState.PROPOSED)
         self.assertFalse(hasattr(ledger, "submit_order"))
         self.assertFalse(hasattr(ledger, "execute"))
 
-        tampered = replace(approved, actor="other-reviewer")
-        with self.assertRaisesRegex(ValueError, "hash does not match"):
-            HedgeIntentLedger((*ledger.events[:-1], tampered), intents=(value,))
+    def test_replay_rejects_recomputed_hash_only_approval_events(self):
+        import hashlib
+        import json
+
+        value = intent()
+        ledger = HedgeIntentLedger()
+        proposal = ledger.propose(value, at=AT, actor="analyst-charlie")
+        payload = {
+            "sequence": 2, "intent_id": value.intent_id,
+            "intent_sha256": value.fingerprint,
+            "event_type": EventType.APPROVED_MANUAL.value,
+            "at": (AT + timedelta(minutes=1)).isoformat(),
+            "actor": "forged-reviewer", "evidence_sha256": "f" * 64,
+            "previous_sha256": proposal.event_sha256,
+        }
+        forged_sha = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+        forged = IntentEvent(
+            sequence=2, intent_id=value.intent_id, intent_sha256=value.fingerprint,
+            event_type=EventType.APPROVED_MANUAL,
+            at=AT + timedelta(minutes=1), actor="forged-reviewer",
+            evidence_sha256="f" * 64, previous_sha256=proposal.event_sha256,
+            event_sha256=forged_sha,
+        )
+        with self.assertRaisesRegex(ValueError, "cryptographic authentication"):
+            HedgeIntentLedger((proposal, forged), intents=(value,))
 
     def test_ledger_refuses_ordered_approval_bypass_and_halt_freezes_intent(self):
         value = intent()
@@ -276,7 +323,7 @@ class FinanceControlTests(unittest.TestCase):
             kill_switch=halt, verifier=verifier,
         )
         self.assertEqual(event.event_type, EventType.HALTED)
-        self.assertEqual(ledger.state(value.intent_id), IntentState.HALTED)
+        self.assertEqual(ledger.state(value.intent_id, at=AT + timedelta(minutes=2)), IntentState.HALTED)
         with self.assertRaisesRegex(ValueError, "only a proposed intent"):
             ledger.approve_for_manual_review(
                 value.intent_id, at=AT + timedelta(minutes=3), actor="reviewer-bob",
@@ -297,11 +344,64 @@ class FinanceControlTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Class C"):
             intent(instrument_family="settlement")
 
+    def test_approved_state_is_time_derived_and_expires(self):
+        value = intent()
+        ledger = HedgeIntentLedger()
+        ledger.propose(value, at=AT, actor="analyst-charlie")
+        self.assertEqual(ledger.state(value.intent_id, at=AT), IntentState.PROPOSED)
+        self.assertEqual(ledger.state(value.intent_id, at=value.expires_at), IntentState.EXPIRED)
+        ledger._states[value.intent_id] = IntentState.APPROVED_MANUAL
+        self.assertEqual(ledger.state(value.intent_id, at=AT), IntentState.APPROVED_MANUAL)
+        self.assertEqual(ledger.state(value.intent_id, at=value.expires_at), IntentState.EXPIRED)
+
+    def test_rights_scope_feeds_territory_instrument_and_farmer_grants_are_bound(self):
+        with self.assertRaisesRegex(ValueError, "consent grant fingerprints"):
+            intent(scope="farmer-derived", uses_farmer_data=True)
+
+        value = intent(scope="farmer-derived", uses_farmer_data=True,
+                       farmer_consent_grant_fingerprints=("d" * 64,))
+        cap, rights, kill, approvals = approval_evidence(value)
+        mismatched = evidence(
+            EvidencePurpose.SOURCE_RIGHTS, value.rights_bundle_sha256, "licence-registry",
+            {**dict(rights.claims), "territory": "JP-Okinawa"},
+        )
+        result = evaluate_manual_approval(
+            value, at=AT, cap_sheet=cap, source_rights=mismatched,
+            kill_switch=kill, approvals=approvals, verifier=verifier,
+        )
+        self.assertIn("source-rights-do-not-cover-explicit-intent-scope", result.violations)
+
+    def test_cap_period_and_kill_switch_freshness_are_bounded(self):
+        value = intent()
+        cap, rights, kill, approvals = approval_evidence(value)
+        stale_kill = evidence(
+            EvidencePurpose.KILL_SWITCH, value.fingerprint, "independent-watchdog",
+            {"halt_raised": "false"}, start=AT - timedelta(minutes=6),
+        )
+        decision = evaluate_manual_approval(
+            value, at=AT, cap_sheet=cap, source_rights=rights,
+            kill_switch=stale_kill, approvals=approvals, verifier=verifier,
+        )
+        self.assertIn("kill-switch-evidence-is-stale", decision.violations)
+
+        overlong_cap = evidence(
+            EvidencePurpose.RISK_CAP_SHEET, value.cap_sheet_sha256, "risk-alice",
+            {**dict(cap.claims), "period_start": (AT - timedelta(days=101)).isoformat(),
+             "period_end": (AT + timedelta(days=1)).isoformat()},
+        )
+        decision = evaluate_manual_approval(
+            value, at=AT, cap_sheet=overlong_cap, source_rights=rights,
+            kill_switch=kill, approvals=approvals, verifier=verifier,
+        )
+        self.assertIn("risk-cap-sheet-period-missing-invalid-or-stale", decision.violations)
+
     def test_reconciliation_journal_is_idempotent_replayable_and_rejects_reversal(self):
         journal = PaperReconciliationJournal()
         statement = {"broker_statement_id": "paper-001", "cash": Decimal("90"), "qty": Decimal("2")}
         result = {"cash_difference": Decimal("0"), "position_difference": Decimal("0"), "matches": True}
         entry = journal.record("recon-001", statement=statement, result=result, recorded_at=AT)
+        self.assertTrue(hasattr(entry, "unverified_result_sha256"))
+        self.assertFalse(hasattr(entry, "validated_result_sha256"))
         self.assertEqual(journal.record(
             "recon-001", statement=statement, result=result,
             recorded_at=AT + timedelta(hours=1),
@@ -319,7 +419,7 @@ class FinanceControlTests(unittest.TestCase):
         replayed = PaperReconciliationJournal(journal.entries)
         self.assertEqual(replayed.entries, journal.entries)
         with self.assertRaisesRegex(ValueError, "hash chain"):
-            PaperReconciliationJournal((replace(entry, result_sha256="f" * 64),))
+            PaperReconciliationJournal((replace(entry, unverified_result_sha256="f" * 64),))
 
         # Existing paper accounting intentionally refuses a long-to-short
         # reversal; closing at zero and reopening long is supported.

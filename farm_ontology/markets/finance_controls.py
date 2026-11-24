@@ -18,15 +18,21 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Callable, Iterable, Mapping
 
 from farm_ontology.markets.rails import PERMITTED_FAMILIES
+from farm_ontology.policy import CLASS_C_POLICY
 
 _HASH = re.compile(r"^[0-9a-f]{64}$")
 _SIGNATURE = re.compile(r"^[0-9a-f]{128}$")
+# Operational evidence freshness bounds.  They constrain evidence age, not
+# trading limits or strategy values.  The cap's own signed period is also
+# checked; a short period cannot be extended by this module.
+MAX_CAP_SHEET_PERIOD = timedelta(days=100)
+MAX_KILL_SWITCH_AGE = timedelta(minutes=5)
 
 
 def _utc(value: datetime, name: str) -> datetime:
@@ -73,6 +79,11 @@ def _digest(value: object) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
 
 
+def _claim_list(values: tuple[str, ...]) -> str:
+    """Unambiguous string encoding for list-valued signed evidence claims."""
+    return _canonical(values).decode("utf-8")
+
+
 class EvidencePurpose(str, Enum):
     RISK_CAP_SHEET = "risk-cap-sheet"
     SOURCE_RIGHTS = "source-rights"
@@ -91,6 +102,7 @@ class IntentState(str, Enum):
     APPROVED_MANUAL = "approved-manual"
     CANCELLED = "cancelled"
     HALTED = "halted"
+    EXPIRED = "expired"
 
 
 class EventType(str, Enum):
@@ -190,6 +202,11 @@ class HedgeOrderIntent:
     quantity_unit: str
     cap_sheet_sha256: str
     rights_bundle_sha256: str
+    scope: str
+    feeds: tuple[str, ...]
+    territory: str
+    uses_farmer_data: bool
+    farmer_consent_grant_fingerprints: tuple[str, ...]
     created_at: datetime
     expires_at: datetime
     class_c_policy: str = "closed"
@@ -203,6 +220,22 @@ class HedgeOrderIntent:
         _hash(self.artifact_sha256, "artifact_sha256")
         _hash(self.cap_sheet_sha256, "cap_sheet_sha256")
         _hash(self.rights_bundle_sha256, "rights_bundle_sha256")
+        if not self.scope or self.scope != self.scope.strip():
+            raise ValueError("intent scope must be explicit and unpadded")
+        if not self.feeds or tuple(sorted(set(self.feeds))) != self.feeds:
+            raise ValueError("intent feeds must be nonempty, sorted, and unique")
+        if any(not feed or feed != feed.strip() for feed in self.feeds):
+            raise ValueError("intent feed identifiers must be nonempty and unpadded")
+        if not self.territory or self.territory != self.territory.strip():
+            raise ValueError("intent territory must be explicit and unpadded")
+        if not isinstance(self.uses_farmer_data, bool):
+            raise ValueError("intent uses_farmer_data must be explicit boolean")
+        if tuple(sorted(set(self.farmer_consent_grant_fingerprints))) != self.farmer_consent_grant_fingerprints:
+            raise ValueError("farmer consent fingerprints must be sorted and unique")
+        for fingerprint in self.farmer_consent_grant_fingerprints:
+            _hash(fingerprint, "farmer consent grant fingerprint")
+        if self.uses_farmer_data and not self.farmer_consent_grant_fingerprints:
+            raise ValueError("farmer-derived scope requires consent grant fingerprints")
         if self.instrument_family not in PERMITTED_FAMILIES:
             if self.instrument_family.strip().lower() in {
                 "settlement", "hedge", "trigger", "nature-unit",
@@ -232,6 +265,11 @@ class HedgeOrderIntent:
             "quantity_unit": self.quantity_unit,
             "cap_sheet_sha256": self.cap_sheet_sha256,
             "rights_bundle_sha256": self.rights_bundle_sha256,
+            "scope": self.scope,
+            "feeds": list(self.feeds),
+            "territory": self.territory,
+            "uses_farmer_data": self.uses_farmer_data,
+            "farmer_consent_grant_fingerprints": list(self.farmer_consent_grant_fingerprints),
             "created_at": _utc(self.created_at, "created_at").isoformat(),
             "expires_at": _utc(self.expires_at, "expires_at").isoformat(),
             "class_c_policy": self.class_c_policy,
@@ -273,6 +311,9 @@ def evaluate_manual_approval(
     """
     moment = _utc(at, "at")
     violations: list[str] = []
+    # The authoritative global switch wins over caller-provided intent data.
+    if CLASS_C_POLICY != "open":
+        violations.append("class-c-policy-closed")
     if moment < _utc(intent.created_at, "created_at") or moment >= _utc(intent.expires_at, "expires_at"):
         violations.append("intent-expired-or-not-yet-valid")
     if cap_sheet is None or not _verified(
@@ -282,6 +323,16 @@ def evaluate_manual_approval(
         violations.append("risk-cap-sheet-missing-invalid-expired-or-untrusted")
     else:
         cap_claims = dict(cap_sheet.claims)
+        try:
+            cap_period_start = datetime.fromisoformat(cap_claims["period_start"])
+            cap_period_end = datetime.fromisoformat(cap_claims["period_end"])
+            if (cap_period_start.tzinfo is None or cap_period_end.tzinfo is None
+                    or not _utc(cap_period_start, "cap period start") <= moment < _utc(cap_period_end, "cap period end")
+                    or not _utc(cap_period_start, "cap period start") <= _utc(cap_sheet.issued_at, "cap issue time") < _utc(cap_period_end, "cap period end")
+                    or _utc(cap_period_end, "cap period end") - _utc(cap_period_start, "cap period start") > MAX_CAP_SHEET_PERIOD):
+                raise ValueError
+        except (KeyError, ValueError):
+            violations.append("risk-cap-sheet-period-missing-invalid-or-stale")
         if cap_claims.get("specimen") != "false":
             violations.append("risk-cap-sheet-is-specimen")
         if cap_claims.get("role") != ApprovalRole.RISK_OWNER.value:
@@ -309,6 +360,18 @@ def evaluate_manual_approval(
         rights_claims = dict(source_rights.claims)
         if rights_claims.get("status") != "active" or rights_claims.get("purpose") != "hedge":
             violations.append("source-rights-not-active-for-hedge-purpose")
+        expected_rights = {
+            "scope": intent.scope,
+            "feeds": _claim_list(intent.feeds),
+            "territory": intent.territory,
+            "uses_farmer_data": "true" if intent.uses_farmer_data else "false",
+            "instrument_family": intent.instrument_family,
+            "farmer_consent_grant_fingerprints": _claim_list(intent.farmer_consent_grant_fingerprints),
+        }
+        if any(rights_claims.get(key) != value for key, value in expected_rights.items()):
+            violations.append("source-rights-do-not-cover-explicit-intent-scope")
+        if intent.uses_farmer_data and not intent.farmer_consent_grant_fingerprints:
+            violations.append("farmer-derived-scope-requires-consent-grant-fingerprints")
     if kill_switch is None or not _verified(
         kill_switch, purpose=EvidencePurpose.KILL_SWITCH,
         subject_sha256=intent.fingerprint, at=moment, verifier=verifier,
@@ -316,6 +379,8 @@ def evaluate_manual_approval(
         violations.append("independent-kill-switch-evidence-missing-invalid-or-expired")
     elif dict(kill_switch.claims).get("halt_raised") != "false":
         violations.append("kill-switch-halt-raised-or-unknown")
+    elif moment - _utc(kill_switch.issued_at, "kill-switch issue time") > MAX_KILL_SWITCH_AGE:
+        violations.append("kill-switch-evidence-is-stale")
     if approvals is None:
         violations.append("risk-owner-and-independent-approval-missing")
     else:
@@ -408,8 +473,15 @@ class HedgeIntentLedger:
     def intents(self) -> tuple[HedgeOrderIntent, ...]:
         return tuple(self._intents.values())
 
-    def state(self, intent_id: str) -> IntentState | None:
-        return self._states.get(intent_id)
+    def state(self, intent_id: str, *, at: datetime) -> IntentState | None:
+        """Return time-derived state; an approved proposal expires at intent expiry."""
+        state = self._states.get(intent_id)
+        intent = self._intents.get(intent_id)
+        if state in {IntentState.PROPOSED, IntentState.APPROVED_MANUAL} and intent is not None:
+            moment = _utc(at, "at")
+            if moment < _utc(intent.created_at, "created_at") or moment >= _utc(intent.expires_at, "expires_at"):
+                return IntentState.EXPIRED
+        return state
 
     def _append(self, intent: HedgeOrderIntent, event_type: EventType,
                 at: datetime, actor: str, evidence_sha256: str) -> IntentEvent:
@@ -499,6 +571,11 @@ class HedgeIntentLedger:
                 raise ValueError("intent event sequence or previous hash is invalid")
             if event.event_sha256 != _digest(event.payload()):
                 raise ValueError("intent event hash does not match its content")
+            # Hash chains detect accidental corruption, not a forged reviewer.
+            # There is no persisted signature-verification contract in this
+            # model, so only unsigned proposal records can be replayed.
+            if event.event_type is not EventType.PROPOSED:
+                raise ValueError("replayed lifecycle event lacks cryptographic authentication")
             _actor(event.actor, "event actor")
             _hash(event.intent_sha256, "event intent_sha256")
             _hash(event.evidence_sha256, "event evidence_sha256")
@@ -529,7 +606,7 @@ class HedgeIntentLedger:
 class ReconciliationEntry:
     reconciliation_id: str
     statement_sha256: str
-    result_sha256: str
+    unverified_result_sha256: str
     recorded_at: datetime
     previous_sha256: str
     entry_sha256: str
@@ -538,14 +615,18 @@ class ReconciliationEntry:
         return {
             "reconciliation_id": self.reconciliation_id,
             "statement_sha256": self.statement_sha256,
-            "result_sha256": self.result_sha256,
+            "unverified_result_sha256": self.unverified_result_sha256,
             "recorded_at": _utc(self.recorded_at, "recorded_at").isoformat(),
             "previous_sha256": self.previous_sha256,
         }
 
 
 class PaperReconciliationJournal:
-    """Idempotent, replay-checkable journal for paper-ledger comparisons."""
+    """Journal caller-supplied comparisons as explicitly unverified evidence.
+
+    The result digest only identifies caller-provided bytes. It does not prove
+    that the arithmetic was correct or that the statement is authoritative.
+    """
 
     def __init__(self, entries: Iterable[ReconciliationEntry] = ()) -> None:
         self._entries: list[ReconciliationEntry] = []
@@ -564,7 +645,7 @@ class PaperReconciliationJournal:
         statement_hash, result_hash = _digest(statement), _digest(result)
         old = self._by_id.get(reconciliation_id)
         if old:
-            if (old.statement_sha256, old.result_sha256) != (statement_hash, result_hash):
+            if (old.statement_sha256, old.unverified_result_sha256) != (statement_hash, result_hash):
                 raise ValueError("reconciliation_id replay has different content")
             return old
         duplicate_statement = self._by_statement.get(statement_hash)
@@ -586,7 +667,7 @@ class PaperReconciliationJournal:
         last_at: datetime | None = None
         for entry in entries:
             moment = _utc(entry.recorded_at, "recorded_at")
-            if not entry.reconciliation_id or not _HASH.fullmatch(entry.statement_sha256) or not _HASH.fullmatch(entry.result_sha256):
+            if not entry.reconciliation_id or not _HASH.fullmatch(entry.statement_sha256) or not _HASH.fullmatch(entry.unverified_result_sha256):
                 raise ValueError("reconciliation entry has invalid identity or digest")
             if entry.reconciliation_id in self._by_id:
                 raise ValueError("reconciliation journal contains duplicate IDs")
