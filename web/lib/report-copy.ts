@@ -32,9 +32,11 @@ export type ReportCopy = {
   kicker: string;
   h1: string;
   sub: string;
+  snapshotNotice: string;
   tabFarmer: string;
   tabInvestor: string;
   liveTitle: string;
+  liveNotice: string;
   chartsTitle: string;
   chartTempCaption: string;
   chartRainCaption: string;
@@ -76,6 +78,7 @@ export type ReportCopy = {
   invRefLead: string;
   invRefs: { label: string; state: string; href: string }[];
   invFooter: string;
+  invModeNotice: string;
   ctaTitle: string;
   ctaBody: string;
   ctaBtn: string;
@@ -83,13 +86,15 @@ export type ReportCopy = {
 
 export const reportCopy: Record<ReportLang, ReportCopy> = {
   "zh-TW": {
-    docTitle: "北海道大豆 11/19 田間決策（農夫版/投資人版）| Farm Ontology",
+    docTitle: "北海道大豆 11/19 田間簡報（金融研究情境）| Farm Ontology",
     kicker: "Farm Ontology 田間情報 · 免費閱讀",
-    h1: "11/19 北海道大豆：明天怎麼動",
+    h1: "11/19 北海道大豆：田間簡報",
     sub: "平取町・日高地區（PC24+PVC）｜資料 2026-11-18 晚間更新",
+    snapshotNotice: "這是 2026/11/19 的歷史田間簡報。工作卡與圖表只適用該日期，不是今天的作業指示。",
     tabFarmer: "農夫版",
-    tabInvestor: "投資人版",
+    tabInvestor: "金融情境（研究）",
     liveTitle: "田區即時實況（自動更新）",
+    liveNotice: "最新格網天氣，不是田區感測值，也不會更新上方的歷史工作卡。",
     chartsTitle: "為什麼系統這樣判斷：24 小時證據",
     chartTempCaption: "氣溫曲線。灰帶＝夜間；藍虛線＝0°C 凍結線。來源：JMA MSM 0.05° 格網。",
     chartRainCaption: "逐時雨量柱。清晨高峰集中 02:00–04:00。來源：JMA MSM 0.05° 格網。",
@@ -100,7 +105,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     chartSprayLimit: "噴藥上限 3.5 m/s",
     chartPeak: "14:00 峰值 4.2",
     chartRainSum: "Σ 00:00–06:00 = 14.2 mm",
-    playbookTitle: "明天的工作卡",
+    playbookTitle: "11/19 當日工作卡",
     playbookLead: "一天只做四個決定。每張卡一個動作，做完劃掉。",
     playbook: [
       {
@@ -203,19 +208,22 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
       { label: "衍生品演練報告（全文）", state: "自有成果 · 公開", href: "/reports/arb-rehearsal-REPORT.md" },
     ],
     invFooter: "決策支援，非投資要約；金融用途授權現為否。",
-    ctaTitle: "想在你的田也看到這張報告？",
-    ctaBody: "打開田間頁、手機釘樁，三分鐘做出第一筆有出生證明的觀測。免費、無信用卡。",
-    ctaBtn: "免費開始記錄",
+    invModeNotice: "研究情境；金融用途授權尚未開放。以下數字不是目前的交易指示。",
+    ctaTitle: "需要記錄自己的田區？",
+    ctaBody: "田間記錄目前採試辦存取。已獲授權的現場人員可前往登入；尚未取得存取方式，請向農場管理者申請。",
+    ctaBtn: "前往試辦登入",
   },
 
   "zh-CN": {
-    docTitle: "北海道大豆 11/19 田间决策（种植户版/投资人版）| Farm Ontology",
+    docTitle: "北海道大豆 11/19 田间简报（金融研究情境）| Farm Ontology",
     kicker: "Farm Ontology 田间情报 · 免费阅读",
-    h1: "11/19 北海道大豆：明天怎么干",
+    h1: "11/19 北海道大豆：田间简报",
     sub: "平取町・日高地区（PC24+PVC）｜数据 2026-11-18 晚间更新",
+    snapshotNotice: "这是 2026/11/19 的历史田间简报。工作卡和图表只适用于该日期，不是今天的作业指示。",
     tabFarmer: "种植户版",
-    tabInvestor: "投资人版",
+    tabInvestor: "金融情境（研究）",
     liveTitle: "地块实时数据（自动刷新）",
+    liveNotice: "这里只显示最新格网天气，不是地块传感器实测，也不会更新上方的历史工作卡。",
     chartsTitle: "为什么这么安排：24 小时的凭据",
     chartTempCaption: "气温曲线。灰底＝夜里；蓝虚线＝0°C 结冻线。来路：JMA MSM 0.05° 格点。",
     chartRainCaption: "逐小时雨量柱。雨都在凌晨 02:00–04:00。来路：JMA MSM 0.05° 格点。",
@@ -226,7 +234,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     chartSprayLimit: "喷药上限 3.5 m/s",
     chartPeak: "14:00 最大 4.2",
     chartRainSum: "Σ 00:00–06:00 = 14.2 mm",
-    playbookTitle: "明天的活儿卡",
+    playbookTitle: "11/19 当日工作卡",
     playbookLead: "一天就四个决定。一张卡一件事，干完划掉。",
     playbook: [
       {
@@ -329,19 +337,22 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
       { label: "衍生交易演练报告（全文）", state: "自有成果 · 公开", href: "/reports/arb-rehearsal-REPORT.md" },
     ],
     invFooter: "本页是决策支持，不是投资邀约；金融用途授权现为否。",
-    ctaTitle: "想让你家的地也有这么一份？",
-    ctaBody: "打开田间页，手机钉个桩，三分钟记下第一条带出生证明的观测。免费，不用绑卡。",
-    ctaBtn: "免费开始记录",
+    invModeNotice: "仅供研究情境使用；金融用途授权尚未开放。以下数字不是当前交易指示。",
+    ctaTitle: "要记录自己的地块？",
+    ctaBody: "田间记录目前仅限试点访问。已获授权的现场人员可以登录；尚未取得访问方式，请向农场管理员申请。",
+    ctaBtn: "前往试点登录",
   },
 
   en: {
-    docTitle: "Hokkaido soybeans 11/19 — field calls (grower / investor) | Farm Ontology",
+    docTitle: "Hokkaido soybeans, Nov 19 — field bulletin (finance research) | Farm Ontology",
     kicker: "Farm Ontology field bulletin · free read",
-    h1: "Hokkaido soybeans, Nov 19: what to do tomorrow",
+    h1: "Hokkaido soybeans, Nov 19: field bulletin",
     sub: "Biratori & Hidaka district (PC24+PVC) | data updated evening of 2026-11-18",
+    snapshotNotice: "Historical field bulletin for Nov 19, 2026. The action cards and charts apply only to that date; they are not today's instructions.",
     tabFarmer: "Grower",
-    tabInvestor: "Investor",
+    tabInvestor: "Finance research",
     liveTitle: "This field, right now (auto-refresh)",
+    liveNotice: "Latest grid weather only—not an on-farm sensor reading. It does not update the dated playbook above.",
     chartsTitle: "Why the system called it: 24 hours of receipts",
     chartTempCaption: "Temperature curve. Grey bands = night; blue dashes = the 0 °C freeze line. Source: JMA MSM 0.05° grid.",
     chartRainCaption: "Rain per hour. The morning burst sits 02:00–04:00. Source: JMA MSM 0.05° grid.",
@@ -352,7 +363,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     chartSprayLimit: "spray cap 3.5 m/s",
     chartPeak: "14:00 peak 4.2",
     chartRainSum: "Σ 00:00–06:00 = 14.2 mm",
-    playbookTitle: "Tomorrow's four cards",
+    playbookTitle: "Nov 19 action cards",
     playbookLead: "Four decisions, one day. One action per card; cross it off and move.",
     playbook: [
       {
@@ -455,19 +466,22 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
       { label: "Derivatives rehearsal report (full text)", state: "our own work · public", href: "/reports/arb-rehearsal-REPORT.md" },
     ],
     invFooter: "Decision support, not an investment solicitation; financial-use licensing is currently OFF.",
-    ctaTitle: "Want this page for your own field?",
-    ctaBody: "Open the field sheet, drop a pin from your phone, and three minutes later you've made your first observation with a birth certificate. Free, no credit card.",
-    ctaBtn: "Start recording — free",
+    invModeNotice: "Research scenario only. Financial-use licensing is off; these figures are not current trade instructions.",
+    ctaTitle: "Need to record your field?",
+    ctaBody: "Field recording is currently pilot-gated. Authorized field users can sign in; if you do not have access yet, ask your farm administrator.",
+    ctaBtn: "Open pilot sign-in",
   },
 
   ja: {
-    docTitle: "北海道大豆 11/19 ほ場意思決定（生産者版/投資家版）| Farm Ontology",
+    docTitle: "北海道大豆 11/19 ほ場レポート（金融研究シナリオ）| Farm Ontology",
     kicker: "Farm Ontology ほ場情報 · 無料公開",
-    h1: "11/19 北海道大豆：明日の動かし方",
+    h1: "11/19 北海道大豆：ほ場レポート",
     sub: "平取町・日高地方（PC24+PVC）｜データ 2026-11-18 夕方更新",
+    snapshotNotice: "2026年11月19日の過去のほ場レポートです。作業カードとグラフは当日の内容で、今日の作業指示ではありません。",
     tabFarmer: "生産者版",
-    tabInvestor: "投資家版",
+    tabInvestor: "金融シナリオ（研究）",
     liveTitle: "ほ場ライブ（自動更新）",
+    liveNotice: "最新の格子天気です。ほ場センサーの実測値ではなく、上の過去の作業カードも更新しません。",
     chartsTitle: "なぜそう判断したか：24時間の証拠",
     chartTempCaption: "気温曲線。灰色帯＝夜間、青の破線＝0°C の凍結ライン。出典：JMA MSM 0.05° 格子。",
     chartRainCaption: "時間別降水バー。朝のピークは 02:00〜04:00 に集中。出典：JMA MSM 0.05° 格子。",
@@ -478,7 +492,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     chartSprayLimit: "散布上限 3.5 m/s",
     chartPeak: "14:00 ピーク 4.2",
     chartRainSum: "Σ 00:00〜06:00 = 14.2 mm",
-    playbookTitle: "明日の仕事カード",
+    playbookTitle: "11/19 当日の作業カード",
     playbookLead: "一日の決断は四つだけ。一枚ずつ、終わったら消す。",
     playbook: [
       {
@@ -581,19 +595,22 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
       { label: "デリバティブ演出リハーサル（全文）", state: "自社成果 · 公開", href: "/reports/arb-rehearsal-REPORT.md" },
     ],
     invFooter: "意思決定支援であり投資勧誘ではありません。金融用途のライセンスは現状オフ。",
-    ctaTitle: "あなたのほ場でも、同じ形のレポートを。",
-    ctaBody: "ほ場ページを開き、スマホでピン。3分で最初の「出生証明付き」観測が作れます。無料・カード不要。",
-    ctaBtn: "無料で記録を始める",
+    invModeNotice: "研究用のシナリオです。金融用途のライセンスはオフで、現在の取引指示ではありません。",
+    ctaTitle: "ほ場の記録を始めますか？",
+    ctaBody: "ほ場の記録機能は現在パイロット利用に限定されています。登録済みの現場担当者はログインできます。まだ利用方法がない場合は農場管理者に申請してください。",
+    ctaBtn: "パイロットログインへ",
   },
 
   th: {
-    docTitle: "ถั่วเหลืองฮอกไกโด 19/11 — การตัดสินใจหน้างาน (เกษตรกร/นักลงทุน) | Farm Ontology",
+    docTitle: "ถั่วเหลืองฮอกไกโด 19 พ.ย. — รายงานภาคสนาม (วิจัยการเงิน) | Farm Ontology",
     kicker: "Farm Ontology ข้อมูลแปลง · อ่านฟรี",
-    h1: "ถั่วเหลืองฮอกไกโด 19/11: พรุ่งนี้ทำอะไร",
+    h1: "ถั่วเหลืองฮอกไกโด 19/11: รายงานภาคสนาม",
     sub: "อำเภอบิราโทริ–ฮิดากะ (PC24+PVC) | ข้อมูลอัปเดตค่ำวันที่ 2026-11-18",
+    snapshotNotice: "รายงานภาคสนามย้อนหลังสำหรับวันที่ 19 พ.ย. 2026 การ์ดงานและกราฟใช้กับวันนั้นเท่านั้น ไม่ใช่คำแนะนำสำหรับวันนี้",
     tabFarmer: "ฉบับเกษตรกร",
-    tabInvestor: "ฉบับนักลงทุน",
+    tabInvestor: "สถานการณ์การเงิน (วิจัย)",
     liveTitle: "แปลงนี้ตอนนี้ (อัปเดตอัตโนมัติ)",
+    liveNotice: "แสดงเฉพาะสภาพอากาศล่าสุดจากข้อมูลกริด ไม่ใช่ค่าจากเซ็นเซอร์ในแปลง และไม่อัปเดตการ์ดงานย้อนหลังด้านบน",
     chartsTitle: "ทำไมระบบถึงสั่งแบบนี้: หลักฐาน 24 ชั่วโมง",
     chartTempCaption: "กราฟอุณหภูมิ แถบสีเทา = กลางคืน, เส้นประสีฟ้า = เส้นเยือกแข็ง 0°C, ที่มา: กริด JMA MSM 0.05°",
     chartRainCaption: "แท่งฝนรายชั่วโมง ฝนตกหนักช่วง 02:00–04:00, ที่มา: กริด JMA MSM 0.05°",
@@ -604,7 +621,7 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
     chartSprayLimit: "เพดานพ่น 3.5 m/s",
     chartPeak: "พีค 14:00 = 4.2",
     chartRainSum: "Σ 00:00–06:00 = 14.2 mm",
-    playbookTitle: "การ์ดงานของพรุ่งนี้",
+    playbookTitle: "การ์ดงานวันที่ 19 พ.ย.",
     playbookLead: "วันหนึ่งมีสี่การตัดสินใจ การ์ดละหนึ่งงาน ทำเสร็จก็ขีดฆ่า",
     playbook: [
       {
@@ -707,8 +724,9 @@ export const reportCopy: Record<ReportLang, ReportCopy> = {
       { label: "รายงานซ้อมเดิมพันอนุพันธ์ (ฉบับเต็ม)", state: "ผลงานของเรา · สาธารณะ", href: "/reports/arb-rehearsal-REPORT.md" },
     ],
     invFooter: "เป็นการสนับสนุนการตัดสินใจ ไม่ใช่การชักชวนลงทุน; การอนุญาตใช้เพื่อการเงินยังปิดอยู่",
-    ctaTitle: "อยากได้หน้าแบบนี้ของแปลงคุณไหม?",
-    ctaBody: "เปิดหน้าบันทึกแปลง ปักพินจากมือถือ สามนาทีได้ข้อมูลสังเกตการณ์พร้อมใบกำเนิดชุดแรก ฟรี ไม่ต้องใช้บัตรเครดิต",
-    ctaBtn: "เริ่มบันทึกฟรี",
+    invModeNotice: "เป็นสถานการณ์เพื่อการวิจัยเท่านั้น การอนุญาตใช้ข้อมูลเพื่อการเงินยังปิดอยู่ และตัวเลขนี้ไม่ใช่คำสั่งซื้อขายปัจจุบัน",
+    ctaTitle: "ต้องการบันทึกข้อมูลแปลงของคุณไหม?",
+    ctaBody: "การบันทึกภาคสนามขณะนี้จำกัดเฉพาะโครงการนำร่อง ผู้ใช้ภาคสนามที่ได้รับอนุญาตสามารถเข้าสู่ระบบได้ หากยังไม่มีสิทธิ์ โปรดขอการเข้าถึงจากผู้ดูแลฟาร์ม",
+    ctaBtn: "เข้าสู่ระบบโครงการนำร่อง",
   },
 };

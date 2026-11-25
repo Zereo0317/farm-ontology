@@ -235,6 +235,14 @@ class ReportCopyGuardTests(unittest.TestCase):
             for needle in self.FOOTER_EXPECTATION[locale]:
                 self.assertIn(needle, fm.group(1), f"{locale} footer lost '{needle}'")
 
+    def test_report_dates_live_data_and_finance_mode_are_explicit(self):
+        for locale in self.REQUIRED_REPORT_LOCALES:
+            slice_text = self._locale_slice(self.clean, locale)
+            for key in ("snapshotNotice", "liveNotice", "invModeNotice"):
+                match = re.search(rf"{key}: \"([^\"]+)\"", slice_text)
+                self.assertIsNotNone(match, f"{locale} missing {key}")
+                self.assertTrue(match.group(1).strip(), f"{locale} empty {key}")
+
     def test_scripts_look_native_not_machine_swapped(self):
         # zh-CN must be Simplified (no traditional-only drift-ins), th must be
         # Thai script, en must keep the business register on its columns.

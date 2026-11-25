@@ -91,6 +91,7 @@ export default async function Biratori1119Report(props: {
     <>
       <section className="card">
         <h3>{t.liveTitle}</h3>
+        <p className="dataNote">{t.liveNotice}</p>
         {weather.gap ? (
           <p className="gap">gap · {weather.reason}</p>
         ) : (
@@ -170,6 +171,7 @@ export default async function Biratori1119Report(props: {
 
   const investorPane = (
     <>
+      <aside className="investorNotice" role="note">{t.invModeNotice}</aside>
       <section className="card">
         <h3>{t.invFrameworkTitle}</h3>
         <p className="intro">{t.invFrameworkLead}</p>
@@ -302,6 +304,8 @@ export default async function Biratori1119Report(props: {
           <span className="chip chip-green">R8 · GDD 1116.8</span>
         </div>
       </header>
+
+      <aside className="snapshotNotice" role="note">{t.snapshotNotice}</aside>
 
       <TabSwitch
         initial={initialTab}

@@ -472,6 +472,7 @@ details li { margin: 0.65rem 0; }
 
 /* Grain: two staggered radial-dot layers, pure CSS, no image assets. */
 .reportV2 {
+  width: min(46rem, 100%);
   max-width: 46rem;
   margin: 0 auto;
   padding: 2rem 1.1rem 4rem;
@@ -498,6 +499,31 @@ details li { margin: 0.65rem 0; }
 .reportV2 .card h3 {
   font-family: Palatino, "Songti TC", "Hiragino Mincho ProN", Georgia, serif;
   font-size: 1.12rem;
+}
+
+.reportV2 .snapshotNotice,
+.reportV2 .investorNotice {
+  border-left: 4px solid #a05a2c;
+  border-radius: 0 10px 10px 0;
+  padding: 0.75rem 0.9rem;
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+.reportV2 .snapshotNotice {
+  margin: 0.9rem 0 1rem;
+  background: #faf0e5;
+  color: #563b29;
+}
+.reportV2 .investorNotice {
+  margin: 0.85rem 0;
+  background: #f4efe3;
+  color: #5c4828;
+}
+.reportV2 .dataNote {
+  margin: -0.15rem 0 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #5d554c;
 }
 
 .reportV2 .intro { font-size: 0.92rem; opacity: 0.85; }

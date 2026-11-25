@@ -211,3 +211,26 @@ image digest, check outputs, owners, and approvals in the release record.
 - Landing source was unchanged in this follow-up. Cloud Run
   `farm-seges-ai-landing-00020-dj4` remains latest created/ready at 100%; the
   public apex release and locale smoke passed on the 2026-11-22 release.
+
+## 2026-11-25 report UX correction
+
+- Review of the live report found that a November 19 action bulletin was still
+  titled as advice for “tomorrow” beside November 25 live grid weather. The
+  investor tab also exposed a staged-pricing model before a clear finance-use
+  status, and the shared `main` width rule held the report to 28rem on desktop.
+- Source correction: date-stamp the bulletin and action cards in all five
+  locales; state that live weather is grid-level and does not refresh the
+  historical playbook; label the finance tab as research and put its closed
+  finance-use status before the model; describe pilot-gated field access
+  accurately; and set the report width to 46rem on wide screens while keeping
+  the existing single-column phone layout. A producer guard now requires the
+  three date/data/use notices in each locale.
+- Verification: report-copy guard **7/7**, web security suite **38/38**, and
+  `npm run build` passed. A rebuilt local page was visually inspected at the
+  browser's 1274×720 viewport; exact 1440/1024/768/390 viewport captures were
+  not available in this UI session.
+- This source correction is not a production-readback claim. Production web
+  remains `farm-seges-ai-web-00032-bb9` until a permitted release workflow
+  completes. The dedicated identity/deployer and authenticated farmer
+  acceptance gates recorded above still apply; no production traffic changed
+  during this review.
