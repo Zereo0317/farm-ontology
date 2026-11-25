@@ -24,7 +24,7 @@ proxied read-only from the decision backend.
 | Advisories proxy | `web/app/api/advisories/route.ts` ← `web/lib/backend.ts` (`FARM_API_BASE`, revalidate 60 s, gap shape on upstream failure) |
 | Access gate | `web/middleware.ts` + `web/app/login/page.tsx` + `web/app/api/access/route.ts` |
 | Health (uptime) | `/livez` — `/healthz` is reserved by the run.app edge, as on the backend |
-| QR deep link | `/farm/<lat>,<lon>` → prefilled field sheet |
+| QR deep link | `/farm/<farm_id>` → farm-specific field sheet without coordinates in the URL |
 | Record writes | `web/lib/record.ts` spawns `python -m farm_ontology.page_io`; on Cloud Run the GCS backend writes with the runtime service account (`FARM_RECORD_DIR=/tmp/field-notes` satisfies the bridge's eager local `mkdir` — see §3) |
 
 ## 2. Build (Docker proven on Cloud Build; this host has no docker engine)
@@ -152,18 +152,21 @@ org constraint decided the plan above.
 
 ## 6. QR "open this farm"
 
-Any QR generator, offline or on a phone: encode
+Any QR generator, offline or on a phone: encode the farm-specific path
+using that farm's configured identifier:
 
 ```
-https://farm-seges-ai-web-451400509859.asia-east1.run.app/farm/42.7018152,142.4071291
+https://farm-seges-ai-web-451400509859.asia-east1.run.app/farm/<farm_id>
 ```
 
-(`/farm/<lat>,<lon>` — the farm pin format matches the backend's
-`FARM_LAT`/`FARM_LON`). Landing on that URL opens the field sheet with both
-coordinate inputs pre-filled (comma-form params are URL-decoded before the
-range check; malformed or out-of-range links redirect to `/`). Print the QR
-on the barn door / truck clipboard; scanning opens this farm's sheet one tap
-into a recordable state — the one-hand flow: scan → type the reading → save.
+The farm ID identifies which farm to open; it is not a credential. The signed-in
+person still needs active membership for that farm before records can be read or
+written. The field sheet asks the person to use device location or enter a
+location for each observation, so the QR does not publish precise coordinates.
+Legacy `/farm/<lat>,<lon>?farm_id=<farm_id>` links remain accepted after range
+validation. Coordinate-only links redirect to `/` because they do not identify
+an authorized farm. Print the farm-ID QR on the field clipboard; the flow is
+scan → sign in → review farm access → enter an observation → save.
 
 ## 7. Verified smoke transcript (2026-11-18, standalone build, gate on)
 
@@ -178,6 +181,9 @@ GET  /livez                                     → {"status":"ok","service":"fa
 GET  /farm/42.7018152,142.4071291 (with cookie) → 200, coord inputs pre-filled
 GET  /farm/not-coords                           → 307 → /
 ```
+
+The transcript above records the earlier coordinate-link behavior. Current
+farm QR links use `/farm/<farm_id>` and rely on the signed-in membership gate.
 
 Production smoke checklist (runs after deploy, at the bottom of this file):
 `/livez`, `GET /` → login redirect, cookie login, `/api/advisories` gap/value

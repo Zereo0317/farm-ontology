@@ -32,7 +32,7 @@ export function SiteHeader() {
   const [activeHash, setActiveHash] = useState("");
   useEffect(() => {
     if (!home) return;
-    const ids = ["flow", "proof", "live"];
+    const ids = ["flow", "proof"];
     const obs = new IntersectionObserver(
       (entries) => {
         for (const e of entries) if (e.isIntersecting) setActiveHash(`#${e.target.id}`);
@@ -46,18 +46,24 @@ export function SiteHeader() {
     return () => obs.disconnect();
   }, [home]);
 
-  const audienceSearch: { for: Audience } | undefined =
-    rawSearch.for === "farmer"
-      ? { for: "farmer" }
-      : rawSearch.for === "research" || rawSearch.for === "hunger"
-        ? { for: "research" }
-        : undefined;
-
   const vision = VISION[locale];
+  const currentAudience: Audience =
+    rawSearch.for === "finance"
+      ? "finance"
+      : rawSearch.for === "research" || rawSearch.for === "hunger"
+        ? "research"
+        : "farmer";
+  const audienceSearch: { for: Audience } = { for: currentAudience };
+  const actionHash = currentAudience === "farmer" ? "farm-access" : "briefing";
+  const headerCta =
+    currentAudience === "farmer"
+      ? copy.nav.start
+      : currentAudience === "finance"
+        ? vision.financeCta
+        : vision.researchCta;
   const links = home
     ? [
-        { hash: "flow", label: vision.navFlow },
-        { hash: "live", label: copy.nav.live },
+        { hash: "proof", label: copy.nav.live },
       ]
     : [];
 
@@ -98,11 +104,13 @@ export function SiteHeader() {
             })}
           </nav>
           <Link
-            to="/$locale/start"
+            to="/$locale"
             params={{ locale }}
+            search={audienceSearch}
+            hash={actionHash}
             className="inline-flex min-h-11 items-center rounded-full bg-ink px-4 text-sm font-medium text-paper sm:px-5"
           >
-            {copy.nav.start}
+            {headerCta}
           </Link>
         </div>
       </div>
@@ -120,6 +128,14 @@ export function SiteHeader() {
               </a>
             ))}
             <Link
+              to="/$locale"
+              params={{ locale }}
+              search={{ for: "finance" }}
+              className="shrink-0 py-2 text-sm text-muted underline decoration-transparent underline-offset-8 transition-[color,text-decoration-color] duration-150 hover:text-ink hover:decoration-accent"
+            >
+              {vision.navFlow}
+            </Link>
+            <Link
               to="/$locale/report"
               params={{ locale }}
               className="shrink-0 py-2 text-sm text-muted underline decoration-transparent underline-offset-8 transition-[color,text-decoration-color] duration-150 hover:text-ink hover:decoration-accent"
@@ -136,6 +152,11 @@ export function SiteHeader() {
 export function SiteFooter() {
   const copy = useCopy();
   const locale = useLocale();
+  const rawSearch = useRouterState({ select: (s) => s.location.search }) as { for?: unknown };
+  const audience: Audience = rawSearch.for === "finance" ? "finance" : rawSearch.for === "research" ? "research" : "farmer";
+  const vision = VISION[locale];
+  const action = audience === "farmer" ? copy.nav.start : audience === "finance" ? vision.financeCta : vision.researchCta;
+  const actionHash = audience === "farmer" ? "farm-access" : "briefing";
   return (
     <footer className="border-t border-line">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6">        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
@@ -145,8 +166,8 @@ export function SiteFooter() {
           <Link to="/$locale/report" params={{ locale }} className="underline decoration-line underline-offset-4">
             {copy.nav.report}
           </Link>
-          <Link to="/$locale/start" params={{ locale }} className="underline decoration-line underline-offset-4">
-            {copy.hero.primary}
+          <Link to="/$locale" params={{ locale }} search={{ for: audience }} hash={actionHash} className="underline decoration-line underline-offset-4">
+            {action}
           </Link>
         </div>
         <div className="giant-letters" aria-hidden>

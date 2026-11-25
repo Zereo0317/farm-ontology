@@ -22,13 +22,14 @@ from farm_ontology.record import _now, _stamp
 from farm_ontology.record_store import open_backend
 
 ALLOWED_KINDS = ("pro-waitlist", "governance-briefing", "access-code-request")
+ALLOWED_AUDIENCES = {"farmer", "research", "finance"}
 LOCALES = {"zh-TW", "zh-CN", "en", "ja", "th"}
 
 _LANDING_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "LEADS_ALLOWED_ORIGINS",
-        "https://farm-seges-ai-landing-451400509859.asia-east1.run.app",
+        "https://seges.ai,https://www.seges.ai,https://farm-seges-ai-landing-451400509859.asia-east1.run.app",
     ).split(",")
     if origin.strip()
 ]
@@ -61,20 +62,26 @@ def submit_lead(payload: dict, *, origin: str | None = None, at: datetime | None
     name = str(payload.get("name") or "").strip()
     email = str(payload.get("email") or "").strip()
     locale = payload.get("locale")
+    audience = payload.get("audience")
     if not name:
         raise ValueError("name is empty")
     if "@" not in email or "." not in email.split("@")[-1]:
         raise ValueError("email does not look like an address")
     if locale not in LOCALES:
         raise ValueError(f"locale must be one of {', '.join(sorted(LOCALES))}")
+    if audience is not None and audience not in ALLOWED_AUDIENCES:
+        raise ValueError(f"audience must be one of {', '.join(sorted(ALLOWED_AUDIENCES))}")
     row = {
         "kind": kind,
         "name": name,
         "email": email,
+        "farm_name": str(payload.get("farm_name") or "").strip()[:120] or None,
+        "region": str(payload.get("region") or "").strip()[:120] or None,
         "org": str(payload.get("org") or "").strip() or None,
         "role": str(payload.get("role") or "").strip() or None,
         "needs": [str(n) for n in (payload.get("needs") or [])][:8],
         "locale": locale,
+        "audience": audience,
         "statement": str(payload.get("statement") or "")[:300],
         "source_landing_version": str(payload.get("source_landing_version") or "unknown"),
         "received_at": moment.astimezone(timezone.utc).isoformat(),

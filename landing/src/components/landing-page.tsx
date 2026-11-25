@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ButtonLink, buttonClass } from "@/components/button";
-import { BriefingForm, WaitlistForm } from "@/components/intent-forms";
+import { buttonClass } from "@/components/button";
+import { AccessRequestForm, BriefingForm } from "@/components/intent-forms";
 import { useCopy, useLocale } from "@/components/locale-context";
 import { LiveLedgerCard } from "@/components/live-ledger";
 import type { LiveLedger } from "@/lib/live.functions";
@@ -24,35 +24,35 @@ const INSTITUTION_COPY: Record<
     eyebrow: "資料治理 · 農業研究 · 機構合作",
     title: "可查證的農地資料，從來源、尺度到授權，一次看清。",
     deck: "檢視田間資料的來源、時間、空間尺度與使用條件。",
-    cta: "預約機構簡報",
+    cta: "索取機構資料治理簡報",
     end: "讓農業研究與治理決策，建立在可追溯的資料上。",
   },
   "zh-CN": {
     eyebrow: "数据治理 · 农业研究 · 机构合作",
     title: "可查证的农地数据，从来源、尺度到授权，一次看清。",
     deck: "查看田间数据的来源、时间、空间尺度与使用条件。",
-    cta: "预约机构简报",
+    cta: "索取机构数据治理简报",
     end: "让农业研究与治理决策，建立在可追溯的数据上。",
   },
   en: {
     eyebrow: "DATA GOVERNANCE · AGRICULTURAL RESEARCH · INSTITUTIONAL PARTNERSHIPS",
     title: "Field data you can inspect, from source and scale to licence.",
     deck: "Explore field records by source, timing, spatial support, and permitted use.",
-    cta: "Request an institutional briefing",
+    cta: "Request an institutional data briefing",
     end: "Ground agricultural research and governance in traceable records.",
   },
   ja: {
     eyebrow: "データガバナンス · 農業研究 · 機関連携",
     title: "出典、空間的な範囲、利用条件まで確認できる農地データ。",
     deck: "圃場データの出典、時点、空間的な範囲、利用条件をご覧いただけます。",
-    cta: "機関向け説明を依頼",
+    cta: "機関向けデータ説明を依頼",
     end: "追跡可能な記録を、農業研究とガバナンスの基盤に。",
   },
   th: {
     eyebrow: "ธรรมาภิบาลข้อมูล · วิจัยเกษตร · ความร่วมมือองค์กร",
     title: "ข้อมูลแปลงที่ตรวจสอบได้ ตั้งแต่แหล่งที่มา ขอบเขต จนถึงสิทธิ์ใช้งาน",
     deck: "ตรวจสอบแหล่งที่มา เวลา ขอบเขตเชิงพื้นที่ และเงื่อนไขการใช้ของข้อมูลแปลง",
-    cta: "ขอรับฟังการบรรยายสำหรับองค์กร",
+    cta: "ขอเอกสารสรุปข้อมูลสำหรับองค์กร",
     end: "วางรากฐานงานวิจัยและธรรมาภิบาลเกษตรบนบันทึกที่ตรวจสอบย้อนกลับได้",
   },
 };
@@ -105,36 +105,52 @@ const FINANCE_THESIS: Record<Locale, { title: string; deck: string; rails: [stri
   },
 };
 
+const FINANCE_COPY: Record<Locale, { title: string; deck: string; cta: string; end: string }> = {
+  "zh-TW": {
+    title: "農業金融研究，從可查證的田間資訊開始。",
+    deck: "以資料來源、時間、空間範圍與授權條件，評估機構自有帳戶的農產品避險研究。",
+    cta: "索取農業金融研究簡報",
+    end: "先核對資料，再討論金融用途。",
+  },
+  "zh-CN": {
+    title: "农业金融研究，从可查证的田间信息开始。",
+    deck: "依据数据来源、时间、空间范围和授权条件，评估机构自有账户的农产品套期保值研究。",
+    cta: "索取农业金融研究简报",
+    end: "先核对数据，再讨论金融用途。",
+  },
+  en: {
+    title: "Farm finance research starts with field information you can inspect.",
+    deck: "Review source, timing, spatial support, and licence conditions for own-account agricultural hedging research.",
+    cta: "Request a farm-finance research briefing",
+    end: "Inspect the evidence before considering financial use.",
+  },
+  ja: {
+    title: "農業金融の研究を、検証できる圃場情報から。",
+    deck: "自社勘定の農産物ヘッジ研究に向け、出典、時点、空間的な範囲、利用条件を確認します。",
+    cta: "農業金融研究の説明を依頼",
+    end: "金融利用を検討する前に、データを確かめます。",
+  },
+  th: {
+    title: "งานวิจัยการเงินเกษตร เริ่มจากข้อมูลแปลงที่ตรวจสอบได้",
+    deck: "ตรวจแหล่งที่มา เวลา ขอบเขตพื้นที่ และสิทธิ์ใช้งานสำหรับการศึกษาป้องกันความเสี่ยงในบัญชีขององค์กร",
+    cta: "ขอเอกสารสรุปงานวิจัยการเงินเกษตร",
+    end: "ตรวจหลักฐานก่อนพิจารณาการใช้ข้อมูลทางการเงิน",
+  },
+};
+
 export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience: Audience }) {
   const copy = useCopy();
   const locale = useLocale();
   const vision = VISION[locale];
   const institution = INSTITUTION_COPY[locale];
+  const financeCopy = FINANCE_COPY[locale];
   const [showBar, setShowBar] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
-  const title = audience === "farmer" ? copy.hero.title : institution.title;
-  const deck = audience === "farmer" ? copy.hero.deck : institution.deck;
-  const cta = audience === "farmer" ? copy.hero.primary : institution.cta;
-  const deviceNote =
-    locale === "zh-TW"
-      ? "第一筆記錄保存在這台裝置，不會寫入正式帳本。"
-      : locale === "zh-CN"
-        ? "第一笔记录保存在这台设备，不会写入正式账本。"
-        : locale === "ja"
-          ? "最初の記録はこの端末に保存され、正式な台帳には書き込まれません。"
-          : locale === "th"
-            ? "บันทึกแรกจะเก็บไว้ในอุปกรณ์นี้ และยังไม่ถูกเขียนลงบัญชีจริง"
-            : "Your first record stays on this device; it is not written to the production ledger.";
-  const ctaAction =
-    audience === "farmer" ? (
-      <ButtonLink to="/$locale/start" params={{ locale }}>
-        {cta}
-      </ButtonLink>
-    ) : (
-      <a href="#live" className={buttonClass()}>
-        {cta}
-      </a>
-    );
+  const formId = audience === "farmer" ? "farm-access" : "briefing";
+  const title = audience === "farmer" ? copy.hero.title : audience === "finance" ? financeCopy.title : institution.title;
+  const deck = audience === "farmer" ? copy.hero.deck : audience === "finance" ? financeCopy.deck : institution.deck;
+  const cta = audience === "farmer" ? copy.hero.primary : audience === "finance" ? financeCopy.cta : institution.cta;
+  const ctaAction = <a href={`#${formId}`} className={buttonClass()}>{cta}</a>;
   const principles =
     locale === "zh-TW"
       ? [
@@ -218,7 +234,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
       { threshold: [0, 1] },
     );
     observer.observe(target);
-    const form = document.getElementById("live");
+    const form = document.getElementById(audience === "farmer" ? "farm-access" : "briefing");
     let formObserver: IntersectionObserver | undefined;
     if (form) {
       formObserver = new IntersectionObserver(([e]) => setFormVisible(e.isIntersecting), {
@@ -239,8 +255,8 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
           <img src={HERO_IMAGE} alt="" fetchPriority="high" />
         </figure>
         <div className="hero-editorial-copy">
-          <div role="tablist" aria-label={vision.switchLabel} className="audience-switch">
-            {(["farmer", "research"] as const).map((key) => {
+          <nav aria-label={vision.switchLabel} className="audience-switch">
+            {(["farmer", "research", "finance"] as const).map((key) => {
               const selected = audience === key;
               return (
                 <Link
@@ -248,23 +264,19 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
                   to="/$locale"
                   params={{ locale }}
                   search={{ for: key }}
-                  role="tab"
-                  aria-selected={selected}
+                  aria-current={selected ? "page" : undefined}
                   className={`audience-option ${selected ? "is-selected" : ""}`}
                 >
-                  {key === "farmer" ? vision.farmer : vision.research}
+                  {vision[key]}
                 </Link>
               );
             })}
-          </div>
+          </nav>
           <h1 className="text-hero mt-5 max-w-xl font-display text-balance">{title}</h1>
           <p className="mt-5 max-w-lg text-lg leading-relaxed text-muted">{deck}</p>
           <div id="hero-cta" className="mt-6">
             {ctaAction}
-            {audience === "farmer" && <p className="mt-3 text-sm text-muted">{copy.hero.noCard}</p>}
-            {audience === "farmer" && (
-              <p className="mt-1 max-w-md text-xs leading-relaxed text-muted">{deviceNote}</p>
-            )}
+            {audience === "farmer" && <a href={`/${locale}/start`} className="mt-3 inline-block text-sm underline underline-offset-4">{copy.hero.secondary}</a>}
           </div>
         </div>
       </section>
@@ -286,7 +298,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
         </div>
       </section>
 
-      <section id="flow" className="finance-editorial scroll-mt-nav border-t border-line">
+      {audience === "finance" ? <section id="flow" className="finance-editorial scroll-mt-nav border-t border-line">
         <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-20">
           <div className="finance-intro">
             <h2 className="font-display text-3xl leading-tight sm:text-4xl">
@@ -303,7 +315,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
             ))}
           </div>
         </div>
-      </section>
+      </section> : null}
 
       <section className="border-t border-line">
         <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-20">
@@ -321,53 +333,27 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
         </div>
       </section>
 
-      <section id="live" className="scroll-mt-nav border-t border-line">
+      <section id="proof" className="scroll-mt-nav border-t border-line">
         <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+          <div id="live"><LiveLedgerCard initial={ledger} /></div>
           <div className="max-w-xl">
-            {audience === "farmer" ? <WaitlistForm /> : <BriefingForm />}
+            {audience === "farmer" ? <AccessRequestForm /> : <BriefingForm audience={audience} />}
           </div>
-          <details className="group mt-12">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-display text-2xl">
-              {vision.openLedger}
-              <span aria-hidden className="text-muted">
-                +
-              </span>
-            </summary>
-            <div className="pt-6">
-              <LiveLedgerCard initial={ledger} />
-            </div>
-          </details>
         </div>
       </section>
 
       <section className="bg-ink text-on-ink">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-6 px-4 py-16 sm:px-6">
           <h2 className="max-w-3xl font-display text-3xl leading-tight sm:text-5xl">
-            {audience === "farmer" ? copy.hero.lead : institution.end}
+            {audience === "farmer" ? copy.hero.lead : audience === "finance" ? financeCopy.end : institution.end}
           </h2>
-          {audience === "farmer" ? (
-            <ButtonLink to="/$locale/start" params={{ locale }} variant="inverse">
-              {cta}
-            </ButtonLink>
-          ) : (
-            <a href="#live" className={buttonClass("inverse")}>
-              {cta}
-            </a>
-          )}
+          <a href={`#${formId}`} className={buttonClass("inverse")}>{cta}</a>
         </div>
       </section>
 
       {showBar && !formVisible ? (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper p-3 md:hidden">
-          {audience === "farmer" ? (
-            <ButtonLink to="/$locale/start" params={{ locale }} className="w-full">
-              {cta}
-            </ButtonLink>
-          ) : (
-            <a href="#live" className={buttonClass("primary", "w-full")}>
-              {cta}
-            </a>
-          )}
+          <a href={`#${formId}`} className={buttonClass("primary", "w-full")}>{cta}</a>
         </div>
       ) : null}
     </div>

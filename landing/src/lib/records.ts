@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/locale";
+import type { Audience } from "@/lib/vision";
 
 export type LocalObservation = {
   kind: "local-observation";
@@ -21,11 +22,14 @@ export type LocalObservation = {
   hash: string;
 };
 
-export type WaitlistRecord = {
-  kind: "pro-waitlist";
+export type AccessRequestRecord = {
+  kind: "access-code-request";
   name: string;
   email: string;
+  farmName: string;
+  region: string;
   locale: Locale;
+  audience: "farmer";
   consentedAt: string;
   statement: string;
   hash: string;
@@ -39,6 +43,7 @@ export type BriefingRecord = {
   role: string;
   needs: string[];
   locale: Locale;
+  audience: Exclude<Audience, "farmer">;
   consentedAt: string;
   statement: string;
   hash: string;
@@ -86,48 +91,53 @@ function readList<T>(key: string): T[] {
   }
 }
 
-function writeList(key: string, value: unknown[]) {
-  localStorage.setItem(key, JSON.stringify(value));
+function writeList(key: string, value: unknown[]): boolean {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const OBS_KEY = "fo-observations";
-const WAIT_KEY = "fo-waitlist";
+const ACCESS_KEY = "fo-access-requests";
 const BRIEF_KEY = "fo-briefings";
 
 export function loadObservations(): LocalObservation[] {
   return readList<LocalObservation>(OBS_KEY);
 }
-export function saveObservation(record: LocalObservation) {
+export function saveObservation(record: LocalObservation): boolean {
   const all = loadObservations();
-  writeList(OBS_KEY, [record, ...all].slice(0, 12));
+  return writeList(OBS_KEY, [record, ...all].slice(0, 12));
 }
-export function loadWaitlist(): WaitlistRecord[] {
-  return readList<WaitlistRecord>(WAIT_KEY);
+export function loadAccessRequests(): AccessRequestRecord[] {
+  return readList<AccessRequestRecord>(ACCESS_KEY);
 }
-export function saveWaitlist(record: WaitlistRecord) {
-  writeList(WAIT_KEY, [record, ...loadWaitlist()].slice(0, 12));
+export function saveAccessRequest(record: AccessRequestRecord): boolean {
+  return writeList(ACCESS_KEY, [record, ...loadAccessRequests()].slice(0, 12));
 }
 export function loadBriefings(): BriefingRecord[] {
   return readList<BriefingRecord>(BRIEF_KEY);
 }
-export function saveBriefing(record: BriefingRecord) {
-  writeList(BRIEF_KEY, [record, ...loadBriefings()].slice(0, 12));
+export function saveBriefing(record: BriefingRecord): boolean {
+  return writeList(BRIEF_KEY, [record, ...loadBriefings()].slice(0, 12));
 }
 
 /**
- * Sprint-K lead capture: the local copy is instant and unconditional; the
+ * Sprint-K lead capture: keep a local copy when browser storage is available; the
  * SAME record also POSTs to the backend's /leads route (consent already
  * carried on the record) so the funnel survives the visitor's device.
- * "sent" beats silent: callers surface landed|local-only to the person.
+ * callers distinguish a server receipt from a local-only copy and a storage failure.
  */
 export const LEADS_ENDPOINT = "https://farm-seges-ai-451400509859.asia-east1.run.app/leads";
 
-export type LeadTransmission = "landed" | "local-only";
+export type LeadTransmission = "received" | "local-only";
 
 export async function transmitLead(
-  record: (WaitlistRecord | BriefingRecord | LocalObservation) & { hash: string },
+  record: (AccessRequestRecord | BriefingRecord | LocalObservation) & { hash: string },
 ): Promise<LeadTransmission> {
-  if (record.kind !== "pro-waitlist" && record.kind !== "governance-briefing") {
+  if (record.kind !== "access-code-request" && record.kind !== "governance-briefing") {
     return "local-only"; // observations stay on-device by design (their ledger step is manual)
   }
   try {
@@ -138,17 +148,20 @@ export async function transmitLead(
         kind: record.kind,
         name: record.name,
         email: record.email,
+        farm_name: "farmName" in record ? record.farmName : undefined,
+        region: "region" in record ? record.region : undefined,
         org: "org" in record ? record.org : undefined,
         role: "role" in record ? record.role : undefined,
         needs: "needs" in record ? record.needs : undefined,
         locale: record.locale,
+        audience: "audience" in record ? record.audience : undefined,
         statement: record.statement,
         consent: true,
-        source_landing_version: "landing-v1",
+        source_landing_version: "landing-v2",
       }),
       signal: AbortSignal.timeout(8000),
     });
-    return response.ok ? "landed" : "local-only";
+    return response.ok ? "received" : "local-only";
   } catch {
     return "local-only";
   }

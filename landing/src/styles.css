@@ -306,7 +306,12 @@ footer {
     border-radius: var(--radius-panel);
   }
   .scroll-mt-nav {
-    scroll-margin-top: 7.5rem;
+    scroll-margin-top: 10rem;
+  }
+  @media (min-width: 768px) {
+    .scroll-mt-nav {
+      scroll-margin-top: 7.5rem;
+    }
   }
   .hero-photo {
     height: 42vh;
