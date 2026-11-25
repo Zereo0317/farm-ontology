@@ -9,13 +9,14 @@ type AudienceSearch = { for?: Audience };
 
 export const Route = createFileRoute("/$locale/")({
   validateSearch: (search: Record<string, unknown>): AudienceSearch => {
-    if (search.for === "hunger" || search.for === "farmer") return { for: search.for };
+    if (search.for === "research" || search.for === "hunger") return { for: "research" };
+    if (search.for === "farmer") return { for: "farmer" };
     return {};
   },
   loader: () => getLiveLedger(),
   head: ({ params, match }) => {
     const locale = isLocale(params.locale) ? params.locale : "en";
-    const audience = (match.search as AudienceSearch).for === "hunger" ? "hunger" : "farmer";
+    const audience = (match.search as AudienceSearch).for === "research" ? "research" : "farmer";
     const preview = SOCIAL_PREVIEW[locale][audience];
     const image = socialImage(locale, audience);
     return {
@@ -41,6 +42,6 @@ export const Route = createFileRoute("/$locale/")({
 
 function Home() {
   const ledger = Route.useLoaderData();
-  const audience = Route.useSearch().for === "hunger" ? "hunger" : "farmer";
+  const audience = Route.useSearch().for === "research" ? "research" : "farmer";
   return <LandingPage ledger={ledger} audience={audience} />;
 }
