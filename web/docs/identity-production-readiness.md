@@ -46,6 +46,54 @@ have role `viewer`, `operator`, or `admin`, status `active`, and a future
 `expires_at`. Membership edits remain a separate, explicitly authorized
 administrative workflow; do not grant write access to the web runtime.
 
+### Granting or revoking a farmer membership
+
+Use [`deploy/manage_web_membership.py`](../../deploy/manage_web_membership.py)
+from an operator workstation logged into the authorized GCP identity. Prepare
+a private UTF-8 JSON input file outside the repository; never pass the OIDC
+subject on the command line. For example:
+
+```json
+{
+  "action": "grant",
+  "farm_id": "biratori-hokkaido",
+  "issuer": "https://identity-provider.example",
+  "subject": "exact OIDC sub from the verified identity-provider account",
+  "role": "viewer",
+  "expires_at": "2027-11-25T00:00:00Z",
+  "change_reference": "farmer-access-approval-2026-001"
+}
+```
+
+The reference must identify the reviewed farmer-access authorization record;
+it must not contain a farmer name or email. First run a preview and inspect the
+farm, role, expiry, actor hash, and destination object. For a write, run with
+`--apply`; it prints a fresh preview and requires the operator to type the
+exact document SHA-256 shown. The write uses the current Cloud Storage
+generation as a precondition, or generation `0` for a new record. Revocation
+uses the same farm, issuer, and subject with `"action": "revoke"` and a new
+revocation reference; it preserves the original grant and expiry timestamps
+and makes the next farm request fail authorization. The script prints the
+actor hash, not the OIDC subject.
+
+```powershell
+py -3 deploy/manage_web_membership.py --input C:\secure\farmer-grant.json
+py -3 deploy/manage_web_membership.py --input C:\secure\farmer-grant.json --apply
+```
+
+At the `--apply` prompt, type the full `document_sha256` from that invocation's
+preview. The tool re-reads current membership state before preparing the
+change, and Cloud Storage rejects the write if another administrator changed
+the object after that read.
+Save the final JSON success receipt in the approved operator audit store; the
+tool does not create a separate audit bucket or retain the private input file.
+
+Keep the input in encrypted operator storage and remove the local copy after
+the change. An `--apply` result records that GCS accepted the object write; it
+does not prove the underlying farmer authorization is valid. The independent
+farmer acceptance checks below are still required before production traffic
+can move.
+
 Do not copy the legacy `WEB_ACCESS_TOKEN` into the new revision as a fallback.
 The app does not use it. An unconfigured candidate should show a 503 gap on
 protected pages and the login route, and 401 for unauthenticated farm APIs.

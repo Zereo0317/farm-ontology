@@ -128,6 +128,30 @@ see the release evidence below.
   archive restore/alert drills, legal/operational sign-offs, or Class C. Class
   C remains closed and no broker/order path exists.
 
+## 2026-11-25 farmer web identity follow-up
+
+- Added `deploy/manage_web_membership.py`, a local operator tool for creating
+  or revoking a single farmer membership. It keeps the OIDC subject out of the
+  command line and output, previews the exact object and actor hash, requires
+  typing the document digest before a write, and uses a Cloud Storage
+  generation precondition. The web runtime remains read-only on this bucket.
+- Its focused producer suite passes 10 tests. The operator tool does not
+  validate the legal basis for a membership or record an independent durable
+  audit receipt; the reviewed authorization reference and success receipt must
+  be retained under the operator's approved governance process.
+- Current live readback still shows `farm-seges-ai-web-00032-bb9` at 100%,
+  using the shared compute service account and legacy token secret. The
+  dedicated `farm-web-runtime` and `farm-web-deployer` accounts, access
+  bucket, and OIDC/session secrets are absent. `/livez` is 200, `/` redirects
+  to `/login`, `/login` is 200, `/api/auth/login` is 401, and unauthenticated
+  `/api/boundaries` is 401. Backend `/livez` and `/farm/weather` return 200.
+- No candidate or production traffic was changed. The identity cutover still
+  requires the selected provider's issuer/client configuration and secret,
+  the explicitly approved membership administrator, a verified farmer's
+  exact OIDC subject and access authorization record, scoped infrastructure
+  provisioning, inherited-IAM review, and the full authenticated farmer
+  acceptance flow.
+
 ## Verification and operating notes
 
 Run the full hermetic suite and `node --test web/tests/*.test.cjs` with web
