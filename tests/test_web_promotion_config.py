@@ -31,7 +31,7 @@ def service_document():
                                 {"name": "FARM_OIDC_ISSUER", "value": "https://accounts.example.jp"},
                                 {"name": "FARM_OIDC_CLIENT_ID", "value": "client-id"},
                                 {"name": "FARM_OIDC_REDIRECT_URI", "value": "https://farm.example.jp/api/auth/callback"},
-                                {"name": "FARM_ACCESS_BUCKET", "value": "farm-seges-ai-access"},
+                                {"name": "FARM_ACCESS_BUCKET", "value": "farm-seges-ai-access-v2"},
                                 {"name": "FARM_RECORD_BACKEND", "value": "gcs"},
                                 {"name": "FARM_RECORD_BUCKET", "value": "farm-seges-ai-records"},
                                 {"name": "FARM_RECORD_GCS_PREFIX", "value": "field-notes"},
@@ -65,7 +65,7 @@ class WebPromotionConfigTests(unittest.TestCase):
     def test_valid_dedicated_oidc_configuration(self):
         self.assertEqual(
             verify_service(service_document()),
-            ("farm-web-runtime@seges-ai.iam.gserviceaccount.com", "farm-seges-ai-access"),
+            ("farm-web-runtime@seges-ai.iam.gserviceaccount.com", "farm-seges-ai-access-v2"),
         )
 
     def test_missing_oidc_configuration_fails_closed(self):
@@ -117,6 +117,30 @@ class WebPromotionConfigTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(PromotionConfigError, "legacy shared web token"):
             verify_service(doc)
+
+    def test_legacy_projection_bindings_are_not_bucket_grants(self):
+        service_account, _bucket = verify_service(service_document())
+        # reality: every UBLA bucket reports legacy* bindings projected from
+        # the project's primitive roles; the verifier must not fail on them.
+        legacy = [
+            {"role": "roles/storage.legacyBucketOwner", "members": ["projectEditor:seges-ai"]},
+            {"role": "roles/storage.legacyBucketReader", "members": ["projectViewer:seges-ai"]},
+            {"role": "roles/storage.legacyObjectOwner", "members": ["projectEditor:seges-ai"]},
+            {"role": "roles/storage.legacyObjectReader", "members": ["projectViewer:seges-ai"]},
+        ]
+        expected = [
+            {"role": "roles/storage.objectViewer", "members": [f"serviceAccount:{service_account}"]},
+            {"role": "roles/storage.objectUser", "members": ["user:farmer-admin@example.jp"]},
+            {"role": "projects/seges-ai/roles/farmWebPolicyReader", "members": ["serviceAccount:farm-web-deployer@seges-ai.iam.gserviceaccount.com"]},
+        ]
+        verify_bucket_policy({"bindings": legacy + expected}, service_account, "user:farmer-admin@example.jp")
+        # a NON-legacy extra grant is still an error
+        with self.assertRaisesRegex(PromotionConfigError, "access bucket"):
+            verify_bucket_policy(
+                {"bindings": expected + [{"role": "roles/storage.objectCreator", "members": ["group:x@example.jp"]}]},
+                service_account,
+                "user:farmer-admin@example.jp",
+            )
 
     def test_membership_bucket_requires_read_only_runtime_binding(self):
         service_account, _bucket = verify_service(service_document())

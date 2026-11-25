@@ -97,7 +97,7 @@ variable "source_record_bucket_name" {
 variable "web_access_bucket_name" {
   description = "Private farm-only bucket for OIDC membership documents in the service project."
   type        = string
-  default     = "farm-seges-ai-access-control"
+  default     = "farm-seges-ai-access-v2"
 
   validation {
     condition     = startswith(var.web_access_bucket_name, "farm-seges-ai-access")

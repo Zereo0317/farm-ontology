@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_BUCKET = "farm-seges-ai-access-control"
+DEFAULT_BUCKET = "farm-seges-ai-access-v2"
 GCS_API = "https://storage.googleapis.com/storage/v1"
 GCS_UPLOAD_API = "https://storage.googleapis.com/upload/storage/v1"
 MAX_MEMBERSHIP_BYTES = 32 * 1024

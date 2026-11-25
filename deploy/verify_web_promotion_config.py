@@ -111,6 +111,17 @@ def verify_service(document: dict) -> tuple[str, str]:
     return service_account, env["FARM_ACCESS_BUCKET"]["value"].strip()
 
 
+#: GCS projects primitive project-roles (owner/editor/viewer) onto every
+#: bucket as legacy* bindings regardless of UBLA; they are projections of
+#: project-level IAM, not bucket grants, and any exact-set comparison must
+#: ignore them or promotion is unsatisfiable on every real bucket.
+_LEGACY_STORAGE_ROLES = frozenset({
+    "roles/storage.legacyBucketOwner",
+    "roles/storage.legacyBucketReader",
+    "roles/storage.legacyObjectOwner",
+    "roles/storage.legacyObjectReader",
+})
+
 def _direct_bindings(document: dict, description: str) -> set[tuple[str, str]]:
     bindings = document.get("bindings") if isinstance(document, dict) else None
     if not isinstance(bindings, list):
@@ -120,6 +131,8 @@ def _direct_bindings(document: dict, description: str) -> set[tuple[str, str]]:
         if not isinstance(row, dict) or row.get("condition"):
             raise PromotionConfigError(f"{description} IAM policy contains an unreadable or conditional binding")
         role = row.get("role")
+        if role in _LEGACY_STORAGE_ROLES:
+            continue  # project-role projection, not a bucket grant
         members = _members_of(row)
         if not isinstance(role, str) or not members or any(not isinstance(member, str) for member in members):
             raise PromotionConfigError(f"{description} IAM policy contains an incomplete binding")
