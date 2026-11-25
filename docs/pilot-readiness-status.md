@@ -139,6 +139,14 @@ see the release evidence below.
   validate the legal basis for a membership or record an independent durable
   audit receipt; the reviewed authorization reference and success receipt must
   be retained under the operator's approved governance process.
+- Commit `023f667e72c540e5c0cef267dd8c4ac252c00974` passed CI run
+  `45532008926`: 1,882 unit tests (14 opt-in skips), 13 archive contract
+  tests, web security checks, Docker build, and Terraform format/validation.
+  Staging revision `farm-seges-ai-staging-00170-p4c` served 100% and passed
+  `/livez`. Web workflow `45532008816` built image digest
+  `sha256:c07a509bd43d6c90af6cc6c8cdce637226b61c55f8d4396702a3bb6c75baa3bf`;
+  candidate deployment, rollback, and production promotion were skipped
+  because the dedicated deployer gate remains unset.
 - Current live readback still shows `farm-seges-ai-web-00032-bb9` at 100%,
   using the shared compute service account and legacy token secret. The
   dedicated `farm-web-runtime` and `farm-web-deployer` accounts, access
