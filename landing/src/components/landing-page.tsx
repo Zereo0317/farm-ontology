@@ -240,7 +240,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
         </figure>
         <div className="hero-editorial-copy">
           <div role="tablist" aria-label={vision.switchLabel} className="audience-switch">
-            {(["farmer", "hunger"] as const).map((key) => {
+            {(["farmer", "research"] as const).map((key) => {
               const selected = audience === key;
               return (
                 <Link
@@ -252,7 +252,7 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
                   aria-selected={selected}
                   className={`audience-option ${selected ? "is-selected" : ""}`}
                 >
-                  {key === "farmer" ? vision.farmer : vision.hunger}
+                  {key === "farmer" ? vision.farmer : vision.research}
                 </Link>
               );
             })}

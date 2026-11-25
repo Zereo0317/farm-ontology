@@ -8,7 +8,7 @@ export const Route = createFileRoute("/$locale/report")({
   head: ({ params }) => {
     const locale = isLocale(params.locale) ? params.locale : "en";
     const copy = COPY[locale];
-    const preview = SOCIAL_PREVIEW[locale].hunger;
+    const preview = SOCIAL_PREVIEW[locale].research;
     return {
       meta: [
         { title: copy.reportMetaTitle },
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/$locale/report")({
         ...socialMeta({
           title: copy.reportMetaTitle,
           description: copy.reportMetaDescription,
-          image: socialImage(locale, "hunger"),
+          image: socialImage(locale, "research"),
           imageAlt: preview.imageAlt,
           imageWidth: preview.imageWidth,
           imageHeight: preview.imageHeight,

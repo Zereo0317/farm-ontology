@@ -47,7 +47,11 @@ export function SiteHeader() {
   }, [home]);
 
   const audienceSearch: { for: Audience } | undefined =
-    rawSearch.for === "hunger" || rawSearch.for === "farmer" ? { for: rawSearch.for } : undefined;
+    rawSearch.for === "farmer"
+      ? { for: "farmer" }
+      : rawSearch.for === "research" || rawSearch.for === "hunger"
+        ? { for: "research" }
+        : undefined;
 
   const vision = VISION[locale];
   const links = home

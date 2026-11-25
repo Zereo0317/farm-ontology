@@ -26,7 +26,7 @@ export const SOCIAL_PREVIEW: Record<Locale, Record<Audience, PreviewCopy>> = {
       imageWidth: 1731,
       imageHeight: 909,
     },
-    hunger: {
+    research: {
       title: "讓農業研究，從可追溯的田間資料開始｜Seges",
       description: "逐筆檢視來源、時間、空間支援與授權狀態，保留研究資料脈絡。",
       imageAlt: "晨光中的分區農田與丘陵景觀",
@@ -42,7 +42,7 @@ export const SOCIAL_PREVIEW: Record<Locale, Record<Audience, PreviewCopy>> = {
       imageWidth: 1672,
       imageHeight: 941,
     },
-    hunger: {
+    research: {
       title: "让农业研究从可追溯的田间数据开始｜Seges",
       description: "逐条查看来源、时间、空间范围和授权状态，保留研究数据脉络。",
       imageAlt: "带有水渠的分区稻田景观",
@@ -58,7 +58,7 @@ export const SOCIAL_PREVIEW: Record<Locale, Record<Audience, PreviewCopy>> = {
       imageWidth: 1672,
       imageHeight: 941,
     },
-    hunger: {
+    research: {
       title: "Traceable field data for agricultural research | Seges",
       description: "Review source, timing, spatial support and licence status together.",
       imageAlt: "Connected crop plots beside a natural waterway",
@@ -74,7 +74,7 @@ export const SOCIAL_PREVIEW: Record<Locale, Record<Audience, PreviewCopy>> = {
       imageWidth: 1672,
       imageHeight: 941,
     },
-    hunger: {
+    research: {
       title: "農業研究を、追跡できる圃場データから｜Seges",
       description: "出典・時刻・空間範囲・利用条件をまとめて確認できます。",
       imageAlt: "水路と研究区画が広がる農業景観",
@@ -90,7 +90,7 @@ export const SOCIAL_PREVIEW: Record<Locale, Record<Audience, PreviewCopy>> = {
       imageWidth: 1672,
       imageHeight: 941,
     },
-    hunger: {
+    research: {
       title: "เริ่มงานวิจัยเกษตรจากข้อมูลแปลงที่ตรวจสอบย้อนกลับได้ | Seges",
       description: "ตรวจดูแหล่งที่มา เวลา ขอบเขตเชิงพื้นที่ และสถานะใบอนุญาตในบริบทเดียวกัน",
       imageAlt: "ผืนนาและทางน้ำในภูมิทัศน์เกษตร",
