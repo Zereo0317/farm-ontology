@@ -3,7 +3,7 @@ import { LandingPage } from "@/components/landing-page";
 import { alternateLinks, isLocale } from "@/lib/locale";
 import { getLiveLedger } from "@/lib/live.functions";
 import type { Audience } from "@/lib/vision";
-import { COPY } from "@/lib/copy";
+import { OG_LOCALE, SOCIAL_PREVIEW, socialImage, socialMeta } from "@/lib/social-preview";
 
 type AudienceSearch = { for?: Audience };
 
@@ -15,9 +15,24 @@ export const Route = createFileRoute("/$locale/")({
   loader: () => getLiveLedger(),
   head: ({ params, match }) => {
     const locale = isLocale(params.locale) ? params.locale : "en";
-    const copy = COPY[locale];
+    const audience = (match.search as AudienceSearch).for === "hunger" ? "hunger" : "farmer";
+    const preview = SOCIAL_PREVIEW[locale][audience];
+    const image = socialImage(locale, audience);
     return {
-      meta: [{ title: copy.metaTitle }, { name: "description", content: copy.metaDescription }],
+      meta: [
+        { title: preview.title },
+        { name: "description", content: preview.description },
+        { property: "og:locale", content: OG_LOCALE[locale] },
+        ...socialMeta({
+          title: preview.title,
+          description: preview.description,
+          image,
+          imageAlt: preview.imageAlt,
+          imageWidth: preview.imageWidth,
+          imageHeight: preview.imageHeight,
+          url: `https://seges.ai/${locale}/?for=${audience}`,
+        }),
+      ],
       links: alternateLinks(""),
     };
   },

@@ -1,29 +1,32 @@
 import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { htmlLangForPath } from "@/lib/locale";
+import { SOCIAL_PREVIEW, socialImage, socialMeta } from "@/lib/social-preview";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Seges";
+const defaultPreview = SOCIAL_PREVIEW.en.farmer;
+const defaultImage = socialImage("en", "farmer");
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: APP_NAME },
+      { title: defaultPreview.title },
       { name: "theme-color", content: "#f7f5f2" },
-      { name: "description", content: "Seges — every farm data point carries its birth certificate. Sensors, decisions and positions in one tamper-evident ledger." },
+      { name: "description", content: defaultPreview.description },
       { property: "og:site_name", content: "Seges" },
-      { property: "og:title", content: "Seges — 每一筆農地數據，都自帶出生證明" },
-      { property: "og:description", content: "衛星、氣象、感測器與授權，全部寫進同一本防竄改帳本。" },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://seges.ai" },
-      { property: "og:image", content: "https://seges.ai/og-card.png" },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Seges — 每一筆農地數據，都自帶出生證明" },
-      { name: "twitter:image", content: "https://seges.ai/og-card.png" },
+      { property: "og:locale", content: "en_US" },
+      ...socialMeta({
+        title: defaultPreview.title,
+        description: defaultPreview.description,
+        image: defaultImage,
+        imageAlt: defaultPreview.imageAlt,
+        imageWidth: defaultPreview.imageWidth,
+        imageHeight: defaultPreview.imageHeight,
+        url: "https://seges.ai/en/?for=farmer",
+      }),
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
