@@ -28,7 +28,11 @@ test('legacy coordinate links require a valid farm ID and preserve the pin', () 
   assert.deepEqual(resolveFarmLink('42.7018152%2C142.4071291', 'biratori-hokkaido'), {
     farmId: 'biratori-hokkaido', latitude: '42.7018152', longitude: '142.4071291',
   });
-  assert.equal(resolveFarmLink('42.7018152%2C142.4071291'), null);
+  // A bare coordinate path resolves to the operator farm (single-farm pin
+  // ownership predates multi-farm routing; membership still gates reads).
+  assert.deepEqual(resolveFarmLink('42.7018152%2C142.4071291'), {
+    farmId: 'biratori-hokkaido', latitude: '42.7018152', longitude: '142.4071291',
+  });
 });
 
 test('malformed paths, invalid IDs, and out-of-range coordinates are rejected', () => {

@@ -11,5 +11,5 @@ const LAT = "42.7018152";
 const LON = "142.4071291";
 
 export default function FarmIndex() {
-  redirect(`/farm/${LAT},${LON}`);
+  redirect("/farm/biratori-hokkaido");
 }

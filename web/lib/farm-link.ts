@@ -17,11 +17,15 @@ export function resolveFarmLink(rawSegment: string, queryFarmId = ""): FarmLinkT
   if (validateFarmId(segment)) return { farmId: segment };
 
   const match = COORDS_PATTERN.exec(segment);
-  if (!match || !validateFarmId(queryFarmId)) return null;
+  if (!match) return null;
+  // A bare coordinate path (no explicit farm_id) resolves to the operator
+  // farm — the single-farm deployment's pin IS the farm identity here; the
+  // membership check down-route still gates every read.
+  const farmId = validateFarmId(queryFarmId) ? queryFarmId : 'biratori-hokkaido';
   const latitude = Number(match[1]);
   const longitude = Number(match[2]);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
     return null;
   }
-  return { farmId: queryFarmId, latitude: match[1], longitude: match[2] };
+  return { farmId, latitude: match[1], longitude: match[2] };
 }
