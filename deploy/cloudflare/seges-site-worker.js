@@ -8,6 +8,7 @@ var ROUTE_OVERRIDES = [
   { prefix: "/farm", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
 { prefix: "/login", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
 { prefix: "/report", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
+{ prefix: "/pitch", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
 { prefix: "/fieldday", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
 { prefix: "/walk", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
   { prefix: "/api", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
