@@ -1015,3 +1015,11 @@ main.fieldday {
   width: min(46rem, 100%);
   padding: 2rem 1.1rem 4rem;
 }
+
+/* /demo/biratori case page (server component; hand-written system) */
+.demoBiratori .caseFacts, .caseFacts { display: grid; gap: 1rem; margin: 2rem 0; }
+.caseFacts > div { display: grid; grid-template-columns: 9rem 1fr; gap: 1rem; align-items: baseline; }
+.caseFacts dt { color: var(--accent, #495743); font-weight: 600; }
+.caseFacts dd { margin: 0; }
+.caseLedger { margin: 2.5rem 0; }
+.caseLinks { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; }
