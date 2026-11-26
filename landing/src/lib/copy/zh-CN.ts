@@ -103,7 +103,7 @@ export const zhCN: Copy = {
       {
         figure: "12",
         label: "hash-chained 命令账本",
-        note: "审计骨架在。全自动机器指挥尚未开闸，须过 Phase-4 六项安全闸。",
+        note: "审计骨架已就位。全自动机器指挥的正门是 Phase-4 六项安全闸——六闸通过那天自动开启。",
       },
     ],
   },
@@ -111,7 +111,7 @@ export const zhCN: Copy = {
     title: "为什么是现在",
     lede: "两个真问题。下面的支柱逐一对应。",
     answered: "对应",
-    pillarName: { A: "原生分辨率", B: "出生证明", C: "授权内建", D: "诚实的不确定" },
+    pillarName: { A: "原生分辨率", B: "出生证明", C: "授权内建", D: "诚实的缺口" },
     items: [
       "来源与时点：不同数据的时间与授权条件，难以一并核对。",
       "田块尺度：网格读值容易被误当成田块观测。",
@@ -138,7 +138,7 @@ export const zhCN: Copy = {
       },
       {
         id: "D",
-        name: "诚实的不确定性",
+        name: "诚实的缺口处理",
         body: "资料读不到时，页面标示「缺口 (gap)」而非零值；需要人类签核的判断会暂停并等待确认。",
       },
     ],
@@ -259,7 +259,7 @@ export const zhCN: Copy = {
     colMaturity: "成熟度判定",
     biratori:
       "上路的那块田——Hiroki Tomiyasu，大豆，0.4 公顷——在北海道平取町、日高。这是位置，不是多出来的分数。",
-    caveat: "没有公布的分区分数，这里不补。机器指挥在 Phase-4 六项安全闸之前不开。",
+    caveat: "只补已公布的分区分数。机器指挥的正门是 Phase-4 六项安全闸——过了就开。",
     back: "回到账本",
     districts: [
       { name: "日高", region: "北海道", band: "within" },

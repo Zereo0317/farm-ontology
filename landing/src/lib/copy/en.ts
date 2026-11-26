@@ -111,7 +111,7 @@ export const en: Copy = {
       {
         figure: "12",
         label: "Hash-chained command ledgers",
-        note: "The audit skeleton is there. Fully automatic machine command is not open — it waits on six Phase-4 safety gates.",
+        note: "The audit skeleton is live. Fully automatic machine command opens through the six Phase-4 safety gates — the day all six pass, it opens.",
       },
     ],
   },
@@ -123,7 +123,7 @@ export const en: Copy = {
       A: "Native resolution",
       B: "Birth certificate",
       C: "Licence, built in",
-      D: "Honest uncertainty",
+      D: "Honest gaps, never guesses",
     },
     items: [
       "Source and timing: Feeds carry separate timestamps and licence terms.",
@@ -151,7 +151,7 @@ export const en: Copy = {
       },
       {
         id: "D",
-        name: "Honest uncertainty",
+        name: "Honest gap handling",
         body: "When data is missing, the record shows a “gap” instead of a zero. Decisions needing human sign-off pause for review.",
       },
     ],
@@ -289,7 +289,7 @@ export const en: Copy = {
     biratori:
       "The onboarded field — Hiroki Tomiyasu, soybean, 0.4 ha — is in Biratori, Hidaka. That is a location, not an extra score.",
     caveat:
-      "Per-district scores that were not published are not filled in. Machine command stays shut until six Phase-4 safety gates pass.",
+      "Only published per-district scores are filled in. Machine command opens through the six Phase-4 safety gates.",
     back: "Back to the ledger",
     districts: [
       { name: "Hidaka", region: "Hokkaido", band: "within" },
