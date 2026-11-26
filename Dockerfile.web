@@ -27,7 +27,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends python3-minimal python-is-python3 ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production \
-  FARM_RECORD_DIR=/tmp/field-notes
+    FARM_RECORD_DIR=/tmp/field-notes \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=8080 \
     HOSTNAME=0.0.0.0
