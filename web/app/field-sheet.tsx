@@ -13,7 +13,15 @@ type Status = {
 };
 
 type Listed = {
-  observations: { file: string; sample_id?: string | null; dry_run?: boolean }[];
+  observations: {
+    file: string;
+    sample_id?: string | null;
+    dry_run?: boolean;
+    phenomenon_time?: string | null;
+    crop?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  }[];
   notes: { file: string; kind?: string; text?: string }[];
 };
 
@@ -25,7 +33,7 @@ function numberOrNull(value: string): number | null {
 }
 
 type FieldSheetProps = {
-  /** Prefilled from the /farm/<lat>,<lon> "open this farm" deep link. */
+  /** Optional pin from a legacy farm link; current QR links contain only farm identity. */
   initialLat?: string;
   initialLon?: string;
   initialFarmId?: string;
@@ -289,8 +297,16 @@ export function FieldSheet({ initialLat = "", initialLon = "", initialFarmId = "
             <ul className="files">
               {listed.observations.map((item) => (
                 <li key={item.file}>
-                  {item.file}
+                  <strong>{item.file}</strong>
                   {item.sample_id ? ` · ${item.sample_id}` : ""}
+                  <small className="record-meta">
+                    {item.phenomenon_time ? `${text.recordTime}: ${new Date(item.phenomenon_time).toLocaleString(locale)}` : ""}
+                    {item.crop ? ` · ${text.recordCrop}: ${item.crop}` : ""}
+                    {typeof item.latitude === "number" && typeof item.longitude === "number"
+                      ? ` · ${text.recordLocation}: ${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)}`
+                      : ""}
+                    {item.dry_run ? ` · ${text.dryRun}` : ""}
+                  </small>
                 </li>
               ))}
             </ul>

@@ -592,7 +592,6 @@ def handle_lead_post(body: bytes, *, origin: str | None) -> tuple[int, dict, dic
     except OSError as error:
         return 502, {"gap": f"lead store unwritable: {str(error)[:140]}"}, cors_preflight(origin)
     headers = cors_preflight(origin)
-    headers["Access-Control-Allow-Origin"] = headers.get("Access-Control-Allow-Origin", origin or "*")
     return 200, row, headers
 
 

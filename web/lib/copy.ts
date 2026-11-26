@@ -59,6 +59,10 @@ type Copy = {
   none: string;
   observations: string;
   notes: string;
+  recordTime: string;
+  recordCrop: string;
+  recordLocation: string;
+  dryRun: string;
   refresh: string;
   needCoords: string;
   notANumber: string;
@@ -290,6 +294,10 @@ export const copy: Record<Locale, Copy> = {
     none: "還沒有。",
     observations: "觀測",
     notes: "筆記",
+    recordTime: "記錄時間",
+    recordCrop: "作物",
+    recordLocation: "位置",
+    dryRun: "演練",
     refresh: "重新讀取",
     needCoords: "請填緯度和經度，或勾選乾跑。",
     notANumber: "數字欄不是數字。",
@@ -343,6 +351,10 @@ export const copy: Record<Locale, Copy> = {
     none: "还没有。",
     observations: "观测",
     notes: "笔记",
+    recordTime: "记录时间",
+    recordCrop: "作物",
+    recordLocation: "位置",
+    dryRun: "演练",
     refresh: "重新读取",
     needCoords: "请填写纬度和经度，或勾选试跑。",
     notANumber: "数字栏不是数字。",
@@ -396,6 +408,10 @@ export const copy: Record<Locale, Copy> = {
     none: "None yet.",
     observations: "Observations",
     notes: "Notes",
+    recordTime: "Recorded",
+    recordCrop: "Crop",
+    recordLocation: "Location",
+    dryRun: "Dry run",
     refresh: "Reload",
     needCoords: "Type latitude and longitude, or mark a dry run.",
     notANumber: "A number field is not a number.",
@@ -449,6 +465,10 @@ export const copy: Record<Locale, Copy> = {
     none: "まだない。",
     observations: "観測",
     notes: "メモ",
+    recordTime: "記録時刻",
+    recordCrop: "作物",
+    recordLocation: "位置",
+    dryRun: "演習",
     refresh: "読み直す",
     needCoords: "緯度と経度を入れるか、ドライランに印を付ける。",
     notANumber: "数字の欄が数字ではない。",
@@ -503,6 +523,10 @@ export const copy: Record<Locale, Copy> = {
     none: "ยังไม่มี",
     observations: "การบันทึก",
     notes: "โน้ต",
+    recordTime: "เวลาบันทึก",
+    recordCrop: "พืช",
+    recordLocation: "ตำแหน่ง",
+    dryRun: "การทดลอง",
     refresh: "โหลดใหม่",
     needCoords: "กรอกละติจูดและลองจิจูด หรือทำเครื่องหมายดรายรัน",
     notANumber: "ช่องตัวเลขไม่ใช่ตัวเลข",
