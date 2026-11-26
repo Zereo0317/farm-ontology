@@ -243,3 +243,26 @@ image digest, check outputs, owners, and approvals in the release record.
 - Field web: revision `farm-seges-ai-web-00055-xag` serves 100% — the OIDC/PKCE revision (dedicated `farm-web-runtime` SA, secrets + dedicated access bucket + managed folder, all promotion-verifier gates simulated PASS). Acceptance walkthrough completed 2026-11-26 ~17:55 JST: seges.ai OIDC login → farm session → `/farm/biratori-hokkaido` field sheet rendered.
 - Fixes shipped in this sprint beyond PR #220: worker `/farm` origin-proxy + `/login` override (cross-host cookie-strip loop), canonical-host auth (`FARM_CANONICAL_ORIGIN=https://seges.ai`), 0.0.0.0 login redirect fix (forwarded headers), `/farm` root → opaque farm-id slug redirect, bare-coordinates farm links resolve to the operator pin, middleware public prefixes keep `/walk` + `/api/boundaries` (field-tools directive), verifier legacy-projection normalization, promotion-infra green (bucket/access IAM/cloud-secrets).
 - Still open: finance promote-transition stub, ledger persistence adapter, real-market backtest, distributed rate-limiting, landing hero imagery rights, full-path UA-testing for all locales/audiences.
+
+## 2026-11-26 night — G1/G2/G4/G5 closed (agent-integrated)
+
+- Ledger persistence adapter (`farm_ontology/markets/ledger_store.py`,
+  cherry-pick `ed301e93`): JSONL + GCS backends, entry+meaning double
+  tamper barriers, signing witnesses persisted for EVERY event —
+  full-lifecycle replay now works (G5); promote_intent wired (G1) and
+  refuses while the deployed CLASS_C_POLICY stays closed.
+- Real-market backtest harness (`farm_ontology/markets/real_backtest.py`,
+  `29cec3dd`): provenance-validated rows, PIT-leak refusal (LeakError),
+  opt-in real fixture (FARM_REAL_FIXTURES=1); corrected rerun: staged
+  selling +$18.60/ha (+1.4%), 60% hit (3W/2L), worst 2024 -12.57,
+  best 2025 +71.02 — the old ad-hoc +0.7% had a 100x unit mislabel and
+  an L2 firing bug (cents vs dollars); honest correction documented in
+  reports/backtest-t3-rerun-REPORT.md.
+- Backend prod now `prod-ledger-realbt` (rev `00070`), finance switch on.
+- Web polish shipped (rev `00059`): badge-screening CSS (D1), zh-TW
+  first-visit fallback parity (D4), auth-failure reasons surfaced (D3),
+  boundaries route single-source bounded reader (D5, redone surgically
+  after a truncation incident).
+- Open: trusted-verifier registry for cross-instance replay, Class C
+  human-gate integration for promote_intent, fixture commercial-
+  redistribution licence decision, landing hero real photos.
