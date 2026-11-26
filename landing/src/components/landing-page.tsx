@@ -250,7 +250,9 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
   return (
     <div className="pb-24 md:pb-0">
       <section className="hero-editorial">
-        <div className="hero-brand-panel" aria-hidden="true"></div>
+        <figure className="hero-brand-panel" aria-hidden="true">
+          <img src="https://farm-seges-ai-web-451400509859.asia-east1.run.app/api/scene-thumb" alt="" loading="eager" />
+        </figure>
 <div className="hero-editorial-copy">
           <nav aria-label={vision.switchLabel} className="audience-switch">
             {(["farmer", "research", "finance"] as const).map((key) => {
