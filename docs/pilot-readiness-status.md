@@ -266,3 +266,31 @@ image digest, check outputs, owners, and approvals in the release record.
 - Open: trusted-verifier registry for cross-instance replay, Class C
   human-gate integration for promote_intent, fixture commercial-
   redistribution licence decision, landing hero real photos.
+
+
+## 2026-11-27 morning — round-2/3 hardening shipped (verified fixes)
+
+- Ledger: same-kind shared-instance appends now serialize the ENTIRE
+  logical claim (index read + sequence check + encode + write + readback +
+  index update) under one instance lock — the round-1 fix that locked only
+  the physical write was provably insufficient (duplicate-sequence silent
+  mode reproduced 12/12 by the round-2 audit); the race-guard's own
+  AttributeError (undeclared `invalid` slot) fixed and a poisoned-stream
+  gate now refuses further appends after any detected mismatch, exactly as
+  the error message always promised; orphan-witness unwind added to
+  _undo_last_event (failed persists no longer advertise receipts).
+- Real backtest: window-coverage law scoped to the WINDOW's own last
+  session (a gappy multi-season frame can no longer borrow another
+  season's tail for its waiver), with an explicit carry-marker-only
+  exemption for loader-seeded empty seasons; None-drawdown renders an
+  em-dash instead of crashing (all-monotonic windows are legitimate).
+- Proof-side: producer tests rewritten to genuinely discriminate (the
+  round-1 "concurrency" test raced different kinds and passed 5/5 on
+  pre-fix code; now same-kind, 60/60 durable-or-loud, chain contiguous).
+- Live verified: golden fixture numbers byte-stable (sha256 eeffa097 blob
+  parity); suite 1970 OK/20 skips; backend rev rolling to prod-round2.
+- UA sweep (parallel): 24/24 cells PASS on live prod; the only console
+  errors found (/farm 400s) were the record_dir mkdir bug — fixed and
+  shipped as rev 00066; pitch pages now pin documentElement.lang (no more
+  "und"); ?locale= accepted alongside ?lang= (documented); /walk has a
+  semantic <h1>.
