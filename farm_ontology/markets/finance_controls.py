@@ -524,6 +524,22 @@ class GateDecision:
     evidence_sha256: str = ""
 
 
+class FinanceGateRejection(ValueError):
+    """A manual-approval gate refusal that names the gates which did not pass.
+
+    Raised by ``HedgeIntentLedger.approve_for_manual_review`` and propagated
+    by ``promote_intent`` when the finance approval gates refuse an intent.
+    It subclasses ``ValueError`` so every caller that matched the previous
+    generic refusal keeps working unchanged; ``.violations`` preserves the
+    per-gate tokens (``GateDecision.violations``) that used to be collapsed
+    into one anonymous message, and the message spells them out.
+    """
+
+    def __init__(self, message: str, *, violations: tuple[str, ...] = ()) -> None:
+        super().__init__(message)
+        self.violations = tuple(violations)
+
+
 def evaluate_manual_approval(
     intent: HedgeOrderIntent,
     *,
@@ -855,6 +871,10 @@ class HedgeIntentLedger:
 
     def _finalize(self, event: IntentEvent, intent: HedgeOrderIntent,
                   previous_state: IntentState | None, witness: dict | None) -> IntentEvent:
+        # Live witnesses mirror the replay path: the accessor must reflect
+        # the ledger we have DRIVEN, not only one we have LOADED (audit D3).
+        if witness is not None:
+            self._witnesses[event.sequence] = dict(witness)
         hook = self._persist_hook
         if hook is None:
             return event
@@ -953,7 +973,10 @@ class HedgeIntentLedger:
             kill_switch=kill_switch, approvals=approvals, verifier=verifier,
         )
         if not decision.approved_for_manual_review or decision.violations:
-            raise ValueError("finance approval gates did not pass")
+            raise FinanceGateRejection(
+                "finance approval gates did not pass: " + "; ".join(decision.violations),
+                violations=decision.violations,
+            )
         if actor != decision.independent_reviewer:
             raise ValueError("the independent reviewer must record the approval event")
         witness = (
@@ -1161,8 +1184,8 @@ class PaperReconciliationJournal:
 
 __all__ = [
     "ApprovalBundle", "ApprovalRole", "DEFAULT_HEDGE_LEDGER_KIND",
-    "EvidencePurpose", "EventType", "GENESIS_SHA256", "GateDecision",
-    "HedgeIntentLedger", "HedgeOrderIntent", "IntentEvent",
+    "EvidencePurpose", "EventType", "FinanceGateRejection", "GENESIS_SHA256",
+    "GateDecision", "HedgeIntentLedger", "HedgeOrderIntent", "IntentEvent",
     "IntentState", "PaperReconciliationJournal", "ReconciliationEntry",
     "SignatureVerifier", "SignedEvidence", "WITNESS_ROLES",
     "canonical_digest", "evidence_from_signing_record",
