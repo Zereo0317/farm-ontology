@@ -939,6 +939,10 @@ class HedgeIntentLedger:
         if not self._events:
             return
         event = self._events.pop()
+        # F5: unwind the witness mirrored by _finalize BEFORE the persist
+        # hook — a failed durable write must not advertise a receipt for an
+        # event that no longer exists.
+        self._witnesses.pop(event.sequence, None)
         if forget_intent:
             self._intents.pop(event.intent_id, None)
         if previous_state is None:

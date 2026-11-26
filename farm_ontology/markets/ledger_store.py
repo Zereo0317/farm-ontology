@@ -340,11 +340,14 @@ def _prepare_append(
 class _StreamState:
     """In-memory index of one stream: entry count and last entry hash."""
 
-    __slots__ = ("count", "last_hash")
+    __slots__ = ("count", "last_hash", "invalid")
 
     def __init__(self) -> None:
         self.count = 0
         self.last_hash = GENESIS_ENTRY_HASH
+        # Poisoned-stream flag (F3): set when an append's readback detects a
+        # race; every further append refuses until the stream is repaired.
+        self.invalid = False
 
 
 class JsonFileLedgerStore:
@@ -419,37 +422,44 @@ class JsonFileLedgerStore:
                intent_payload: dict | None = None,
                witness: dict | None = None) -> tuple[int, str]:
         kind = _prepare_append(kind, event, intent_payload, witness)
-        state = self._state(kind)
-        sequence = state.count + 1
-        if event.sequence != sequence:
-            raise ValueError(
-                f"ledger stream {kind!r} expects sequence {sequence}, got {event.sequence}"
-            )
-        document, _ = encode_entry(
-            kind, sequence, state.last_hash, event, intent_payload, witness
-        )
-        line = json.dumps(
-            document, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8") + b"\n"
-        path = self._kind_path(kind)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # F1 (round-2 audit): the WHOLE logical claim — index read, sequence
+        # check, encoding, write, readback and index update — happens under
+        # one lock. The round-1 fix locked only the physical write, letting
+        # two writers both "own" sequence N and durably duplicate it with
+        # zero exceptions.
         with self._lock:
+            state = self._state(kind)
+            if getattr(state, "invalid", False):
+                raise RuntimeError(
+                    f"ledger stream {kind!r} is poisoned by a detected "
+                    "append race — repair the stream (replay + truncate to "
+                    "the last valid entry) before appending again"
+                )
+            sequence = state.count + 1
+            if event.sequence != sequence:
+                raise ValueError(
+                    f"ledger stream {kind!r} expects sequence {sequence}, got {event.sequence}"
+                )
+            document, _ = encode_entry(
+                kind, sequence, state.last_hash, event, intent_payload, witness
+            )
+            line = json.dumps(
+                document, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8") + b"\n"
+            path = self._kind_path(kind)
+            path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, "ab") as stream:
                 stream.write(line)
                 stream.flush()
                 import os
 
                 os.fsync(stream.fileno())
-            # Race guard: verify OUR line really is the file's last line.
-            # On Windows, O_APPEND-equivalents across handles are not
-            # atomic (seek-to-EOF + write races), so a two-writer race
-            # used to silently drop a line AFTER append() had returned a
-            # success hash. This readback converts that loss into a loud,
-            # named error before anyone trusts the receipt.
-            import os as _os
-
-            size = _os.path.getsize(path)
+            # F2 race guard: verify OUR line really is the file's last line;
+            # a mismatch poisons the stream (F3) — the next append refuses
+            # until a human/tool repairs it — exactly what this error
+            # message has promised since round 1.
+            size = os.path.getsize(path)
             with open(path, "rb") as check:
                 if size > len(line):
                     check.seek(size - len(line))
@@ -458,11 +468,11 @@ class JsonFileLedgerStore:
                 state.invalid = True
                 raise RuntimeError(
                     f"ledger append raced on {kind!r}: our entry #{sequence} "
-                    "is not the file's last line — the stream needs repair "
-                    "before further appends"
+                    "is not the file's last line — the stream is now marked "
+                    "invalid and further appends refuse until repair"
                 )
-        state.count, state.last_hash = sequence, document["entry_hash"]
-        return sequence, document["entry_hash"]
+            state.count, state.last_hash = sequence, document["entry_hash"]
+            return sequence, document["entry_hash"]
 
     def replay(self, kind: str, from_seq: int = 1) -> Iterator[StoredLedgerEntry]:
         from_seq = _valid_sequence(from_seq, "from_seq")

@@ -677,8 +677,23 @@ def run_season(
     # stop dresses an incomplete capture up as a finished window. Refuse,
     # naming the season, its last captured session, and the shortfall.
     window_end = bt.SEASON_CALENDAR[year]["window_end"]
-    if (pending_breakout or pending_post_wasde) and rows[-1].session_date < window_end:
-        data_end = rows[-1].session_date
+    # Coverage is judged on the WINDOW's own last session (not the frame's
+    # global last row): a frame that carries OTHER seasons' later rows must
+    # not earn this season's coverage waiver (D-R2-1, round-2 audit).
+    # Carry-marker-only windows (loader seeds one synthesized row for a
+    # year the record has no data for) are exempt: declaring them
+    # coverage-short would refuse frames that legitimately carry OTHER
+    # seasons' real data; the exhausted pricing still names its carry note.
+    carry_marker_only = (
+        len(window_rows) == 1
+        and window_rows[0].note.startswith("calendar-carry")
+    )
+    if (
+        not carry_marker_only
+        and (pending_breakout or pending_post_wasde)
+        and window_rows[-1].session_date < window_end
+    ):
+        data_end = window_rows[-1].session_date
         shortfall_days = (window_end - data_end).days
         unfired = [
             leg
@@ -994,10 +1009,14 @@ def render_report(report: RealBacktestReport) -> str:
         )
     add("")
     mean_dd = result.mean_window_drawdown
+    worst_dd = result.worst_window_drawdown
+    # Drawdown can be legitimately None (all-monotonic windows have no
+    # drawdown to report — D-R2-2); render it as the em-dash, symmetric
+    # with the mean's treatment.
     add(
         f"Mean intra-window price drawdown (printed scale): "
         f"{'—' if mean_dd is None else format(round(mean_dd, 3), '.3f')} "
-        f"(worst {round(result.worst_window_drawdown, 3)}). "
+        f"(worst {'—' if worst_dd is None else round(worst_dd, 3)}). "
         f"Wins per season order: {[o.delta_per_ha >= 0 for o in report.seasons]}."
     )
     add("")
