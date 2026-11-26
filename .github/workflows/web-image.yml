@@ -109,7 +109,7 @@ jobs:
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
-          service_account: farm-web-deployer@seges-ai.iam.gserviceaccount.com
+          service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
       - uses: google-github-actions/setup-gcloud@v2
       - name: Create a tagged no-traffic candidate
@@ -149,7 +149,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
-          service_account: farm-web-deployer@seges-ai.iam.gserviceaccount.com
+          service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
       - uses: google-github-actions/setup-gcloud@v2
       - name: Validate production OIDC and read-only membership-store configuration
@@ -218,7 +218,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
-          service_account: farm-web-deployer@seges-ai.iam.gserviceaccount.com
+          service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
       - uses: google-github-actions/setup-gcloud@v2
       - name: Pin farm-seges-ai-web to the requested image ref
