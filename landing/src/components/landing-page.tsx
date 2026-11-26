@@ -8,7 +8,6 @@ import type { LiveLedger } from "@/lib/live.functions";
 import type { Locale } from "@/lib/locale";
 import { VISION, type Audience } from "@/lib/vision";
 
-const HERO_IMAGE = "/photos/seges-hokkaido-dawn.jpg";
 
 const INSTITUTION_COPY: Record<
   Locale,
@@ -251,10 +250,8 @@ export function LandingPage({ ledger, audience }: { ledger: LiveLedger; audience
   return (
     <div className="pb-24 md:pb-0">
       <section className="hero-editorial">
-        <figure className="hero-editorial-photo" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" fetchPriority="high" />
-        </figure>
-        <div className="hero-editorial-copy">
+        <div className="hero-brand-panel" aria-hidden="true"></div>
+<div className="hero-editorial-copy">
           <nav aria-label={vision.switchLabel} className="audience-switch">
             {(["farmer", "research", "finance"] as const).map((key) => {
               const selected = audience === key;

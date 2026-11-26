@@ -33,28 +33,27 @@
   order: 1;
   padding: clamp(2.5rem, 8vw, 5rem) max(1.25rem, calc((100vw - 76rem) / 2));
 }
-.hero-editorial-photo {
+/* Founder directive 2026-11-26: no uncertified photography on the
+   marketing page. This panel is a pure-CSS brand graphic (SEGES field
+   dots on deep green) — it asserts nothing about any real field. */
+.hero-brand-panel {
   position: relative;
   order: 2;
   height: clamp(18rem, 65vw, 30rem);
   overflow: hidden;
-  background: #495743;
+  background:
+    radial-gradient(circle at 24% 30%, rgba(183, 211, 173, 0.16) 0 2px, transparent 3px),
+    radial-gradient(circle at 68% 62%, rgba(183, 211, 173, 0.12) 0 3px, transparent 4px),
+    linear-gradient(160deg, #495743 0%, #3c4a38 62%, #2f3b2d 100%);
 }
-.hero-editorial-photo img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 58%;
-}
-.hero-photo-mark {
+.hero-brand-panel::after {
+  content: "S · E · G · E · S";
   position: absolute;
-  right: 1.1rem;
-  bottom: 1rem;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.68rem;
-  letter-spacing: 0.09em;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  inset: auto 1.5rem 1.25rem auto;
+  color: rgba(245, 250, 240, 0.85);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
 }
 .hero-eyebrow {
   margin-top: 1.25rem;
