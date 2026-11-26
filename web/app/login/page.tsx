@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 async function readLocale(): Promise<Locale> {
   const jar = await cookies();
   const saved = jar.get("farm-locale")?.value;
-  return saved === "zh-TW" || saved === "zh-CN" || saved === "ja" || saved === "th" ? saved : "en";
+  return saved === "zh-TW" || saved === "zh-CN" || saved === "ja" || saved === "th" ? saved : "zh-TW";
 }
 
 function safeNext(raw: string | string[] | undefined): string {

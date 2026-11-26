@@ -303,6 +303,10 @@ details li { margin: 0.65rem 0; }
 
 .chip.badge-open { background: #e3ecd6; }
 
+/* Screening chip: settlement not permitted yet — amber-quiet, distinct
+   from the green open-badge (audit D1 fix). */
+.chip.badge-screening { background: #efe9d4; }
+
 .chips {
   margin: 0.35rem 0 0;
   padding: 0;
