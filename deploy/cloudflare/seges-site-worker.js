@@ -6,6 +6,7 @@ var ACTIVE_LOCALES = ["en", "zh-TW", "zh-CN", "ja", "th"];
 var PLANNED_LOCALES = ["ja", "ko", "ms", "id", "hi", "sw", "th", "vi", "es", "pt-BR", "fr"];
 var ROUTE_OVERRIDES = [
   { prefix: "/farm", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
+{ prefix: "/login", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
 { prefix: "/fieldday", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
 { prefix: "/walk", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
   { prefix: "/api", origin: "https://farm-seges-ai-web-451400509859.asia-east1.run.app" },
