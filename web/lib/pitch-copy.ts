@@ -333,7 +333,7 @@ export const pitchCopy: Record<PitchLang, PitchCopy> = {
           num: "point-in-time",
           label: "重放歷史的帳本",
           body: "每個值攜帶「當時已知」的時戳：USDA 報告發布前查帳得一個價格主體，發布後五個——明天的數永遠洩漏不進昨天的判斷。",
-        },,
+        },
         {
           num: "+1.4%",
           label: "真實市場的分季回測（已矯正）",
@@ -594,7 +594,7 @@ export const pitchCopy: Record<PitchLang, PitchCopy> = {
           num: "point-in-time",
           label: "能重放历史的账本",
           body: "每个值携带「当时已知」的时戳：USDA 报告发布前查询得到一个价格主体，发布后五个——明天的数字永远泄漏不进昨天的判断。",
-        },,
+        },
         {
           num: "+1.4%",
           label: "真实市场的分季回测（已矫正）",
@@ -855,7 +855,7 @@ export const pitchCopy: Record<PitchLang, PitchCopy> = {
           num: "point-in-time",
           label: "a ledger that replays history",
           body: "Every value carries its as-known-at stamp: querying before the USDA release returns 1 price subject, after it 5 — tomorrow's number can never leak into yesterday's decision.",
-        },,
+        },
         {
           num: "+1.4%",
           label: "Real-market season backtest (corrected)",
@@ -1116,7 +1116,7 @@ export const pitchCopy: Record<PitchLang, PitchCopy> = {
           num: "point-in-time",
           label: "過去を再生できる台帳",
           body: "全数値は「当時既知」の刻印を担う：USDA 発表前の照会は価格主体一つ、後は五つ——明日の数字が昨日の判断へ漏れることは永久に無い。",
-        },,
+        },
         {
           num: "+1.4%",
           label: "実市場の季節別バックテスト（補正済み）",
@@ -1377,7 +1377,7 @@ export const pitchCopy: Record<PitchLang, PitchCopy> = {
           num: "point-in-time",
           label: "สมุดที่เล่นประวัติศาสตร์ย้อนหลังได้",
           body: "ทุกค่าแบบตราเวลา «รู้ ณ ขณะนั้น»: สอบก่อนรายงาน USDA ประกาศ เจอหัวเรื่องราคา 1 ชุด หลังประกาศเจอ 5 — ตัวเลขวันพรุ่งนี้ไม่มีทางลอดเข้าการตัดสินใจของเมื่อวาน",
-        },,
+        },
         {
           num: "+1.4%",
           label: "การทดสอบย้อนหลังรายฤดูจากตลาดจริง (แก้ไขแล้ว)",
