@@ -19,3 +19,47 @@ export async function POST(request: Request) {
   const payload = parsed.value;
   const access = await authorizeFarm(request, typeof payload.farm_id === "string" ? payload.farm_id : "", "operator");
   if (!access.ok) return NextResponse.json({ gap: true, reason: access.reason, upstream_status: null }, { status: access.status });
+  if (!validRequestId(payload.request_id)) return NextResponse.json({ gap: true, reason: "valid request_id required", upstream_status: null }, { status: 400 });
+  try {
+    const result = await callRecord({
+      op: "boundary_walk",
+      farm_id: access.actor.farmId,
+      request_id: payload.request_id,
+      parcel_name: payload.parcel_name,
+      crop: payload.crop,
+      corners: payload.corners,
+      centre: payload.centre,
+      note: payload.note,
+      dry_run: payload.dry_run,
+    });
+    return NextResponse.json(result.body, { status: result.status, headers: { "cache-control": "private, no-store" } });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        gap: true,
+        reason: error instanceof Error ? error.message : String(error),
+        upstream_status: null,
+      },
+      { status: 502 },
+    );
+  }
+}
+
+export async function GET(request: Request) {
+  const farmId = new URL(request.url).searchParams.get("farm_id") ?? "";
+  const access = await authorizeFarm(request, farmId, "viewer");
+  if (!access.ok) return NextResponse.json({ gap: true, reason: access.reason, upstream_status: null }, { status: access.status });
+  try {
+    const result = await callRecord({ op: "list_walks", farm_id: access.actor.farmId });
+    return NextResponse.json(result.body, { status: result.status, headers: { "cache-control": "private, no-store" } });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        gap: true,
+        reason: error instanceof Error ? error.message : String(error),
+        upstream_status: null,
+      },
+      { status: 502 },
+    );
+  }
+}

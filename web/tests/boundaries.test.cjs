@@ -12,18 +12,14 @@ let calls = 0;
 m.require = name => {
   if (name === 'next/server') return { NextResponse: { json: (body, opts) => ({ body, status: opts.status }) } };
   if (name === '@/lib/record') return { callRecord: async () => { calls++; return { status: 200, body: {} }; } };
-  if (name === '@/lib/auth/request-body') return {
-    MAX_FARM_JSON_BYTES: 64 * 1024,
-    readJsonObject: async req => {
-      const text = await req.text();
-      if (text.length > 64 * 1024) return { ok: false, status: 413, reason: 'request body too large' };
-      try {
-        const parsed = JSON.parse(text);
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ok: false, status: 400, reason: 'JSON object required' };
-        return { ok: true, value: parsed };
-      } catch { return { ok: false, status: 400, reason: 'request body was not valid JSON' }; }
-    },
-  };
+  if (name === '@/lib/auth/request-body') {
+    const rbSrc = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../lib/auth/request-body.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+    const rb = new Module(path.join(__dirname, '../lib/auth/request-body.ts'), module);
+    rb.filename = path.join(__dirname, '../lib/auth/request-body.ts');
+    rb.paths = module.paths;
+    rb._compile(rbSrc, rb.filename);
+    return rb.exports;
+  } // real (pure Request consumer)
   if (name === '@/lib/auth/authorize') return {
     authorizeFarm: async (_request, farmId) => farmId ? { ok: true, actor: { farmId, actorId: 'actor', role: 'operator' } } : { ok: false, status: 400, reason: 'farm required' },
     hasSameOrigin: request => request.headers.get('origin') === 'https://farm.example',
