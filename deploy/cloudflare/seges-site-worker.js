@@ -105,6 +105,16 @@ function buildRedirectUrl(requestUrl, locale) {
 }
 __name(buildRedirectUrl, "buildRedirectUrl");
 function planLocaleAction(request) {
+  const pn0 = new URL(request.url).pathname;
+  // Tool paths are single-host pages on the field web — they take no
+  // locale prefix; send visitors to the bare path (the page handles
+  // language itself via the farm-locale cookie / switcher).
+  const TOOL_PATHS = ["/pitch", "/walk", "/fieldday", "/report", "/farm"];
+  for (const tp of TOOL_PATHS) {
+    const rx = new RegExp("^/(zh-TW|zh-CN|en|ja|th)(" + tp + "(/.*)?)$");
+    const m0 = rx.exec(pn0);
+    if (m0) return { action: "redirect", location: new URL(m0[2], request.url).toString() };
+  }
   const url = new URL(request.url);
   if (!["GET", "HEAD"].includes(request.method) || isNonDocumentRequest(url.pathname)) return { action: "pass" };
   if (matchLocalePrefix(url.pathname, ACTIVE_LOCALES) || matchLocalePrefix(url.pathname, PLANNED_LOCALES)) return { action: "pass" };
