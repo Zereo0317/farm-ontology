@@ -12,6 +12,7 @@ to exist — the redistribution/licence question is documented in
 from __future__ import annotations
 
 import inspect
+import json
 import os
 import tempfile
 import unittest
@@ -605,6 +606,160 @@ class ClockHygieneTest(unittest.TestCase):
             source = inspect.getsource(function)
             self.assertNotIn("now(", source)
             self.assertNotIn("today(", source)
+        # (audit-defect D5 hardening) the ban extends to the WHOLE module:
+        # no time.time()/utcnow call may creep into real_backtest.py —
+        # every instant in the engine must come from declared captured_at
+        # / decision_time values, never the wall clock.
+        module_source = inspect.getsource(rb)
+        self.assertNotIn("time.time(", module_source)
+        self.assertNotIn("utcnow(", module_source)
+
+
+class SeasonWindowCoverageTest(unittest.TestCase):
+    """(audit defect D1) a window the frame does not carry to window_end
+    must be REFUSED, not silently run with exhausted legs priced at the
+    record's abrupt stop. Boundary: pending legs are legal exactly when
+    the frame's own extent demonstrates the window ran to its end."""
+
+    @staticmethod
+    def _mid_window_2025_frame() -> rb.RealPriceFrame:
+        # 2025 season window: harvest 2025-10-05, window_end 2026-01-31.
+        # The capture simply STOPS at 2025-11-01 — no breakout level is
+        # crossed (all closes < 11.40) and the WASDE day never arrives,
+        # so L2/L3 would both "exhaust" at a stop that is not the end.
+        rows = tuple(
+            rb.RealPriceRow(
+                session_date=day,
+                close=close,
+                source=rb.ROW_SOURCE_STAND_IN,
+                symbol="ZS=F",
+                interval="1d",
+                captured_at=T_EARLY,
+                unit_note=rb.YAHOO_UNIT_NOTE_USD,
+                note="stand-in real-shaped frame; synthetic values, not market truth",
+            )
+            for day, close in (
+                (date(2025, 10, 5), 10.00),
+                (date(2025, 10, 20), 10.10),
+                (date(2025, 11, 1), 9.90),
+            )
+        )
+        return rb.RealPriceFrame(**USD_FRAME_KWARGS, captured_at=T_EARLY, rows=rows)
+
+    def test_frame_ending_mid_window_refused_for_2025(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError, r"season 2025.*short of the declared window_end"
+        ):
+            rb.run_season("2025", self._mid_window_2025_frame(), yield_t_per_ha=3.0)
+
+    def test_pending_legs_with_full_window_extent_exhaust_honestly(self) -> None:
+        # coverage-law boundary: with the frame's last session ON the
+        # declared window_end, an unfired leg MAY still be priced at the
+        # final close (the record demonstrates the window really ended).
+        rows = tuple(
+            rb.RealPriceRow(
+                session_date=day,
+                close=close,
+                source=rb.ROW_SOURCE_STAND_IN,
+                symbol="ZS=F",
+                interval="1d",
+                captured_at=T_EARLY,
+                unit_note=rb.YAHOO_UNIT_NOTE_USD,
+                note="stand-in real-shaped frame; synthetic values, not market truth",
+            )
+            for day, close in (
+                (date(2021, 10, 5), 10.00),
+                (date(2022, 1, 31), 9.50),
+            )
+        )
+        frame = rb.RealPriceFrame(**USD_FRAME_KWARGS, captured_at=T_EARLY, rows=rows)
+        outcome = rb.run_season("2021", frame, yield_t_per_ha=3.0)
+        triggers = [execution.trigger for execution in outcome.executions]
+        self.assertIn("breakout_11.40_window_exhausted", triggers)
+
+
+class BreakoutLabelDerivationTest(unittest.TestCase):
+    """(audit defect D3) trigger and rule labels compose from
+    ``bt.BREAKOUT_LEVEL`` exactly as ``backtest.run_season`` composes
+    them — a moved level moves every label, never a stale hard-coded
+    11.40."""
+
+    def test_leg_log_and_rule_name_follow_the_patched_level(self) -> None:
+        with mock.patch.object(bt, "BREAKOUT_LEVEL", 12.0):
+            frame = stand_in_frame()
+            outcome_2021 = rb.run_season("2021", frame, yield_t_per_ha=3.0)
+            outcome_2025 = rb.run_season("2025", frame, yield_t_per_ha=3.0)
+            report = rb.run_real_backtest(
+                (frame,), years=("2021", "2025"), yield_t_per_ha=3.0
+            )
+        # 2021: the 12.00 close still crosses the raised level — and the
+        # fired leg's label must say 12.00, not the stale 11.40.
+        triggers_2021 = [execution.trigger for execution in outcome_2021.executions]
+        self.assertIn("breakout_12.00", triggers_2021)
+        self.assertNotIn("breakout_11.40", triggers_2021)
+        # 2025: no stand-in close reaches 12.0, so L2 exhausts — and the
+        # exhausted leg's label must follow the patched level too.
+        triggers_2025 = [execution.trigger for execution in outcome_2025.executions]
+        self.assertIn("breakout_12.00_window_exhausted", triggers_2025)
+        self.assertNotIn("breakout_11.40_window_exhausted", triggers_2025)
+        # the RESULT's rule label is composed, not hard-coded:
+        self.assertIn("12.00 breakout", report.result.rule_name)
+        self.assertNotIn("11.40", report.result.rule_name)
+
+
+class CapturedAtConflictTest(unittest.TestCase):
+    """(audit defect D4) ONE captured_at semantic, documented in the
+    loader's docstring: an explicit caller instant and the store's
+    ``meta.captured_at`` must AGREE — disagreement REFUSES instead of
+    silently overriding the caller."""
+
+    @staticmethod
+    def _meta_store_path() -> str:
+        payload = {
+            "meta": {
+                "source": rb.ROW_SOURCE_STAND_IN,
+                "symbol": "ZS=F",
+                "interval": "1d",
+                "citation_url": "test://stand-in-meta-store",
+                "unit_note": rb.YAHOO_UNIT_NOTE_USD,
+                "captured_at": "2026-05-05T00:00:00+00:00",
+            },
+            "rows": [["2025-10-03", 1018.0]],
+        }
+        handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+        json.dump(payload, handle)
+        handle.close()
+        return handle.name
+
+    def test_meta_captured_at_conflicting_with_caller_refused(self) -> None:
+        caller_instant = datetime(2026, 11, 20, tzinfo=timezone.utc)
+        with self.assertRaisesRegex(ValueError, "conflicting captured_at sources"):
+            rb.load_recorded_frame(
+                self._meta_store_path(), captured_at=caller_instant, years=()
+            )
+
+    def test_equal_meta_and_caller_captured_at_agree(self) -> None:
+        same = datetime(2026, 5, 5, tzinfo=timezone.utc)
+        frame = rb.load_recorded_frame(self._meta_store_path(), captured_at=same, years=())
+        self.assertEqual(frame.captured_at, same)
+
+    def test_absent_caller_value_falls_back_to_meta_then_declared_default(self) -> None:
+        adopted = rb.load_recorded_frame(self._meta_store_path(), years=())
+        self.assertEqual(adopted.captured_at, datetime(2026, 5, 5, tzinfo=timezone.utc))
+
+
+class UnknownYearErrorTest(unittest.TestCase):
+    """(audit defect D5) an unknown season year fails FRIENDLY at the
+    run_real_backtest level — a named ValueError with the available
+    seasons, never a bare KeyError out of the window selector."""
+
+    def test_unknown_season_year_raises_friendly_value_error(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError, r"no season calendar for '1999'.*available seasons"
+        ):
+            rb.run_real_backtest(
+                (stand_in_frame(),), years=("1999",), yield_t_per_ha=3.0
+            )
 
 
 if __name__ == "__main__":

@@ -259,6 +259,15 @@ class SaleExecution:
 
 @dataclass(frozen=True)
 class SeasonOutcome:
+    """One season's staged-versus-baseline result.
+
+    Hit-rate boundary, documented (no behaviour change): a season whose
+    ``delta_per_ha`` is exactly ZERO counts as a WIN — a tie goes to the
+    staged rule per the baseline definition, and every won/lost tally in
+    this module counts ``delta >= 0`` (``backtest.run_backtest`` and
+    ``real_backtest.run_real_backtest`` alike).
+    """
+
     season: str
     baseline_revenue_per_ha: float
     staged_revenue_per_ha: float

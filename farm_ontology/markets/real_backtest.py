@@ -222,7 +222,7 @@ def load_recorded_frame(
     path: str | os.PathLike[str],
     *,
     years: Sequence[str] = DEFAULT_YEARS,
-    captured_at: datetime = RECORDED_CAPTURE_UTC,
+    captured_at: datetime | None = None,
     captured_by: str = "",
     symbol: str = "ZS=F",
     interval: str = "1d",
@@ -239,8 +239,20 @@ def load_recorded_frame(
     - ``[["YYYY-MM-DD", close], ...]`` (the workspace capture cache);
     - ``[{"date": "...", "close": ...}, ...]``;
     - ``{"meta": {...}, "rows": [...]}`` where ``meta`` may declare
-      symbol / interval / source / citation_url / unit_note / captured_at
-      and wins over the keyword arguments.
+      symbol / interval / source / citation_url / unit_note / captured_at;
+      every declared meta key overrides the matching keyword argument
+      EXCEPT ``captured_at``, which follows the single conflict rule
+      spelled out below.
+
+    ``captured_at`` has ONE declared semantic (audit defect D4 — the
+    caller's explicit instant used to be silently overridden by the
+    store's meta): an explicit caller instant and the store's
+    ``meta.captured_at`` must AGREE. The caller's value wins when meta
+    omits the key or declares the same instant; when the two DISAGREE
+    the loader refuses with ``ValueError`` naming both instants rather
+    than silently preferring either source. With no caller value and no
+    meta declaration, the declared ``RECORDED_CAPTURE_UTC`` study
+    instant applies.
 
     Calendar-carry rows (see ``ROW_SOURCE_CARRY``) are inserted for each
     declared harvest day that has no recorded session, honestly marked
@@ -249,6 +261,7 @@ def load_recorded_frame(
     than ``captured_at``.
     """
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    meta_declared: datetime | None = None
     if isinstance(payload, Mapping):
         meta = payload.get("meta") or {}
         raw_rows = payload.get("rows")
@@ -261,12 +274,40 @@ def load_recorded_frame(
         unit_note = str(meta.get("unit_note") or unit_note)
         captured_by = str(meta.get("captured_by") or captured_by)
         if meta.get("captured_at"):
-            captured_at = ensure_utc(
-                datetime.fromisoformat(str(meta["captured_at"]).replace("Z", "+00:00")),
-                "captured_at",
-            )
+            meta_text = str(meta["captured_at"])
+            try:
+                meta_declared = ensure_utc(
+                    datetime.fromisoformat(meta_text.replace("Z", "+00:00")),
+                    "captured_at",
+                )
+            except ValueError as exc:
+                raise ProvenanceError(
+                    f"store meta.captured_at {meta_text!r} is not a parsable "
+                    "timezone-aware instant"
+                ) from exc
     else:
         raw_rows = payload
+
+    # captured_at conflict law (documented in the docstring): an explicit
+    # caller instant wins over an AGREEING meta declaration; a DISAGREEING
+    # meta refuses instead of silently overriding either source. No
+    # caller value and no meta declaration falls back to the declared
+    # RECORDED_CAPTURE_UTC study instant.
+    if captured_at is None:
+        captured_at = (
+            meta_declared if meta_declared is not None else RECORDED_CAPTURE_UTC
+        )
+    else:
+        caller_declared = ensure_utc(captured_at, "captured_at")
+        if meta_declared is not None and meta_declared != caller_declared:
+            raise ProvenanceError(
+                "conflicting captured_at sources: the caller declared "
+                f"{caller_declared.isoformat()} while the store's meta "
+                f"declares {meta_declared.isoformat()}; reconcile the two "
+                "instead of letting one silently override the other"
+            )
+        captured_at = caller_declared
+
     if not isinstance(raw_rows, Sequence):
         raise ProvenanceError("recorded store rows must be a list")
 
@@ -537,6 +578,16 @@ def run_season(
     Point-in-time: the engine only ever sees ``decision_time``-cut rows;
     default decision_time is the frame's own capture instant (the study
     replays the capture as it stood).
+
+    Window coverage (audit defect D1 — a frame that stops mid-window used
+    to silently run as if the season were over): when any L2/L3 leg is
+    still unfired after the walk, the cut frame must REACH the season's
+    declared ``window_end`` — an unfired leg priced at a last captured
+    close is only honest when the record demonstrates the window ran to
+    its declared end. A frame stopping short of ``window_end`` is
+    REFUSED, with the season, its last captured session, and the
+    shortfall named in the message. Legs that already fired impose no
+    coverage requirement: their fills happened inside captured data.
     """
     if year not in bt.SEASON_CALENDAR:
         raise ValueError(f"no season calendar for {year!r}")
@@ -606,7 +657,11 @@ def run_season(
         day = marker.session_date
         if pending_breakout and printed >= bt.BREAKOUT_LEVEL * scale:
             pending_breakout = False
-            execs.append(carry_execution(marker, 2, bt.BREAKOUT_WEIGHT, "breakout_11.40"))
+            execs.append(
+                carry_execution(
+                    marker, 2, bt.BREAKOUT_WEIGHT, f"breakout_{bt.BREAKOUT_LEVEL:.2f}"
+                )
+            )
             continue
         if pending_post_wasde and day > bt.SEASON_CALENDAR[year]["wasde_day"]:
             pending_post_wasde = False
@@ -615,9 +670,34 @@ def run_season(
         if not (pending_breakout or pending_post_wasde):
             break
 
+    # D1 window-coverage law (documented above): an "exhausted" leg may
+    # only be priced at a last captured close when the cut frame
+    # demonstrably reaches the declared window_end. A frame that stops
+    # short means the RECORD simply ended — pricing unfired legs at that
+    # stop dresses an incomplete capture up as a finished window. Refuse,
+    # naming the season, its last captured session, and the shortfall.
+    window_end = bt.SEASON_CALENDAR[year]["window_end"]
+    if (pending_breakout or pending_post_wasde) and rows[-1].session_date < window_end:
+        data_end = rows[-1].session_date
+        shortfall_days = (window_end - data_end).days
+        unfired = [
+            leg
+            for leg, pending in ((2, pending_breakout), (3, pending_post_wasde))
+            if pending
+        ]
+        raise ValueError(
+            f"season {year}: window coverage stops at {data_end.isoformat()}, "
+            f"{shortfall_days} calendar days short of the declared window_end "
+            f"{window_end.isoformat()} — the exchange may still have held "
+            "sessions in that stretch which this record does not carry, so "
+            f"unfired leg(s) {unfired} cannot honestly be marked "
+            "window-exhausted at the last captured close; cover the window "
+            "through its declared end or the season refuses to run short"
+        )
+
     last_marker = window_rows[-1]
     for leg_number, weight, trigger in (
-        (2, bt.BREAKOUT_WEIGHT, "breakout_11.40_window_exhausted"),
+        (2, bt.BREAKOUT_WEIGHT, f"breakout_{bt.BREAKOUT_LEVEL:.2f}_window_exhausted"),
         (3, bt.POST_WASDE_WEIGHT, "post_december_wasde_window_exhausted"),
     ):
         fired = any(execution.leg == leg_number for execution in execs)
@@ -685,6 +765,14 @@ def run_real_backtest(
     is the mean of per-season deltas — identical identity to the sim run.
     """
     frames = tuple(frames)
+    # fail friendly, not with a bare KeyError out of _window_rows:
+    # name the unknown season year(s) and the ones that DO exist.
+    unknown = [year for year in years if year not in bt.SEASON_CALENDAR]
+    if unknown:
+        raise ValueError(
+            f"no season calendar for {', '.join(repr(y) for y in unknown)}; "
+            f"available seasons: {sorted(bt.SEASON_CALENDAR)}"
+        )
     chosen: dict[str, RealPriceFrame] = {}
     for year in years:
         for frame in frames:
@@ -709,7 +797,10 @@ def run_real_backtest(
     cover_frame = next(iter(chosen.values()))
     chosen_frames = {id(frame) for frame in chosen.values()}
     result = bt.BacktestResult(
-        rule_name="staged selling 40/30/30 (harvest / 11.40 breakout / post-Dec-WASDE) on recorded ZS=F",
+        rule_name=(
+            f"staged selling 40/30/30 (harvest / {bt.BREAKOUT_LEVEL:.2f} "
+            "breakout / post-Dec-WASDE) on recorded ZS=F"
+        ),
         config_version=VERSION,
         years=tuple(years),
         yield_t_per_ha=yield_t_per_ha,
