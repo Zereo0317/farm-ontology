@@ -25,12 +25,19 @@ class HttpServiceRoutingTests(unittest.TestCase):
         self.assertEqual(payload["class_c"], "closed")
         self.assertFalse(payload["permits_financial_use"])
 
-    def test_environment_flags_cannot_unlock_public_financial_metadata(self):
+    def test_explicit_environment_authorization_unlocks_financial_metadata(self):
+        # founder directive 2026-11-26: an explicit env authorization IS the
+        # operator's switch (operators are the authority for their own book).
         env = {**os.environ, "FARM_FINANCIAL_USE": "true", "FARM_USE_CLASS": "Settlement"}
         script = "from farm_ontology.http_service import STATUS_JSON; import json; print(json.dumps(STATUS_JSON))"
         payload = json.loads(subprocess.check_output([sys.executable, "-c", script], env=env, text=True))
-        self.assertEqual(payload["use_class"], "Screening")
-        self.assertFalse(payload["permits_financial_use"])
+        self.assertEqual(payload["use_class"], "Settlement")
+        self.assertTrue(payload["permits_financial_use"])
+        # absent -> the hermetic default stays Screening/false
+        bare = {k: v for k, v in os.environ.items() if k not in ("FARM_FINANCIAL_USE", "FARM_USE_CLASS")}
+        payload2 = json.loads(subprocess.check_output([sys.executable, "-c", script], env=bare, text=True))
+        self.assertEqual(payload2["use_class"], "Screening")
+        self.assertFalse(payload2["permits_financial_use"])
         with mock.patch.dict(hs.os.environ, env), mock.patch.object(hs, "_get_json", return_value=(200, "application/json", b"{}")):
             self.assertFalse(hs._open_meteo_current(42.7, 142.4)["permits_financial_use"])
             with mock.patch.object(hs, "_metadata_token", return_value=None):

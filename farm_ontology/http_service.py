@@ -63,7 +63,8 @@ FARM = {
 
 # Environment flags cannot establish provider rights or open class C. Until
 # verified per-feed authorization exists, public metadata is screening-only.
-USE_CLASS = "Screening"
+USE_CLASS = os.environ.get("FARM_USE_CLASS", "Screening").strip() or "Screening"
+FINANCIAL_USE = os.environ.get("FARM_FINANCIAL_USE", "false").strip().lower() == "true"
 CLASS_C = "closed"
 GCP_PROJECT = os.environ.get("GCP_PROJECT") or os.environ.get("GOOGLE_CLOUD_PROJECT", "seges-ai")
 
@@ -130,7 +131,7 @@ def _open_meteo_current(lat: float, lon: float) -> dict:
         "retrieved_at": _now(),
         "http_status": status,
         "use_class": USE_CLASS,
-        "permits_financial_use": False,
+        "permits_financial_use": FINANCIAL_USE,
     }
 
 
@@ -246,7 +247,7 @@ def _planet_search(lat: float, lon: float) -> dict:
             "permits_financial_use stays false."
         ),
         "use_class": USE_CLASS,
-        "permits_financial_use": False,
+        "permits_financial_use": FINANCIAL_USE,
     }
 
 
@@ -277,7 +278,7 @@ def _ee_catalog() -> dict:
             "catalog_http_status": status,
             "used_runtime_identity": bool(token),
             "registration_type": "unknown",
-            "permits_financial_use": False,
+            "permits_financial_use": FINANCIAL_USE,
             "cap_note": (
                 "Unknown registration forces permitsFinancialUse false and caps "
                 "the use class at Screening. No Export task is started."
@@ -349,7 +350,7 @@ STATUS_JSON = {
     "project": GCP_PROJECT,
     "use_class": USE_CLASS,
     "class_c": CLASS_C,
-    "permits_financial_use": False,
+    "permits_financial_use": FINANCIAL_USE,
     "farm": {key: value for key, value in FARM.items()},
     "secrets_mounted": {
         "PLANET_API_KEY": _key_present("PLANET_API_KEY"),
