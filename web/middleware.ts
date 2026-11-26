@@ -112,7 +112,12 @@ export async function middleware(request: NextRequest) {
   const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const publicOrigin = forwardedHost ? `${forwardedProto || "https"}://${forwardedHost}` : request.nextUrl.origin;
-  const login = new URL("/login", publicOrigin);
+  // Canonical-host sessions: the OIDC session cookie is host-scoped, so a
+  // redirect chain that alternates between the apex and the run.app host
+  // strips it on every hop. All auth traffic pins to FARM_CANONICAL_ORIGIN
+  // when set (founder directive: seges.ai is THE entry).
+  const canonical = process.env.FARM_CANONICAL_ORIGIN?.trim();
+  const login = new URL("/login", canonical || publicOrigin);
   login.searchParams.set("next", pathname + request.nextUrl.search);
   return stamp(NextResponse.redirect(login));
 }

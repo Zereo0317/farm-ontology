@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 // (0.0.0.0:8080); AGENTS.md §6 prescribes deriving the public origin from
 // the forwarded headers instead (ws8-v3 lesson — login redirects loop).
 function publicBaseUrl(request: Request): string {
+  const canonical = process.env.FARM_CANONICAL_ORIGIN?.trim();
+  if (canonical) return canonical;
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   if (host) return `${proto || "https"}://${host}`;
