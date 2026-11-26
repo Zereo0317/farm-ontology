@@ -1,3 +1,4 @@
+import { HtmlLang } from "@/lib/html-lang";
 import Link from "next/link";
 import { cookies } from "next/headers";
 
@@ -10,11 +11,12 @@ export default async function FielddayPage(props: {
 }) {
   const params = await props.searchParams;
   const jar = await cookies();
-  const lang = pitchLang(typeof params.lang === "string" ? params.lang : undefined, jar.get("farm-locale")?.value);
+  const lang = pitchLang((typeof params.lang === "string" ? params.lang : undefined) ?? (typeof params.locale === "string" ? params.locale : undefined), jar.get("farm-locale")?.value);
   const t = pitchCopy[lang];
 
   return (
     <main className="report pitch pitchFieldday">
+      <HtmlLang lang={lang} />
       <header className="hero">
         <p className="kicker">{t.p3.kicker}</p>
         <h1>{t.p3.title}</h1>

@@ -268,7 +268,7 @@ export function BoundaryWalker({ initialLang = "zh-TW", initialFarmId = "" }: { 
           </button>
         ))}
       </div>
-      <p className="kicker">{t.title}</p>
+      <h1 className="walkHeading">{t.title}</h1>
       <p className="sub">{t.sub}</p>
 
       <label>

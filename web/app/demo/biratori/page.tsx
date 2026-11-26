@@ -1,3 +1,4 @@
+import { HtmlLang } from "@/lib/html-lang";
 import { callRecord } from "@/lib/record";
 
 /**
@@ -46,9 +47,11 @@ export default async function DemoBiratori() {
   const stage = typeof snapshot.crop_stage === "string" ? snapshot.crop_stage : "…";
   const classC = typeof snapshot.class_c_policy === "string" ? snapshot.class_c_policy : "…";
   const finance = snapshot.permits_financial_use === true;
+  const lang = "zh-TW";
 
   return (
     <main className="report pitch">
+      <HtmlLang lang={lang} />
       <h1>北海道・平取 case</h1>
       <p className="lead">一塊真田、一本真帳。每個數字都可以被系統重新算給你看。</p>
       <dl className="caseFacts">

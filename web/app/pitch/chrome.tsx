@@ -18,6 +18,8 @@ export function pitchMetadata(page: string, title: string): Metadata {
 const LANG_SET: ReadonlySet<string> = new Set(PITCH_LANGS);
 
 export function pitchLang(param: string | undefined, cookie: string | undefined): PitchLang {
+  // Canonical param is ?lang=; ?locale= is accepted for symmetry with the
+  // landing's URL scheme (documented in web/docs/url-schemes.md).
   if (param && LANG_SET.has(param)) return param as PitchLang;
   if (cookie && LANG_SET.has(cookie)) return cookie as PitchLang;
   return "zh-TW";
