@@ -1,0 +1,8 @@
+name = "seges-site-worker"
+main = "seges-site-worker.js"
+compatibility_date = "2026-07-01"
+account_id = "8ddbc0187e7ea54fe377dd0a5f75fb58"
+keep_vars = true
+
+[vars]
+SITE_ORIGIN = "https://farm-seges-ai-landing-451400509859.asia-east1.run.app"
