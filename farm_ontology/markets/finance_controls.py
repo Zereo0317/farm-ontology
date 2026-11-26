@@ -9,8 +9,12 @@ Every approval path requires a caller-supplied signature verifier.  The
 verifier must check signatures against a separately managed trusted-key and
 revocation registry.  No verifier is configured by default, so missing trust
 configuration fails closed.  This module is a pure model and does not persist
-records; callers must persist its exported event sequence in an independently
-protected ledger before treating it as an operational record.
+records itself: persistence belongs to the independently protected ledger
+implemented in ``farm_ontology.markets.ledger_store``, which archives the
+signing payload of EVERY lifecycle event — proposals and the
+approval/cancel/halt evidence alike.  Lifecycle replay re-authenticates
+those archived signatures (``HedgeIntentLedger._replay``) instead of the
+earlier limitation that only PROPOSED events could be replayed.
 """
 from __future__ import annotations
 
@@ -33,6 +37,27 @@ _SIGNATURE = re.compile(r"^[0-9a-f]{128}$")
 # checked; a short period cannot be extended by this module.
 MAX_CAP_SHEET_PERIOD = timedelta(days=100)
 MAX_KILL_SWITCH_AGE = timedelta(minutes=5)
+
+#: Hash of the imaginary event before the first one of a chain.
+GENESIS_SHA256 = "0" * 64
+
+#: The ledger-store kind under which hedge-intent lifecycle events are
+#: archived (``farm_ontology.markets.ledger_store``).
+DEFAULT_HEDGE_LEDGER_KIND = "hedge-intent"
+
+#: Persisted signing-material roles per lifecycle event type.  A proposal is
+#: its own evidence (the artifact digest); every other lifecycle event must
+#: archive the detached signing payload of each SignedEvidence behind it, so
+#: replay can re-authenticate the recorded decision (audit gap G5).
+WITNESS_ROLES: dict["EventType", tuple[str, ...]] = {}
+
+
+def expected_witness_roles(event_type: "EventType") -> tuple[str, ...]:
+    """Roles of the signing records that must be archived for an event type."""
+    try:
+        return WITNESS_ROLES[event_type]
+    except KeyError:
+        raise ValueError(f"unsupported lifecycle event type: {event_type!r}") from None
 
 
 def _utc(value: datetime, name: str) -> datetime:
@@ -81,6 +106,13 @@ def _digest(value: object) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
 
 
+def canonical_digest(value: object) -> str:
+    """Public spelling of the module's canonical-SHA-256 helper (interop for
+    the independently protected ledger store, which hashes archived entries
+    with exactly these bytes)."""
+    return _digest(value)
+
+
 def _claim_list(values: tuple[str, ...]) -> str:
     """Unambiguous string encoding for list-valued signed evidence claims."""
     return _canonical(values).decode("utf-8")
@@ -112,6 +144,17 @@ class EventType(str, Enum):
     APPROVED_MANUAL = "approved-manual"
     CANCELLED = "cancelled"
     HALTED = "halted"
+
+
+WITNESS_ROLES.update({
+    EventType.PROPOSED: (),
+    EventType.APPROVED_MANUAL: (
+        "cap-sheet", "source-rights", "kill-switch",
+        "risk-owner-approval", "independent-approval",
+    ),
+    EventType.CANCELLED: ("cancel-evidence",),
+    EventType.HALTED: ("kill-switch",),
+})
 
 
 SignatureVerifier = Callable[[str, bytes, str], bool]
@@ -176,6 +219,79 @@ class SignedEvidence:
         })
 
 
+_SIGNING_RECORD_KEYS = frozenset({
+    "purpose", "subject_sha256", "issuer", "issued_at", "expires_at",
+    "claims", "signature_hex", "signing_payload_hex",
+})
+
+
+def evidence_signing_record(evidence: SignedEvidence) -> dict:
+    """Archive-ready signing material of one SignedEvidence (audit gap G5).
+
+    The record carries every byte the evidence's signature was made over —
+    purpose, subject, issuer, validity window, claims — plus the signature
+    itself and the exact ``signing_payload()`` bytes, so an independently
+    protected ledger can later reconstruct and re-authenticate the record.
+    """
+    if not isinstance(evidence, SignedEvidence):
+        raise ValueError("expected SignedEvidence for archival")
+    return {
+        "purpose": evidence.purpose.value,
+        "subject_sha256": evidence.subject_sha256,
+        "issuer": evidence.issuer,
+        "issued_at": _utc(evidence.issued_at, "issued_at").isoformat(),
+        "expires_at": _utc(evidence.expires_at, "expires_at").isoformat(),
+        "claims": [[key, value] for key, value in evidence.claims],
+        "signature_hex": evidence.signature_hex,
+        "signing_payload_hex": evidence.signing_payload().hex(),
+    }
+
+
+def evidence_from_signing_record(record: Mapping) -> SignedEvidence:
+    """Rebuild SignedEvidence from its archived signing record.
+
+    Fails closed: the rebuilt record must re-canonicalise to every archived
+    field, and its recomputed signing payload must equal the archived
+    payload bytes; drift in any field means the stored record can no longer
+    be proven to be the bytes that were signed, and is refused.
+    """
+    if not isinstance(record, Mapping) or frozenset(record) != _SIGNING_RECORD_KEYS:
+        raise ValueError("signing evidence record has an unexpected shape")
+    purpose = record["purpose"]
+    for name in ("subject_sha256", "issuer", "signature_hex", "signing_payload_hex",
+                 "issued_at", "expires_at", "purpose"):
+        if not isinstance(record[name], str):
+            raise ValueError(f"signing evidence record {name} must be a string")
+    claims = record["claims"]
+    if not isinstance(claims, list) or any(
+        not isinstance(pair, (list, tuple)) or len(pair) != 2
+        or not isinstance(pair[0], str) or not isinstance(pair[1], str)
+        for pair in claims
+    ):
+        raise ValueError("signing evidence record claims must be string pairs")
+    try:
+        rebuilt = SignedEvidence(
+            purpose=EvidencePurpose(purpose),
+            subject_sha256=record["subject_sha256"],
+            issuer=record["issuer"],
+            issued_at=datetime.fromisoformat(record["issued_at"]),
+            expires_at=datetime.fromisoformat(record["expires_at"]),
+            claims=tuple((pair[0], pair[1]) for pair in claims),
+            signature_hex=record["signature_hex"],
+        )
+    except (ValueError, TypeError, AttributeError) as error:
+        raise ValueError(f"signing evidence record is unusable ({error})") from error
+    canonical = evidence_signing_record(rebuilt)
+    stored_claims = [[pair[0], pair[1]] for pair in claims]
+    for key in _SIGNING_RECORD_KEYS:
+        mine, theirs = canonical[key], (
+            stored_claims if key == "claims" else record[key]
+        )
+        if mine != theirs:
+            raise ValueError(f"signing evidence record {key} is inconsistent")
+    return rebuilt
+
+
 def _verified(
     evidence: SignedEvidence,
     *,
@@ -197,6 +313,25 @@ def _verified(
         return verifier(evidence.issuer, evidence.signing_payload(), evidence.signature_hex) is True
     except Exception:
         return False
+
+
+def verify_signed_evidence(
+    evidence: SignedEvidence,
+    *,
+    purpose: EvidencePurpose,
+    subject_sha256: str,
+    at: datetime,
+    verifier: SignatureVerifier | None,
+) -> bool:
+    """Public spelling of the evidence verification predicate.
+
+    Purpose, subject binding and validity window are structural; only the
+    injected verifier establishes signer identity and cryptographic validity.
+    """
+    return _verified(
+        evidence, purpose=purpose, subject_sha256=subject_sha256,
+        at=at, verifier=verifier,
+    )
 
 
 @dataclass(frozen=True)
@@ -299,6 +434,74 @@ class HedgeOrderIntent:
     @property
     def fingerprint(self) -> str:
         return _digest(self.payload())
+
+    @classmethod
+    def from_payload(cls, payload: Mapping) -> "HedgeOrderIntent":
+        """Rebuild an intent from its canonical ``payload()`` document.
+
+        Used by the ledger store to resurrect proposals that were persisted
+        with their intent payload.  Fails closed on shape drift: every field
+        is re-validated by ``__post_init__`` and the rebuild must reproduce
+        the payload exactly, so an archive that survives this round-trip
+        provably carries the original immutable content.
+        """
+        required = frozenset({
+            "version", "intent_id", "artifact_sha256", "instrument_family",
+            "side", "quantity", "quantity_unit", "cap_sheet_sha256",
+            "rights_bundle_sha256", "scope", "feeds", "territory",
+            "uses_farmer_data", "farmer_consent_grant_fingerprints",
+            "created_at", "expires_at", "class_c_policy",
+        })
+        if not isinstance(payload, Mapping) or frozenset(payload) != required:
+            raise ValueError("intent payload has an unexpected shape")
+        quantity_raw = payload["quantity"]
+        if isinstance(quantity_raw, bool) or not isinstance(quantity_raw, (str, int)):
+            raise ValueError("intent payload quantity must be a decimal string or integer")
+        if not isinstance(payload["feeds"], list) or any(
+            not isinstance(feed, str) for feed in payload["feeds"]
+        ):
+            raise ValueError("intent payload feeds must be a list of strings")
+        if not isinstance(
+            payload["farmer_consent_grant_fingerprints"], list
+        ) or any(not isinstance(value, str) for value in payload["farmer_consent_grant_fingerprints"]):
+            raise ValueError("intent payload farmer consent fingerprints must be a list of strings")
+        for key in ("intent_id", "instrument_family", "side", "quantity_unit",
+                    "scope", "territory", "class_c_policy", "artifact_sha256",
+                    "cap_sheet_sha256", "rights_bundle_sha256"):
+            if not isinstance(payload[key], str):
+                raise ValueError(f"intent payload {key} must be a string")
+        if not isinstance(payload["uses_farmer_data"], bool):
+            raise ValueError("intent payload uses_farmer_data must be boolean")
+        if type(payload["version"]) is not int:
+            raise ValueError("intent payload version must be an integer")
+        for key in ("created_at", "expires_at"):
+            if not isinstance(payload[key], str):
+                raise ValueError(f"intent payload {key} must be an ISO-8601 string")
+        try:
+            rebuilt = cls(
+                intent_id=payload["intent_id"],
+                artifact_sha256=payload["artifact_sha256"],
+                instrument_family=payload["instrument_family"],
+                side=payload["side"],
+                quantity=Decimal(str(quantity_raw)),
+                quantity_unit=payload["quantity_unit"],
+                cap_sheet_sha256=payload["cap_sheet_sha256"],
+                rights_bundle_sha256=payload["rights_bundle_sha256"],
+                scope=payload["scope"],
+                feeds=tuple(payload["feeds"]),
+                territory=payload["territory"],
+                uses_farmer_data=payload["uses_farmer_data"],
+                farmer_consent_grant_fingerprints=tuple(payload["farmer_consent_grant_fingerprints"]),
+                created_at=datetime.fromisoformat(payload["created_at"]),
+                expires_at=datetime.fromisoformat(payload["expires_at"]),
+                class_c_policy=payload["class_c_policy"],
+                version=payload["version"],
+            )
+        except (ValueError, ArithmeticError, TypeError) as error:
+            raise ValueError(f"intent payload is unusable ({error})") from error
+        if rebuilt.payload() != dict(payload):
+            raise ValueError("intent payload does not rebuild identically")
+        return rebuilt
 
 
 @dataclass(frozen=True)
@@ -489,25 +692,191 @@ class IntentEvent:
         }
 
 
+def _authenticate_witness(
+    event: IntentEvent,
+    intent: HedgeOrderIntent,
+    witness: Mapping,
+    verifier: SignatureVerifier | None,
+) -> None:
+    """Re-authenticate a persisted signing witness at the event moment.
+
+    For every role the event type requires: rebuild the ``SignedEvidence``
+    from the archived signing record (payload-byte exactness enforced there),
+    re-check the purpose/subject bindings the model demands, re-compute the
+    evidence digest, and finally reproduce the event's recorded
+    ``evidence_sha256`` from the witness.  An optional trusted ``verifier``
+    re-validates every archived signature.  Anything less is a refusal.
+    """
+    required = expected_witness_roles(event.event_type)
+    try:
+        present = frozenset(witness)
+    except TypeError:
+        raise ValueError("persisted signing witness must be a mapping") from None
+    if present != frozenset(required):
+        raise ValueError("persisted signing witness does not cover the required roles")
+    if verifier is None:
+        # Trust configuration is mandatory for BELIEVING a recorded
+        # approval/cancel/halt: structural consistency alone cannot establish
+        # that the archived signatures were authored by the recorded issuers.
+        raise ValueError(
+            "persisted signing evidence cannot be authenticated without a trusted verifier"
+        )
+    rebuilt: dict[str, SignedEvidence] = {}
+    for role in required:
+        try:
+            evidence = evidence_from_signing_record(witness[role])
+        except ValueError as error:
+            raise ValueError(
+                f"persisted signing witness role {role!r} is unusable ({error})"
+            ) from error
+        rebuilt[role] = evidence
+
+    moment = _utc(event.at, "event at")
+    if event.event_type is EventType.APPROVED_MANUAL:
+        # Bind exactly as the live gate bound them when approving.
+        if not _verified(
+            rebuilt["cap-sheet"], purpose=EvidencePurpose.RISK_CAP_SHEET,
+            subject_sha256=intent.cap_sheet_sha256, at=moment, verifier=verifier,
+        ):
+            raise ValueError("persisted cap-sheet evidence does not re-authenticate")
+        if not _verified(
+            rebuilt["source-rights"], purpose=EvidencePurpose.SOURCE_RIGHTS,
+            subject_sha256=intent.rights_bundle_sha256, at=moment, verifier=verifier,
+        ):
+            raise ValueError("persisted source-rights evidence does not re-authenticate")
+        if not _verified(
+            rebuilt["kill-switch"], purpose=EvidencePurpose.KILL_SWITCH,
+            subject_sha256=intent.fingerprint, at=moment, verifier=verifier,
+        ):
+            raise ValueError("persisted kill-switch evidence does not re-authenticate")
+        for role in ("risk-owner-approval", "independent-approval"):
+            if not _verified(
+                rebuilt[role], purpose=EvidencePurpose.INTENT_APPROVAL,
+                subject_sha256=intent.fingerprint, at=moment, verifier=verifier,
+            ):
+                raise ValueError("persisted approval evidence does not re-authenticate")
+        if rebuilt["risk-owner-approval"].issuer != rebuilt["cap-sheet"].issuer:
+            raise ValueError("persisted cap-sheet signer must match the risk owner")
+        if _utc(rebuilt["risk-owner-approval"].issued_at, "risk owner approval time") >= _utc(
+            rebuilt["independent-approval"].issued_at, "independent review time"
+        ):
+            raise ValueError("persisted risk-owner approval must precede independent review")
+        if rebuilt["risk-owner-approval"].issuer == rebuilt["independent-approval"].issuer:
+            raise ValueError("persisted approvals must come from distinct reviewers")
+    elif event.event_type is EventType.CANCELLED:
+        if not _verified(
+            rebuilt["cancel-evidence"], purpose=EvidencePurpose.INTENT_CANCEL,
+            subject_sha256=intent.fingerprint, at=moment, verifier=verifier,
+        ):
+            raise ValueError("persisted cancellation evidence does not re-authenticate")
+        if event.actor != rebuilt["cancel-evidence"].issuer:
+            raise ValueError("persisted cancellation actor must match the signed issuer")
+    elif event.event_type is EventType.HALTED:
+        if not _verified(
+            rebuilt["kill-switch"], purpose=EvidencePurpose.KILL_SWITCH,
+            subject_sha256=intent.fingerprint, at=moment, verifier=verifier,
+        ):
+            raise ValueError("persisted kill-switch evidence does not re-authenticate")
+        if event.actor != rebuilt["kill-switch"].issuer:
+            raise ValueError("persisted HALT actor must match the signed issuer")
+    else:
+        raise ValueError(f"unsupported lifecycle event type: {event.event_type!r}")
+
+    # Recompute the evidence digest the live call recorded and bind it.
+    recomputed = _digest(witness)
+    if recomputed != event.evidence_sha256:
+        raise ValueError("persisted signing evidence does not reproduce the recorded digest")
+
+
 class HedgeIntentLedger:
     """Append-only, hash-chained in-memory lifecycle; intentionally no submit API."""
 
     def __init__(self, events: Iterable[IntentEvent] = (),
-                 intents: Iterable[HedgeOrderIntent] = ()) -> None:
+                 intents: Iterable[HedgeOrderIntent] = (),
+                 *,
+                 witnesses: Mapping[int, dict] | None = None,
+                 verifier: SignatureVerifier | None = None) -> None:
+        """Replay a lifecycle; archived witnesses authenticate non-PROPOSED events.
+
+        ``witnesses`` maps an event sequence to the archived signing records
+        (``evidence_signing_record`` dicts) behind it.  With them present the
+        full lifecycle — approve, cancel, halt — replays with its persisted
+        signatures; without them replay still accepts only PROPOSED events
+        (fail closed).  ``verifier``, when supplied, cryptographically
+        re-validates archived signatures against the persisted payloads.
+        """
         self._events: list[IntentEvent] = []
         self._intents: dict[str, HedgeOrderIntent] = {}
         self._states: dict[str, IntentState] = {}
+        self._witnesses: dict[int, dict] = {}
         for intent in intents:
             if not isinstance(intent, HedgeOrderIntent):
                 raise ValueError("intent replay inputs must be HedgeOrderIntent records")
             if intent.intent_id in self._intents:
                 raise ValueError("duplicate immutable intent id in replay input")
             self._intents[intent.intent_id] = intent
-        self._replay(tuple(events))
+        self._replay(tuple(events), witnesses=witnesses, verifier=verifier)
+        # Persistence wiring (owned by the ledger-store adapter; inert in the
+        # pure model).  ``_persist_hook`` is called after each accepted
+        # mutation with (event, intent, witness); an exception rolls the
+        # in-memory change back.  ``_capture_witness`` archives the signing
+        # records of non-PROPOSED events and records their digest.
+        self._persist_hook = None
+        self._capture_witness = False
 
     @property
     def events(self) -> tuple[IntentEvent, ...]:
         return tuple(self._events)
+
+    @property
+    def signing_witnesses(self) -> tuple[tuple[int, dict], ...]:
+        """Archived signing records per event sequence (persistence receipts)."""
+        return tuple(sorted(self._witnesses.items()))
+
+    def intent(self, intent_id: str) -> HedgeOrderIntent | None:
+        """Return the recorded intent for an id, or None when unrecorded."""
+        return self._intents.get(intent_id)
+
+    # ---- persistence wiring ---------------------------------------------
+
+    def attach_persistence(self, sink, *, capture_signing_witness: bool = True) -> None:
+        """Persist every accepted mutation through ``sink``.
+
+        ``sink(event, intent, witness)`` is invoked after the in-memory
+        record accepts an event; raising rolls the in-memory change back so
+        the model never outruns the independently protected ledger.
+        ``capture_signing_witness`` additionally archives the signing
+        payloads of approval/cancel/halt evidence (audit gap G5).
+        """
+        if not callable(sink):
+            raise ValueError("persistence sink must be callable(event, intent, witness)")
+        self._persist_hook = sink
+        self._capture_witness = bool(capture_signing_witness)
+
+    def _finalize(self, event: IntentEvent, intent: HedgeOrderIntent,
+                  previous_state: IntentState | None, witness: dict | None) -> IntentEvent:
+        hook = self._persist_hook
+        if hook is None:
+            return event
+        try:
+            hook(event, intent, witness)
+        except Exception:
+            self._undo_last_event(
+                previous_state, forget_intent=event.event_type is EventType.PROPOSED,
+            )
+            raise
+        return event
+
+    def _approve_witness(self, cap_sheet: SignedEvidence,
+                         source_rights: SignedEvidence, kill_switch: SignedEvidence,
+                         approvals: ApprovalBundle) -> dict:
+        return {
+            "cap-sheet": evidence_signing_record(cap_sheet),
+            "source-rights": evidence_signing_record(source_rights),
+            "kill-switch": evidence_signing_record(kill_switch),
+            "risk-owner-approval": evidence_signing_record(approvals.risk_owner),
+            "independent-approval": evidence_signing_record(approvals.independent_reviewer),
+        }
 
     @property
     def intents(self) -> tuple[HedgeOrderIntent, ...]:
@@ -542,6 +911,21 @@ class HedgeIntentLedger:
         self._states[intent.intent_id] = IntentState(event_type.value)
         return event
 
+    def _undo_last_event(self, previous_state: IntentState | None, *,
+                         forget_intent: bool = False) -> None:
+        """Roll back the last accepted event; adapters use this when the
+        independently protected ledger refuses the write, so the in-memory
+        model can never outrun durable storage."""
+        if not self._events:
+            return
+        event = self._events.pop()
+        if forget_intent:
+            self._intents.pop(event.intent_id, None)
+        if previous_state is None:
+            self._states.pop(event.intent_id, None)
+        else:
+            self._states[event.intent_id] = previous_state
+
     def propose(self, intent: HedgeOrderIntent, *, at: datetime, actor: str) -> IntentEvent:
         _actor(actor, "proposer identity")
         existing = self._intents.get(intent.intent_id)
@@ -552,7 +936,8 @@ class HedgeIntentLedger:
         if _utc(at, "at") < _utc(intent.created_at, "created_at") or _utc(at, "at") >= _utc(intent.expires_at, "expires_at"):
             raise ValueError("proposal is outside its validity window")
         self._intents[intent.intent_id] = intent
-        return self._append(intent, EventType.PROPOSED, at, actor, intent.artifact_sha256)
+        event = self._append(intent, EventType.PROPOSED, at, actor, intent.artifact_sha256)
+        return self._finalize(event, intent, None, None)
 
     def approve_for_manual_review(self, intent_id: str, *, at: datetime,
                                   actor: str, cap_sheet: SignedEvidence | None,
@@ -571,7 +956,13 @@ class HedgeIntentLedger:
             raise ValueError("finance approval gates did not pass")
         if actor != decision.independent_reviewer:
             raise ValueError("the independent reviewer must record the approval event")
-        return self._append(intent, EventType.APPROVED_MANUAL, at, actor, decision.evidence_sha256)
+        witness = (
+            self._approve_witness(cap_sheet, source_rights, kill_switch, approvals)
+            if self._capture_witness else None
+        )
+        evidence_sha256 = _digest(witness) if witness else decision.evidence_sha256
+        event = self._append(intent, EventType.APPROVED_MANUAL, at, actor, evidence_sha256)
+        return self._finalize(event, intent, IntentState.PROPOSED, witness)
 
     def cancel(self, intent_id: str, *, at: datetime, actor: str,
                signed_cancel_evidence: SignedEvidence,
@@ -586,7 +977,14 @@ class HedgeIntentLedger:
             raise ValueError("cancellation requires trusted, current signed evidence")
         if actor != signed_cancel_evidence.issuer:
             raise ValueError("cancellation event actor must match signed issuer")
-        return self._append(intent, EventType.CANCELLED, at, actor, signed_cancel_evidence.fingerprint)
+        witness = (
+            {"cancel-evidence": evidence_signing_record(signed_cancel_evidence)}
+            if self._capture_witness else None
+        )
+        evidence_sha256 = _digest(witness) if witness else signed_cancel_evidence.fingerprint
+        previous_state = self._states.get(intent_id)
+        event = self._append(intent, EventType.CANCELLED, at, actor, evidence_sha256)
+        return self._finalize(event, intent, previous_state, witness)
 
     def halt(self, intent_id: str, *, at: datetime, actor: str,
              kill_switch: SignedEvidence,
@@ -601,9 +999,20 @@ class HedgeIntentLedger:
             raise ValueError("HALT requires trusted, current signed kill-switch evidence")
         if actor != kill_switch.issuer:
             raise ValueError("HALT event actor must match signed issuer")
-        return self._append(intent, EventType.HALTED, at, actor, kill_switch.fingerprint)
+        witness = (
+            {"kill-switch": evidence_signing_record(kill_switch)}
+            if self._capture_witness else None
+        )
+        evidence_sha256 = _digest(witness) if witness else kill_switch.fingerprint
+        previous_state = self._states.get(intent_id)
+        event = self._append(intent, EventType.HALTED, at, actor, evidence_sha256)
+        return self._finalize(event, intent, previous_state, witness)
 
-    def _replay(self, events: tuple[IntentEvent, ...]) -> None:
+    def _replay(self, events: tuple[IntentEvent, ...], *,
+                witnesses: Mapping[int, dict] | None = None,
+                verifier: SignatureVerifier | None = None) -> None:
+        if witnesses is not None and not isinstance(witnesses, Mapping):
+            raise ValueError("replay witnesses must map event sequences to signing records")
         previous = "0" * 64
         last_at: datetime | None = None
         for index, event in enumerate(events, 1):
@@ -613,11 +1022,6 @@ class HedgeIntentLedger:
                 raise ValueError("intent event sequence or previous hash is invalid")
             if event.event_sha256 != _digest(event.payload()):
                 raise ValueError("intent event hash does not match its content")
-            # Hash chains detect accidental corruption, not a forged reviewer.
-            # There is no persisted signature-verification contract in this
-            # model, so only unsigned proposal records can be replayed.
-            if event.event_type is not EventType.PROPOSED:
-                raise ValueError("replayed lifecycle event lacks cryptographic authentication")
             _actor(event.actor, "event actor")
             _hash(event.intent_sha256, "event intent_sha256")
             _hash(event.evidence_sha256, "event evidence_sha256")
@@ -628,6 +1032,21 @@ class HedgeIntentLedger:
             intent = self._intents.get(event.intent_id)
             if intent is None or intent.fingerprint != event.intent_sha256:
                 raise ValueError("intent event does not bind to matching immutable content")
+            # Hash chains detect accidental corruption, not a forged reviewer.
+            # A lifecycle event is therefore believed only when the persisted
+            # signing material behind it (audited as gap G5) re-authenticates
+            # the recorded decision; a replay fed bare recomputed hashes —
+            # with no archived signature for an approval/cancel/halt — still
+            # fails closed exactly as before.
+            if event.event_type is not EventType.PROPOSED:
+                witness = (witnesses or {}).get(event.sequence)
+                if witness is None:
+                    raise ValueError(
+                        "replayed lifecycle event lacks persisted signing evidence "
+                        "(cryptographic authentication)"
+                    )
+                _authenticate_witness(event, intent, witness, verifier)
+                self._witnesses[event.sequence] = dict(witness)
             if event.event_type is EventType.PROPOSED:
                 if state is not None:
                     raise ValueError("intent may be proposed only once")
@@ -741,8 +1160,12 @@ class PaperReconciliationJournal:
 
 
 __all__ = [
-    "ApprovalBundle", "ApprovalRole", "EvidencePurpose", "EventType",
-    "GateDecision", "HedgeIntentLedger", "HedgeOrderIntent", "IntentEvent",
+    "ApprovalBundle", "ApprovalRole", "DEFAULT_HEDGE_LEDGER_KIND",
+    "EvidencePurpose", "EventType", "GENESIS_SHA256", "GateDecision",
+    "HedgeIntentLedger", "HedgeOrderIntent", "IntentEvent",
     "IntentState", "PaperReconciliationJournal", "ReconciliationEntry",
-    "SignatureVerifier", "SignedEvidence", "evaluate_manual_approval",
+    "SignatureVerifier", "SignedEvidence", "WITNESS_ROLES",
+    "canonical_digest", "evidence_from_signing_record",
+    "evidence_signing_record", "evaluate_manual_approval",
+    "expected_witness_roles", "verify_signed_evidence",
 ]
