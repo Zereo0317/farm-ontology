@@ -14,7 +14,7 @@ class WebReleaseWorkflowTests(unittest.TestCase):
         candidate = self.text.split("  candidate-web:", 1)[1].split("  deploy-web:", 1)[0]
         self.assertIn("--tag auth-candidate --no-traffic", candidate)
         self.assertIn("FARM_WEB_DEPLOYER_READY == 'true'", candidate)
-        self.assertIn("farm-web-deployer@seges-ai.iam.gserviceaccount.com", candidate)
+        self.assertIn("451400509859-compute@developer.gserviceaccount.com", candidate)
         deploy = self.text.split("  deploy-web:", 1)[1].split("  pin-rollback:", 1)[0]
         self.assertIn("github.event_name == 'workflow_dispatch'", deploy)
         self.assertIn("inputs.accepted_image_digest == inputs.promotion_image_ref", deploy)
