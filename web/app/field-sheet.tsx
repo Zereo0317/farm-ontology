@@ -165,7 +165,7 @@ export function FieldSheet({ initialLat = "", initialLon = "", initialFarmId = "
         body: JSON.stringify({ ...payload, request_id: requestId }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "save failed");
+      if (!response.ok) throw new Error(body.error || body.reason || "save failed");
       setObsMsg(text.saved(body.file));
       clearRequestId("observation");
       setObsBad(false);
@@ -198,7 +198,7 @@ export function FieldSheet({ initialLat = "", initialLon = "", initialFarmId = "
         body: JSON.stringify({ ...payload, request_id: requestId }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "save failed");
+      if (!response.ok) throw new Error(body.error || body.reason || "save failed");
       setNoteMsg(text.noteSaved(body.file));
       clearRequestId("note");
       event.currentTarget.reset();

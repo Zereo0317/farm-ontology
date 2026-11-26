@@ -242,7 +242,7 @@ export function BoundaryWalker({ initialLang = "zh-TW", initialFarmId = "" }: { 
         body: JSON.stringify({ ...body, request_id: requestId }),
       });
       const doc = await response.json();
-      if (!response.ok) throw new Error(doc.error || "save failed");
+      if (!response.ok) throw new Error(doc.error || doc.reason || "save failed");
       setResult({
         file: doc.file,
         areaHa: doc.walk?.area_estimate_ha ?? null,
