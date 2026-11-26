@@ -35,8 +35,12 @@ SOP = ROOT / "docs" / "field-sop.md"
 def record_dir() -> Path:
     raw = os.environ.get("FARM_RECORD_DIR", "").strip()
     path = Path(raw) if raw else ROOT / "field-notes"
-    path.mkdir(parents=True, exist_ok=True)
-    (path / "notes").mkdir(exist_ok=True)
+    # GCS mode never touches the local filesystem: the path only names the
+    # object-tree prefix (creating it in a read-only container crashed
+    # every record op with Errno 13 before the backend was even consulted).
+    if os.environ.get("FARM_RECORD_BACKEND", "").strip().lower() != "gcs":
+        path.mkdir(parents=True, exist_ok=True)
+        (path / "notes").mkdir(exist_ok=True)
     return path
 
 
