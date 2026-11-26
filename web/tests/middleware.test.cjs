@@ -43,6 +43,20 @@ function request(pathname, session) {
   };
 }
 
+test('the login redirect uses the forwarded public origin, not the internal one', async () => {
+  configure();
+  // Behind the Cloud Run edge, nextUrl.origin can be the internal
+  // 0.0.0.0:8080 (ws8-v3 incident); the middleware must derive the public
+  // origin from x-forwarded-host/proto or redirects loop on 0.0.0.0.
+  const forwarded = {
+    nextUrl: new URL('https://0.0.0.0:8080/field'),
+    headers: new Headers({ 'x-forwarded-host': 'seges.ai', 'x-forwarded-proto': 'https', 'accept-language': 'ja' }),
+    cookies: { get: () => undefined },
+  };
+  const response = await middleware(forwarded);
+  assert.equal(response.kind, 'redirect');
+});
+
 test('farm pages and APIs require a valid individual session', async () => {
   configure();
   assert.equal((await middleware(request('/api/observations'))).status, 401);

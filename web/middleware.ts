@@ -109,7 +109,10 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  const login = new URL("/login", request.nextUrl.origin);
+  const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const publicOrigin = forwardedHost ? `${forwardedProto || "https"}://${forwardedHost}` : request.nextUrl.origin;
+  const login = new URL("/login", publicOrigin);
   login.searchParams.set("next", pathname + request.nextUrl.search);
   return stamp(NextResponse.redirect(login));
 }
