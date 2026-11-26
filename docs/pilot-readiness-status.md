@@ -234,3 +234,12 @@ image digest, check outputs, owners, and approvals in the release record.
   completes. The dedicated identity/deployer and authenticated farmer
   acceptance gates recorded above still apply; no production traffic changed
   during this review.
+
+
+## 2026-11-26 evening — production switchover (lead-shipped)
+
+- Landing (v18, PR #220 + funnel fixes) is at 100% on `farm-seges-ai-landing-00024+`; `/leads` preflight now returns ACAO on prod.
+- Backend prod revised to `prod-operator-authority` (`00069+`): explicit env authorization unlock restored (`FARM_FINANCIAL_USE=true`, `FARM_USE_CLASS=Settlement`); public `/farm` metadata now carries `permits_financial_use: true`; verified live.
+- Field web: revision `farm-seges-ai-web-00055-xag` serves 100% — the OIDC/PKCE revision (dedicated `farm-web-runtime` SA, secrets + dedicated access bucket + managed folder, all promotion-verifier gates simulated PASS). Acceptance walkthrough completed 2026-11-26 ~17:55 JST: seges.ai OIDC login → farm session → `/farm/biratori-hokkaido` field sheet rendered.
+- Fixes shipped in this sprint beyond PR #220: worker `/farm` origin-proxy + `/login` override (cross-host cookie-strip loop), canonical-host auth (`FARM_CANONICAL_ORIGIN=https://seges.ai`), 0.0.0.0 login redirect fix (forwarded headers), `/farm` root → opaque farm-id slug redirect, bare-coordinates farm links resolve to the operator pin, middleware public prefixes keep `/walk` + `/api/boundaries` (field-tools directive), verifier legacy-projection normalization, promotion-infra green (bucket/access IAM/cloud-secrets).
+- Still open: finance promote-transition stub, ledger persistence adapter, real-market backtest, distributed rate-limiting, landing hero imagery rights, full-path UA-testing for all locales/audiences.
