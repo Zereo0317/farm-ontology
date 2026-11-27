@@ -1,6 +1,4 @@
 import { HtmlLang } from "@/lib/html-lang";
-import { callRecord } from "@/lib/record";
-
 /**
  * /demo/biratori — the Hokkaido case study (public, no-login).
  * Everything shown is pulled from the governed ledger live; nothing is
@@ -33,9 +31,14 @@ const LINES = [
 ];
 
 async function ledgerSnapshot(): Promise<Record<string, unknown>> {
+  // The web runtime does not carry farm_ontology's python bridge; the
+  // governed status lives at the backend HTTP edge instead.
+  const base = process.env.FARM_API_BASE?.trim();
+  if (!base) return {};
   try {
-    const result = await callRecord({ op: "status", farm_id: "biratori-hokkaido" });
-    return (result.body ?? {}) as Record<string, unknown>;
+    const res = await fetch(`${base}/farm`, { next: { revalidate: 60 } });
+    if (!res.ok) return {};
+    return (await res.json()) as Record<string, unknown>;
   } catch {
     return {};
   }
