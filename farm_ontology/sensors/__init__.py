@@ -14,6 +14,14 @@ from farm_ontology.sensors.device_contract import (
     SensorAdapterManifest,
     validate_normalized_measurement,
 )
+from farm_ontology.sensors.adapter_sdk import (
+    AdapterRegistry,
+    AdapterSdkError,
+    LocalSensorOutbox,
+    SensorAdapter,
+    SyntheticSoilVwcAdapter,
+    synthetic_soil_uplink,
+)
 
 __all__ = [
     "DEVICE_CLASSES",
@@ -26,4 +34,10 @@ __all__ = [
     "PropertyBinding",
     "SensorAdapterManifest",
     "validate_normalized_measurement",
+    "AdapterRegistry",
+    "AdapterSdkError",
+    "LocalSensorOutbox",
+    "SensorAdapter",
+    "SyntheticSoilVwcAdapter",
+    "synthetic_soil_uplink",
 ]
