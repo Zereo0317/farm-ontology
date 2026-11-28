@@ -159,4 +159,3 @@ shadow recommendations are treated as decision support.
    emergency HALT; prove idempotent replay and safe recovery.
 7. Run shadow-mode field validation and adverse-event review before enabling
    any operation beyond manual assistance.
-
