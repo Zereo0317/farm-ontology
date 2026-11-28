@@ -24,7 +24,7 @@ farm/site package + capability registry
   └─ registered feeds, sensors, actuators, safety limits and evidence
           │
           ▼
-standard adapters → immutable observations and provenance
+versioned sensor/feed adapters → validated envelopes → immutable observations and provenance
           │             (time, native support, units, calibration, licence,
           │              method/version, quality, uncertainty)
           ▼
@@ -50,6 +50,15 @@ or turn a missing value into a default. If a required input is absent or
 invalid, the result is a named gap and no command is emitted.
 
 ## Feedback update contract
+
+`farm_ontology.sensors.device_contract.validate_normalized_measurement` now
+validates a read-only, provider-neutral envelope against a versioned device
+manifest: device and adapter identity, property/unit/support binding,
+calibration, quality, source/licence references, raw-payload digest, event
+times, uncertainty and freshness. It gives an accepted event a deterministic
+replay identity. This is a local contract only. It does not speak LoRaWAN,
+MQTT, Modbus, Bluetooth, SensorThings, CAN or a vendor API; no physical sensor
+or endpoint compatibility is implied.
 
 `farm_ontology.agronomy.state_estimation.assimilate_measurement` currently
 implements the first primitive in this path: scalar Kalman assimilation of a
