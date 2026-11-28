@@ -76,4 +76,3 @@ review, and a recorded compatibility tuple.
    survive Store admission without rewriting native support.
 4. Run a read-only bench and field acceptance with the named equipment before
    enabling the adapter for real farm data.
-
