@@ -41,6 +41,11 @@ from farm_ontology.actuation.taskset_export import (
     build_taskset_zip,
     validate_taskset_zip,
 )
+from farm_ontology.actuation.irrigation_control import (
+    IrrigationActionOutcome,
+    IrrigationCapability,
+    SupervisedIrrigationSimulator,
+)
 
 __all__ = [
     # command_ledger
@@ -73,4 +78,8 @@ __all__ = [
     "build_grid_binary",
     "build_taskset_zip",
     "validate_taskset_zip",
+    # irrigation simulation workflow
+    "IrrigationActionOutcome",
+    "IrrigationCapability",
+    "SupervisedIrrigationSimulator",
 ]

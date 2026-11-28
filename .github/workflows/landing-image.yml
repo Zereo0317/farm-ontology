@@ -29,8 +29,8 @@ jobs:
     outputs:
       image_digest: ${{ steps.image.outputs.image_digest }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
@@ -43,12 +43,12 @@ jobs:
           npm test
           NITRO_PRESET=node-server npx vite build
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Build and push with Cloud Build
         shell: pwsh
         run: ./landing/tools/landing-image-build.ps1 -TagSuffix "ci-${{ github.sha }}"
@@ -71,12 +71,12 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Deploy tested digest, shift traffic, and smoke the apex
         env:
           IMAGE_DIGEST: ${{ needs.build-push.outputs.image_digest }}

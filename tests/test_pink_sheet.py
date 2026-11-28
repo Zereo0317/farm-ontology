@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from farm_ontology.pink_sheet import PINK_SHEET_MONTHLY_URL, record_series_header
+from farm_ontology.pink_sheet import PINK_SHEET_MONTHLY_URL, fetch_monthly_workbook, record_series_header
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = PINK_SHEET_MONTHLY_URL
@@ -21,7 +21,8 @@ class PinkSheetTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_fetch_stores_one_series_header_without_a_price(self):
-        saved = record_series_header(self.folder, citation_url=URL)
+        with patch("farm_ontology.pink_sheet.fetch_monthly_workbook", return_value=b"PK\x03\x04captured fixture"):
+            saved = record_series_header(self.folder, citation_url=URL)
         header = saved["header"]
         self.assertEqual(header["publisher"], "World Bank")
         self.assertEqual(header["product_version"], "CMO Historical Data Monthly")
@@ -39,6 +40,22 @@ class PinkSheetTests(unittest.TestCase):
         self.assertNotIn("yield", text)
         self.assertNotIn("trade", text)
         self.assertEqual(len(list(self.folder.iterdir())), 1)
+
+    def test_fetch_validates_the_captured_workbook_response(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b"PK\x03\x04captured fixture"
+
+        with patch("farm_ontology.pink_sheet.urllib.request.urlopen", return_value=Response()) as urlopen:
+            body = fetch_monthly_workbook(URL)
+        self.assertTrue(body.startswith(b"PK"))
+        self.assertEqual(urlopen.call_count, 1)
 
     def test_missing_citation_writes_nothing(self):
         with patch("farm_ontology.pink_sheet.urllib.request.urlopen", side_effect=AssertionError("fetched")):
