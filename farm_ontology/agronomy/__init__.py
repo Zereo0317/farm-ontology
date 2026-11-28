@@ -63,6 +63,19 @@ from farm_ontology.agronomy.phenology import (
     phenology_reading,
     profile_or_raise,
 )
+from farm_ontology.agronomy.profiles import (
+    Applicability,
+    CropSiteProfile,
+    CropSiteProfileRegistry,
+    DEFAULT_CROP_SITE_PROFILES,
+    EvidenceSource,
+    ProfileContext,
+    SOUTH_CHINA_TEA_PROFILE,
+    SOYBEAN_HOKKAIDO_PROFILE,
+    SourcedParameter,
+    UnavailableParameter,
+    require_profile_parameter,
+)
 from farm_ontology.agronomy.recommendation import (
     KINDS,
     REFUSED_KINDS,
@@ -109,6 +122,18 @@ __all__ = [
     "PhenologyReading",
     "daily_gdd_contribution",
     "phenology_reading",
+    # crop/site profile packages
+    "Applicability",
+    "CropSiteProfile",
+    "CropSiteProfileRegistry",
+    "DEFAULT_CROP_SITE_PROFILES",
+    "EvidenceSource",
+    "ProfileContext",
+    "SOUTH_CHINA_TEA_PROFILE",
+    "SOYBEAN_HOKKAIDO_PROFILE",
+    "SourcedParameter",
+    "UnavailableParameter",
+    "require_profile_parameter",
     # irrigation
     "DEFAULT_IRRIGATION_CONFIG",
     "KCB_ANCHOR_PROFILES",
