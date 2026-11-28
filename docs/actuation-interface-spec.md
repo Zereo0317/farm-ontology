@@ -342,3 +342,21 @@ reviewed per the doctrine cadence.
 - No agronomy judgement (`AdvisoryRef` is a pointer; fixtures until WS3).
 - No decision on which machines get bought. The gate decides WHEN code may
   speak to machines; procurement is a human card away from the board.
+
+## 11. Supervised irrigation simulator (2026-11)
+
+`farm_ontology.actuation.irrigation_control.SupervisedIrrigationSimulator`
+adds an offline lifecycle exercise for a site-scoped irrigation proposal.
+It requires recommendation/profile references, calibration/support stamps,
+caller-supplied device bounds and an expiry; the existing `CommandLedger`
+enforces human four-eyes approval. A fake controller then writes explicitly
+simulation-only dispatch and acknowledgement receipts and returns a linked
+delivery outcome, including commanded-versus-delivered litres.
+
+This component has no physical transport and its real-actuation assessment is
+always false, even if a `GateCheck` is constructed with all facts true. A
+simulation receipt does not satisfy `field_drill_completed`. The six Phase-4
+facts, signed kill-switch contract, company/procurement human gates and
+site-specific safety/regulatory evidence remain required before any real
+controller integration. Fertilisation and pesticide operations are not
+enabled by the irrigation workflow.
