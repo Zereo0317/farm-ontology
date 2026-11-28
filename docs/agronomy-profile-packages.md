@@ -76,3 +76,34 @@ parameter = require_profile_parameter(
 
 The example intentionally raises a gap until a sourced and reviewed
 threshold is added in a later package version.
+
+## Irrigation candidate optimizer
+
+`farm_ontology.agronomy.irrigation_optimizer.optimize_irrigation_candidates`
+is an advisory-only candidate evaluator. It does not calculate a crop's
+water need from generic constants and it does not send a device command. A
+caller supplies a provenance-bearing root-zone depletion state, forecast ET
+and rainfall, and gross-application/energy candidates already bounded by the
+site's hydraulic model. The evaluator uses the state variance to form an
+upper depletion estimate, rejects candidates exceeding verified stress,
+refill, or maximum-application limits, then minimizes the caller-specified
+water and energy cost. No objective weights, weather values, thresholds, or
+hydraulic capacity are silently defaulted.
+
+The profile must provide verified, in-scope parameters with these exact IDs
+and units: `root-zone-stress-threshold-mm` (`mm`),
+`root-zone-refill-capacity-mm` (`mm`), `application-efficiency` (`fraction`),
+and `max-gross-irrigation-mm` (`mm`). Parameter applicability must match the
+requested crop, country, region, cultivar and elevation envelope. The
+South-China tea starter currently has none of these values, so it fails
+closed; adding locally measured and agronomist-reviewed values requires a
+new profile version. The optimizer returns `control_authorized: false` and
+cannot bypass the separate supervised irrigation approval and actuator
+safety gates.
+
+The 2026 Jiangxi tea drip-irrigation study is a method-discovery source, not
+a parameter source for other farms. It concerns a specific site, soil,
+cultivar, terrain and emitter configuration, and reports that slope,
+nonlinear soil seepage, irrigation delay and moisture-sensor lag affect
+water distribution. Its values must not be copied into the starter package
+without local validation: [Agronomy 2026 field study](https://doi.org/10.3390/agronomy16111089).

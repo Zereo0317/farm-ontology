@@ -92,6 +92,11 @@ from farm_ontology.agronomy.state_estimation import (
     StateEstimate,
     assimilate_measurement,
 )
+from farm_ontology.agronomy.irrigation_optimizer import (
+    IrrigationCandidate,
+    IrrigationOptimization,
+    optimize_irrigation_candidates,
+)
 from farm_ontology.agronomy.spray_windows import (
     MIN_RUN_HOURS,
     RAINFAST_HOURS,
@@ -177,4 +182,8 @@ __all__ = [
     "CalibratedMeasurement",
     "StateEstimate",
     "assimilate_measurement",
+    # irrigation optimization
+    "IrrigationCandidate",
+    "IrrigationOptimization",
+    "optimize_irrigation_candidates",
 ]
