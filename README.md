@@ -128,7 +128,7 @@ rollback, budget, webhook-alerting, nightly-export). Web image:
 | `landing/` | the five-locale marketing site (TanStack Start → nitro; vendored; no platform chrome) |
 | `fixtures/soil/` | the harvested WFP soil-chemistry dataset + first-light report |
 | `pipelines/`, `perf/`, `hardware/`, `fixtures/` | workers, load-testing evidence, sensor kit plans, recorded test data |
-| `docs/` | plan of record and ops: `decision-infra-roadmap.md`, `global-feedback-loop-architecture.md`, `global-interoperability-profile.md`, `forward-deploy-installation.md`, `agronomy-profile-packages.md`, `alpha-fairness-doctrine.md`, `backend-live.md`, `web-ops.md`, `seges-apex-switchover.md`, `final-verification-report.md`, `decision-log.md`, `legal/commercial-punchlist.md`, `field-playbook.md` / `field-sop.md` / `later-routes.md` |
+| `docs/` | plan of record and ops: `decision-infra-roadmap.md`, `global-feedback-loop-architecture.md`, `global-interoperability-profile.md`, `global-tech-stack-baseline-2026-11.md`, `site-bundle-schema.md`, `forward-deploy-installation.md`, `agronomy-profile-packages.md`, `alpha-fairness-doctrine.md`, `backend-live.md`, `web-ops.md`, `seges-apex-switchover.md`, `final-verification-report.md`, `decision-log.md`, `legal/commercial-punchlist.md`, `field-playbook.md` / `field-sop.md` / `later-routes.md` |
 
 ## Licence honesty — today's state (2026-11-19)
 

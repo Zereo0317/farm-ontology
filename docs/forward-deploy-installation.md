@@ -127,11 +127,15 @@ Before installation, confirm all of the following or record a blocker:
 
 ## 3. Install the site in read-only mode
 
-1. **Approve the site bundle.** Freeze a versioned configuration containing
-   site ID, timezone, units, locale, parcel/zone geometry and provenance,
-   sensor-to-zone mappings, crop/variety package, feed licences, retention,
-   contacts, alert destinations, and gateway policy. Review the geometry in
-   the field; record positioning method and error. Never use a map pin as a
+1. **Approve the site bundle.** Use the machine-checked v1 structure in
+   [`site-bundle-schema.md`](site-bundle-schema.md), then attach the full
+   deployment records for site ID, timezone, units, locale, parcel/zone
+   geometry and provenance, sensor-to-zone mappings, crop/variety package,
+   feed licences, retention, contacts, alert destinations, and gateway
+   policy. The schema holds reviewed references and separate rollout state
+   for irrigation, fertigation, and pesticide; it does not certify the
+   referenced evidence or authorize commands. Review the geometry in the
+   field; record positioning method and error. Never use a map pin as a
    surveyed boundary.
 2. **Provision the cloud tenant and regions.** Select provider-neutral
    deployment targets, primary/recovery region, identity provider, storage,

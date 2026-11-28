@@ -61,10 +61,10 @@ jobs:
       image_tag: ${{ steps.img.outputs.image_tag }}
       image_digest: ${{ steps.img.outputs.image_digest }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Install and test web before image build
@@ -73,12 +73,12 @@ jobs:
           npm ci --ignore-scripts
           node --test tests/*.test.cjs
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Build and push image via Cloud Build
         run: |
           TAG="ci-$(git rev-parse --short HEAD)"
@@ -106,12 +106,12 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Create a tagged no-traffic candidate
         env:
           IMAGE_DIGEST: ${{ needs.build-push.outputs.image_digest }}
@@ -136,7 +136,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Require protected farmer acceptance for this exact digest
         env:
           IMAGE_DIGEST: ${{ inputs.promotion_image_ref }}
@@ -146,12 +146,12 @@ jobs:
           set -euo pipefail
           python -c 'import os; from deploy.verify_web_promotion_config import verify_promotion_acceptance; verify_promotion_acceptance(os.environ.get("IMAGE_DIGEST", ""), os.environ.get("ACCEPTANCE_DIGEST", ""), os.environ.get("DEPLOYER_READY", ""))'
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Validate production OIDC and read-only membership-store configuration
         env:
           FARM_WEB_MEMBERSHIP_ADMINISTRATOR: ${{ vars.FARM_WEB_MEMBERSHIP_ADMINISTRATOR }}
@@ -213,14 +213,14 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/451400509859/locations/global/workloadIdentityPools/github/providers/github
           service_account: 451400509859-compute@developer.gserviceaccount.com
           project_id: seges-ai
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Pin farm-seges-ai-web to the requested image ref
         env:
           INPUT_IMAGE_REF: ${{ inputs.image_ref }}
