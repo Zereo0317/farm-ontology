@@ -73,6 +73,12 @@ from farm_ontology.agronomy.recommendation import (
     input_ref_from_observation,
     recommendation_id_for,
 )
+from farm_ontology.agronomy.state_estimation import (
+    Assimilation,
+    CalibratedMeasurement,
+    StateEstimate,
+    assimilate_measurement,
+)
 from farm_ontology.agronomy.spray_windows import (
     MIN_RUN_HOURS,
     RAINFAST_HOURS,
@@ -141,4 +147,9 @@ __all__ = [
     "draft_recommendation",
     "input_ref_from_observation",
     "recommendation_id_for",
+    # state estimation
+    "Assimilation",
+    "CalibratedMeasurement",
+    "StateEstimate",
+    "assimilate_measurement",
 ]
